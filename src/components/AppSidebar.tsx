@@ -30,7 +30,7 @@ const mainNavItems = [
   { title: "Board", url: "/board", icon: Kanban },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Team", url: "/team", icon: Users },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Gantt Chart", url: "/analytics", icon: BarChart3 },
 ];
 
 export function AppSidebar() {
