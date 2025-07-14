@@ -25,50 +25,7 @@ const Projects = () => {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [projects, setProjects] = useState([
-    {
-      id: 1,
-      name: "Mobile App Redesign",
-      description: "Complete overhaul of our mobile application with new design system and improved user experience.",
-      progress: 75,
-      status: "In Progress",
-      priority: "high",
-      teamSize: 5,
-      dueDate: "Dec 15, 2024",
-      color: "bg-blue-500"
-    },
-    {
-      id: 2,
-      name: "Website Migration",
-      description: "Migration of legacy website to modern tech stack with improved performance and SEO.",
-      progress: 45,
-      status: "Planning",
-      priority: "medium",
-      teamSize: 3,
-      dueDate: "Jan 20, 2025",
-      color: "bg-green-500"
-    },
-    {
-      id: 3,
-      name: "Brand Guidelines",
-      description: "Development of comprehensive brand guidelines and design system documentation.",
-      progress: 90,
-      status: "Review",
-      priority: "low",
-      teamSize: 2,
-      dueDate: "Nov 30, 2024",
-      color: "bg-purple-500"
-    },
-    {
-      id: 4,
-      name: "API Documentation",
-      description: "Complete API documentation with examples and interactive playground.",
-      progress: 20,
-      status: "To Do",
-      priority: "medium",
-      teamSize: 1,
-      dueDate: "Feb 15, 2025",
-      color: "bg-orange-500"
-    }
+    // Empty array - no generated data, user creates their own projects
   ]);
 
   const [newProject, setNewProject] = useState({

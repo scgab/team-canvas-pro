@@ -4,6 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -28,65 +38,55 @@ interface CalendarEvent {
   color: string;
 }
 
+interface PublicHoliday {
+  date: Date;
+  name: string;
+  country: string;
+}
+
 const Calendar = () => {
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    description: "",
+    date: new Date(),
+    time: "",
+    duration: "",
+    type: "meeting" as const,
+    attendees: "",
+    location: ""
+  });
 
-  const events: CalendarEvent[] = [
-    {
-      id: "1",
-      title: "Project Kickoff Meeting",
-      description: "Initial meeting for mobile app redesign project",
-      date: new Date(2024, 11, 15),
-      time: "10:00 AM",
-      duration: "2 hours",
-      type: "meeting",
-      attendees: ["Sarah Chen", "Mike Johnson", "Alex Rivera"],
-      location: "Conference Room A",
-      color: "#3B82F6"
-    },
-    {
-      id: "2",
-      title: "Design Review Deadline",
-      date: new Date(2024, 11, 18),
-      time: "5:00 PM",
-      duration: "All day",
-      type: "deadline",
-      color: "#EF4444"
-    },
-    {
-      id: "3",
-      title: "Weekly Standup",
-      date: new Date(2024, 11, 16),
-      time: "9:00 AM",
-      duration: "30 minutes",
-      type: "meeting",
-      attendees: ["Team Alpha"],
-      location: "Video Call",
-      color: "#10B981"
-    },
-    {
-      id: "4",
-      title: "Client Presentation",
-      description: "Present final mockups to client",
-      date: new Date(2024, 11, 20),
-      time: "2:00 PM",
-      duration: "1 hour",
-      type: "milestone",
-      attendees: ["Sarah Chen", "David Kim"],
-      location: "Client Office",
-      color: "#8B5CF6"
-    },
-    {
-      id: "5",
-      title: "Code Review Session",
-      date: new Date(2024, 11, 17),
-      time: "3:00 PM",
-      duration: "1 hour",
-      type: "meeting",
-      attendees: ["Mike Johnson", "Emma Davis"],
-      color: "#F59E0B"
-    }
+  // Public holidays for Denmark, Sweden, UK, and USA (2024-2025)
+  const publicHolidays: PublicHoliday[] = [
+    // Denmark
+    { date: new Date(2024, 11, 24), name: "Christmas Eve", country: "DK" },
+    { date: new Date(2024, 11, 25), name: "Christmas Day", country: "DK" },
+    { date: new Date(2024, 11, 26), name: "Second Day of Christmas", country: "DK" },
+    { date: new Date(2024, 11, 31), name: "New Year's Eve", country: "DK" },
+    { date: new Date(2025, 0, 1), name: "New Year's Day", country: "DK" },
+    
+    // Sweden
+    { date: new Date(2024, 11, 24), name: "Christmas Eve", country: "SE" },
+    { date: new Date(2024, 11, 25), name: "Christmas Day", country: "SE" },
+    { date: new Date(2024, 11, 26), name: "Boxing Day", country: "SE" },
+    { date: new Date(2025, 0, 1), name: "New Year's Day", country: "SE" },
+    { date: new Date(2025, 0, 6), name: "Epiphany", country: "SE" },
+    
+    // UK
+    { date: new Date(2024, 11, 25), name: "Christmas Day", country: "UK" },
+    { date: new Date(2024, 11, 26), name: "Boxing Day", country: "UK" },
+    { date: new Date(2025, 0, 1), name: "New Year's Day", country: "UK" },
+    
+    // USA
+    { date: new Date(2024, 11, 25), name: "Christmas Day", country: "US" },
+    { date: new Date(2025, 0, 1), name: "New Year's Day", country: "US" },
+    { date: new Date(2025, 0, 20), name: "Martin Luther King Jr. Day", country: "US" },
+    { date: new Date(2025, 1, 17), name: "Presidents' Day", country: "US" }
   ];
 
   // Calendar navigation
@@ -100,6 +100,52 @@ const Calendar = () => {
 
   const goToToday = () => {
     setCurrentDate(new Date());
+  };
+
+  // Add new event
+  const handleAddEvent = () => {
+    if (!newEvent.title.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter an event title.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+    const event: CalendarEvent = {
+      id: Date.now().toString(),
+      title: newEvent.title,
+      description: newEvent.description,
+      date: newEvent.date,
+      time: newEvent.time || "All day",
+      duration: newEvent.duration || "1 hour",
+      type: newEvent.type,
+      attendees: newEvent.attendees ? newEvent.attendees.split(",").map(a => a.trim()) : [],
+      location: newEvent.location,
+      color: randomColor
+    };
+
+    setEvents(prev => [...prev, event]);
+    setNewEvent({
+      title: "",
+      description: "",
+      date: new Date(),
+      time: "",
+      duration: "",
+      type: "meeting",
+      attendees: "",
+      location: ""
+    });
+    setIsAddEventOpen(false);
+
+    toast({
+      title: "Event Created",
+      description: `${event.title} has been added to your calendar.`,
+    });
   };
 
   // Get calendar grid
@@ -133,6 +179,13 @@ const Calendar = () => {
   const getEventsForDate = (date: Date) => {
     return events.filter(event => 
       event.date.toDateString() === date.toDateString()
+    );
+  };
+
+  // Get holidays for a specific date
+  const getHolidaysForDate = (date: Date) => {
+    return publicHolidays.filter(holiday => 
+      holiday.date.toDateString() === date.toDateString()
     );
   };
 
@@ -171,10 +224,125 @@ const Calendar = () => {
             <h1 className="text-3xl font-bold text-foreground">Calendar</h1>
             <p className="text-muted-foreground mt-1">Manage your schedule and project milestones</p>
           </div>
-          <Button className="bg-gradient-primary hover:bg-primary-dark">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Event
-          </Button>
+          <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-primary hover:bg-primary-dark">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Event
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create New Event</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="event-title">Event Title *</Label>
+                  <Input
+                    id="event-title"
+                    value={newEvent.title}
+                    onChange={(e) => setNewEvent(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Enter event title"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="event-description">Description</Label>
+                  <Textarea
+                    id="event-description"
+                    value={newEvent.description}
+                    onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Event description"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label>Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn("w-full justify-start text-left font-normal", !newEvent.date && "text-muted-foreground")}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {newEvent.date ? format(newEvent.date, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={newEvent.date}
+                        onSelect={(date) => date && setNewEvent(prev => ({ ...prev, date }))}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="event-time">Time</Label>
+                    <Input
+                      id="event-time"
+                      type="time"
+                      value={newEvent.time}
+                      onChange={(e) => setNewEvent(prev => ({ ...prev, time: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="event-duration">Duration</Label>
+                    <Input
+                      id="event-duration"
+                      value={newEvent.duration}
+                      onChange={(e) => setNewEvent(prev => ({ ...prev, duration: e.target.value }))}
+                      placeholder="e.g., 1 hour"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="event-type">Type</Label>
+                    <Select value={newEvent.type} onValueChange={(value: any) => setNewEvent(prev => ({ ...prev, type: value }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="meeting">Meeting</SelectItem>
+                        <SelectItem value="deadline">Deadline</SelectItem>
+                        <SelectItem value="milestone">Milestone</SelectItem>
+                        <SelectItem value="reminder">Reminder</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="event-location">Location</Label>
+                    <Input
+                      id="event-location"
+                      value={newEvent.location}
+                      onChange={(e) => setNewEvent(prev => ({ ...prev, location: e.target.value }))}
+                      placeholder="Location"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="event-attendees">Attendees</Label>
+                  <Input
+                    id="event-attendees"
+                    value={newEvent.attendees}
+                    onChange={(e) => setNewEvent(prev => ({ ...prev, attendees: e.target.value }))}
+                    placeholder="Comma separated names"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsAddEventOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddEvent}>
+                    Create Event
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -218,21 +386,36 @@ const Calendar = () => {
                   }
                   
                   const dayEvents = getEventsForDate(day);
+                  const dayHolidays = getHolidaysForDate(day);
                   const isSelected = selectedDate?.toDateString() === day.toDateString();
+                  const hasHoliday = dayHolidays.length > 0;
                   
                   return (
                     <div
                       key={index}
                       className={`p-2 h-24 border border-border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
                         isToday(day) ? 'bg-primary/10 border-primary' : ''
-                      } ${isSelected ? 'bg-accent/20 border-accent' : ''}`}
+                      } ${isSelected ? 'bg-accent/20 border-accent' : ''} ${
+                        hasHoliday ? 'bg-destructive/5 border-destructive/20' : ''
+                      }`}
                       onClick={() => setSelectedDate(day)}
                     >
-                      <div className={`text-sm font-medium mb-1 ${isToday(day) ? 'text-primary' : 'text-foreground'}`}>
+                      <div className={`text-sm font-medium mb-1 ${isToday(day) ? 'text-primary' : hasHoliday ? 'text-destructive' : 'text-foreground'}`}>
                         {day.getDate()}
                       </div>
                       <div className="space-y-1">
-                        {dayEvents.slice(0, 2).map(event => (
+                        {/* Show holidays first */}
+                        {dayHolidays.slice(0, 1).map(holiday => (
+                          <div
+                            key={holiday.name}
+                            className="text-xs p-1 rounded text-white bg-destructive truncate"
+                            title={`${holiday.name} (${holiday.country})`}
+                          >
+                            🎉 {holiday.country}
+                          </div>
+                        ))}
+                        {/* Show events */}
+                        {dayEvents.slice(0, hasHoliday ? 1 : 2).map(event => (
                           <div
                             key={event.id}
                             className="text-xs p-1 rounded text-white truncate"
@@ -241,9 +424,9 @@ const Calendar = () => {
                             {event.title}
                           </div>
                         ))}
-                        {dayEvents.length > 2 && (
+                        {(dayEvents.length + dayHolidays.length) > 2 && (
                           <div className="text-xs text-muted-foreground">
-                            +{dayEvents.length - 2} more
+                            +{(dayEvents.length + dayHolidays.length) - 2} more
                           </div>
                         )}
                       </div>
@@ -262,6 +445,20 @@ const Calendar = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Show holidays for selected date */}
+              {selectedDate && getHolidaysForDate(selectedDate).map(holiday => (
+                <div key={holiday.name} className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🎉</span>
+                    <div>
+                      <h4 className="font-medium text-sm text-destructive">{holiday.name}</h4>
+                      <p className="text-xs text-muted-foreground">Public Holiday ({holiday.country})</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Show events */}
               {(selectedDate ? getEventsForDate(selectedDate) : events.slice(0, 5)).map(event => (
                 <div key={event.id} className="p-3 bg-muted/20 rounded-lg space-y-2">
                   <div className="flex items-start justify-between">
@@ -292,50 +489,83 @@ const Calendar = () => {
                     {event.attendees && event.attendees.length > 0 && (
                       <div className="flex items-center gap-1">
                         <Users className="w-3 h-3" />
-                        <div className="flex items-center gap-1">
-                          {event.attendees.slice(0, 3).map((attendee, idx) => (
-                            <Avatar key={idx} className="w-4 h-4">
-                              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                                {attendee.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                          ))}
-                          {event.attendees.length > 3 && (
-                            <span className="text-xs">+{event.attendees.length - 3}</span>
-                          )}
-                        </div>
+                        <span>{event.attendees.join(", ")}</span>
                       </div>
                     )}
                   </div>
                 </div>
               ))}
               
-              {selectedDate && getEventsForDate(selectedDate).length === 0 && (
+              {selectedDate && getEventsForDate(selectedDate).length === 0 && getHolidaysForDate(selectedDate).length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No events scheduled for this date</p>
-                  <Button variant="outline" size="sm" className="mt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-2"
+                    onClick={() => {
+                      setNewEvent(prev => ({ ...prev, date: selectedDate }));
+                      setIsAddEventOpen(true);
+                    }}
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Event
                   </Button>
+                </div>
+              )}
+
+              {/* Show empty state for no user events */}
+              {!selectedDate && events.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No events created yet</p>
+                  <p className="text-xs">Start by creating your first event</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
+        {/* Holiday Legend */}
+        <Card className="bg-gradient-card shadow-custom-card">
+          <CardHeader>
+            <CardTitle className="text-lg">Public Holidays</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-destructive rounded"></div>
+                <span>🇩🇰 Denmark (DK)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-destructive rounded"></div>
+                <span>🇸🇪 Sweden (SE)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-destructive rounded"></div>
+                <span>🇬🇧 United Kingdom (UK)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-destructive rounded"></div>
+                <span>🇺🇸 United States (US)</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-gradient-card shadow-custom-card">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-primary">{events.filter(e => e.type === 'meeting').length}</div>
-              <div className="text-sm text-muted-foreground">Meetings This Month</div>
+              <div className="text-sm text-muted-foreground">Meetings</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-card shadow-custom-card">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-destructive">{events.filter(e => e.type === 'deadline').length}</div>
-              <div className="text-sm text-muted-foreground">Upcoming Deadlines</div>
+              <div className="text-sm text-muted-foreground">Deadlines</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-card shadow-custom-card">

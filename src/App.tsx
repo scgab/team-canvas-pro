@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Board from "./pages/Board";
 import Projects from "./pages/Projects";
 import Calendar from "./pages/Calendar";
+import Team from "./pages/Team";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 

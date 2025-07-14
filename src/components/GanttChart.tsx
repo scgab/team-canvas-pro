@@ -26,66 +26,7 @@ interface GanttProject {
 export function GanttChart() {
   const { toast } = useToast();
   const [projects, setProjects] = useState<GanttProject[]>([
-    {
-      id: "1",
-      name: "Project Planning Phase",
-      description: "Initial project setup and requirements gathering",
-      startDate: new Date(2024, 11, 1),
-      endDate: new Date(2024, 11, 15),
-      progress: 100,
-      priority: "high",
-      assignee: "Sarah Chen",
-      color: "#3B82F6",
-      dependencies: []
-    },
-    {
-      id: "2", 
-      name: "Design & Wireframes",
-      description: "Create mockups and design system",
-      startDate: new Date(2024, 11, 10),
-      endDate: new Date(2024, 11, 28),
-      progress: 75,
-      priority: "high",
-      assignee: "Alex Rivera",
-      color: "#10B981",
-      dependencies: ["1"]
-    },
-    {
-      id: "3",
-      name: "Frontend Development",
-      description: "Implement UI components and pages",
-      startDate: new Date(2024, 11, 20),
-      endDate: new Date(2025, 0, 20),
-      progress: 30,
-      priority: "medium",
-      assignee: "Mike Johnson",
-      color: "#F59E0B",
-      dependencies: ["2"]
-    },
-    {
-      id: "4",
-      name: "Backend Development",
-      description: "API development and database setup",
-      startDate: new Date(2024, 11, 25),
-      endDate: new Date(2025, 0, 25),
-      progress: 15,
-      priority: "medium",
-      assignee: "Emma Davis",
-      color: "#EF4444",
-      dependencies: ["1"]
-    },
-    {
-      id: "5",
-      name: "Testing & QA",
-      description: "Comprehensive testing and bug fixes",
-      startDate: new Date(2025, 0, 15),
-      endDate: new Date(2025, 1, 5),
-      progress: 0,
-      priority: "high",
-      assignee: "David Kim",
-      color: "#8B5CF6",
-      dependencies: ["3", "4"]
-    }
+    // Empty array - no generated data, user creates their own projects
   ]);
 
   const [viewRange, setViewRange] = useState({
