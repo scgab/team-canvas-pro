@@ -65,8 +65,8 @@ export function GanttChart() {
   const timelineStart = viewRange.start;
   const timelineEnd = viewRange.end;
   const totalDays = Math.ceil((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-  const dayWidth = 40;
-  const chartWidth = totalDays * dayWidth;
+  const dayWidth = 30;
+  const chartWidth = Math.min(totalDays * dayWidth, window.innerWidth - 400);
 
   // Generate timeline headers
   const generateTimelineHeaders = () => {

@@ -65,7 +65,11 @@ export function AppSidebar() {
         {/* Quick Actions */}
         {open && (
           <div className="mb-6">
-            <Button size="sm" className="w-full bg-gradient-primary hover:bg-primary-dark">
+            <Button 
+              size="sm" 
+              className="w-full bg-gradient-primary hover:bg-primary-dark"
+              onClick={() => window.location.href = '/projects'}
+            >
               <Plus className="w-4 h-4 mr-2" />
               New Project
             </Button>

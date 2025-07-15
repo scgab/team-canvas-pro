@@ -411,7 +411,7 @@ const Calendar = () => {
                             className="text-xs p-1 rounded text-white bg-destructive truncate"
                             title={`${holiday.name} (${holiday.country})`}
                           >
-                            🎉 {holiday.country}
+                            🎉 {holiday.name}
                           </div>
                         ))}
                         {/* Show events */}

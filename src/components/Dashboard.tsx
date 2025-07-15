@@ -34,7 +34,10 @@ export function Dashboard() {
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Welcome to ProManage! Start by creating your first project.</p>
         </div>
-        <Button className="bg-gradient-primary hover:bg-primary-dark">
+        <Button 
+          className="bg-gradient-primary hover:bg-primary-dark"
+          onClick={() => window.location.href = '/projects'}
+        >
           <Plus className="w-4 h-4 mr-2" />
           New Project
         </Button>
@@ -70,7 +73,10 @@ export function Dashboard() {
               <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
               <h3 className="text-lg font-medium text-foreground mb-2">No projects yet</h3>
               <p className="text-muted-foreground mb-4">Create your first project to get started with ProManage</p>
-              <Button className="bg-gradient-primary hover:bg-primary-dark">
+              <Button 
+                className="bg-gradient-primary hover:bg-primary-dark"
+                onClick={() => window.location.href = '/projects'}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Project
               </Button>
