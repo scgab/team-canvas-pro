@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
+import { TaskCreateModal, MeetingScheduleModal, TeamMemberModal, ReportModal } from "@/components/QuickActionModals";
 import { 
   BarChart3, 
   Calendar, 
@@ -12,12 +14,24 @@ import {
   Plus, 
   TrendingUp, 
   Users,
-  Kanban
+  FileText
 } from "lucide-react";
 
 export function Dashboard() {
   const [projects] = useState([]); // Empty - user creates projects
   const [tasks] = useState([]); // Empty - user creates tasks
+  
+  // Modal states
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  const handleProjectCreated = () => {
+    // Refresh dashboard data
+    console.log("Project created, refreshing dashboard...");
+  };
   
   const projectStats = [
     { name: "Active Projects", value: projects.length, icon: FolderOpen, color: "text-primary" },
@@ -36,7 +50,7 @@ export function Dashboard() {
         </div>
         <Button 
           className="bg-gradient-primary hover:bg-primary-dark"
-          onClick={() => window.location.href = '/projects'}
+          onClick={() => setIsProjectDialogOpen(true)}
         >
           <Plus className="w-4 h-4 mr-2" />
           New Project
@@ -75,7 +89,7 @@ export function Dashboard() {
               <p className="text-muted-foreground mb-4">Create your first project to get started with ProManage</p>
               <Button 
                 className="bg-gradient-primary hover:bg-primary-dark"
-                onClick={() => window.location.href = '/projects'}
+                onClick={() => setIsProjectDialogOpen(true)}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Project
@@ -89,21 +103,41 @@ export function Dashboard() {
             <CardTitle className="text-xl font-semibold">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start" size="lg">
-              <Kanban className="w-5 h-5 mr-3" />
-              Create Kanban Board
+            <Button 
+              variant="outline" 
+              className="w-full justify-start hover:bg-muted/50 transition-colors" 
+              size="lg"
+              onClick={() => setIsTaskModalOpen(true)}
+            >
+              <CheckCircle className="w-5 h-5 mr-3" />
+              Create Task
             </Button>
-            <Button variant="outline" className="w-full justify-start" size="lg">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start hover:bg-muted/50 transition-colors" 
+              size="lg"
+              onClick={() => setIsMeetingModalOpen(true)}
+            >
               <Calendar className="w-5 h-5 mr-3" />
-              Schedule Event
+              Schedule Meeting
             </Button>
-            <Button variant="outline" className="w-full justify-start" size="lg">
-              <BarChart3 className="w-5 h-5 mr-3" />
-              Plan Timeline
-            </Button>
-            <Button variant="outline" className="w-full justify-start" size="lg">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start hover:bg-muted/50 transition-colors" 
+              size="lg"
+              onClick={() => setIsTeamModalOpen(true)}
+            >
               <Users className="w-5 h-5 mr-3" />
-              Invite Team
+              Add Team Member
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start hover:bg-muted/50 transition-colors" 
+              size="lg"
+              onClick={() => setIsReportModalOpen(true)}
+            >
+              <FileText className="w-5 h-5 mr-3" />
+              Generate Report
             </Button>
           </CardContent>
         </Card>
@@ -143,6 +177,29 @@ export function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modals */}
+      <ProjectCreateDialog 
+        open={isProjectDialogOpen} 
+        onOpenChange={setIsProjectDialogOpen}
+        onProjectCreated={handleProjectCreated}
+      />
+      <TaskCreateModal 
+        open={isTaskModalOpen} 
+        onOpenChange={setIsTaskModalOpen}
+      />
+      <MeetingScheduleModal 
+        open={isMeetingModalOpen} 
+        onOpenChange={setIsMeetingModalOpen}
+      />
+      <TeamMemberModal 
+        open={isTeamModalOpen} 
+        onOpenChange={setIsTeamModalOpen}
+      />
+      <ReportModal 
+        open={isReportModalOpen} 
+        onOpenChange={setIsReportModalOpen}
+      />
     </div>
   );
 }

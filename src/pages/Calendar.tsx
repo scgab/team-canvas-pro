@@ -393,7 +393,7 @@ const Calendar = () => {
                   return (
                     <div
                       key={index}
-                      className={`p-2 h-24 border border-border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                      className={`relative p-2 h-24 border border-border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
                         isToday(day) ? 'bg-primary/10 border-primary' : ''
                       } ${isSelected ? 'bg-accent/20 border-accent' : ''} ${
                         hasHoliday ? 'bg-destructive/5 border-destructive/20' : ''
@@ -402,6 +402,14 @@ const Calendar = () => {
                     >
                       <div className={`text-sm font-medium mb-1 ${isToday(day) ? 'text-primary' : hasHoliday ? 'text-destructive' : 'text-foreground'}`}>
                         {day.getDate()}
+                        {/* Holiday marker dots */}
+                        {hasHoliday && (
+                          <div className="absolute top-1 right-1 flex gap-1">
+                            {dayHolidays.slice(0, 3).map((_, i) => (
+                              <div key={i} className="w-2 h-2 bg-destructive rounded-full" />
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-1">
                         {/* Show holidays first */}

@@ -29,9 +29,11 @@ export function GanttChart() {
     // Empty array - no generated data, user creates their own projects
   ]);
 
+  // Set timeline to start from today with bidirectional scrolling
+  const today = new Date();
   const [viewRange, setViewRange] = useState({
-    start: new Date(2024, 10, 1),
-    end: new Date(2025, 2, 31)
+    start: new Date(today.getFullYear(), today.getMonth() - 3, 1), // 3 months back
+    end: new Date(today.getFullYear(), today.getMonth() + 12, 0) // 12 months ahead
   });
 
   const [dragState, setDragState] = useState<{
@@ -247,6 +249,23 @@ export function GanttChart() {
     }
   };
 
+  // Timeline navigation functions
+  const goToToday = () => {
+    const today = new Date();
+    setViewRange({
+      start: new Date(today.getFullYear(), today.getMonth() - 3, 1),
+      end: new Date(today.getFullYear(), today.getMonth() + 12, 0)
+    });
+  };
+
+  const scrollTimeline = (direction: 'left' | 'right') => {
+    const monthsToMove = direction === 'left' ? -1 : 1;
+    setViewRange(prev => ({
+      start: new Date(prev.start.getFullYear(), prev.start.getMonth() + monthsToMove, 1),
+      end: new Date(prev.end.getFullYear(), prev.end.getMonth() + monthsToMove, 0)
+    }));
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -356,10 +375,25 @@ export function GanttChart() {
       {/* Gantt Chart */}
       <Card className="bg-gradient-card shadow-custom-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Timeline View
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Timeline View
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={goToToday}>
+                Today
+              </Button>
+              <div className="flex">
+                <Button variant="outline" size="sm" onClick={() => scrollTimeline('left')}>
+                  ←
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => scrollTimeline('right')}>
+                  →
+                </Button>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto" ref={ganttRef}>
