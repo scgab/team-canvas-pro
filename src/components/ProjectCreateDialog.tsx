@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { useProjects } from "@/hooks/useProjects";
+import { useSharedData } from "@/contexts/SharedDataContext";
 import { getUsers } from "@/utils/userDatabase";
 import { useUserColors } from "@/components/UserColorContext";
 import { format } from "date-fns";
@@ -25,7 +25,7 @@ interface ProjectCreateDialogProps {
 
 export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: ProjectCreateDialogProps) {
   const { toast } = useToast();
-  const { createProject } = useProjects();
+  const { createProject } = useSharedData();
   const { getColorByEmail } = useUserColors();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTeamMembers, setSelectedTeamMembers] = useState<string[]>([]);
@@ -53,15 +53,16 @@ export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: Pr
     try {
       console.log('Creating project with data:', newProject);
       
-      const createdProject = await createProject({
+      createProject({
         title: newProject.title,
         description: newProject.description,
         priority: newProject.priority,
+        status: 'planning',
         deadline: newProject.deadline,
-        team_members: selectedTeamMembers
+        assignedMembers: selectedTeamMembers
       });
 
-      console.log('Project created:', createdProject);
+      console.log('Project created successfully');
 
       toast({
         title: "Success!",

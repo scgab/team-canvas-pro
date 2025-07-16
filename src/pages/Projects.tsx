@@ -62,6 +62,7 @@ const Projects = () => {
   const userProjects = projects;
   
   console.log('Projects displayed to user:', userProjects);
+  console.log('Filtered projects for display:', userProjects.length);
   console.log('=== END DEBUGGING ===');
 
   const handleProjectCreated = () => {
