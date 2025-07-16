@@ -104,7 +104,9 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Save all data to localStorage when it changes
   useEffect(() => {
+    console.log('Saving projects to localStorage:', projects);
     localStorage.setItem('sharedProjects', JSON.stringify(projects));
+    console.log('Projects saved. localStorage now contains:', localStorage.getItem('sharedProjects'));
   }, [projects]);
 
   useEffect(() => {
@@ -120,11 +122,15 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [events]);
 
   const createProject = (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'createdBy'>) => {
+    console.log('=== CREATING PROJECT ===');
+    console.log('Project data received:', projectData);
+    
     const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
     
     // Get current user from global window or fallback
     const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
+    console.log('Current user email:', currentUserEmail);
 
     const newProject: Project = {
       ...projectData,
@@ -137,7 +143,16 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdBy: currentUserEmail,
     };
 
-    setProjects(prev => [...prev, newProject]);
+    console.log('New project created:', newProject);
+    console.log('Current projects before adding:', projects);
+    
+    setProjects(prev => {
+      const updated = [...prev, newProject];
+      console.log('Updated projects array:', updated);
+      return updated;
+    });
+    
+    console.log('=== PROJECT CREATION COMPLETE ===');
   };
 
   const createTask = (taskData: Omit<Task, 'id' | 'createdBy' | 'createdAt'>) => {

@@ -33,7 +33,7 @@ import {
 const Projects = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { projects, createProject } = useSharedData();
+  const { projects, createProject, setProjects } = useSharedData();
   const { user } = useAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -51,13 +51,18 @@ const Projects = () => {
     (window as any).currentUserEmail = user.email;
   }
   
+  // DEBUGGING: Log project state
+  console.log('=== PROJECTS DEBUGGING ===');
   console.log('Current user:', currentUser);
-  console.log('All projects:', projects);
+  console.log('Projects from SharedDataContext:', projects);
+  console.log('Projects length:', projects.length);
+  console.log('LocalStorage sharedProjects:', localStorage.getItem('sharedProjects'));
   
   // Show ALL projects to all team members - remove filtering
   const userProjects = projects;
   
-  console.log('All projects shown to user:', userProjects);
+  console.log('Projects displayed to user:', userProjects);
+  console.log('=== END DEBUGGING ===');
 
   const handleProjectCreated = () => {
     console.log("Project created successfully");
@@ -102,7 +107,6 @@ const Projects = () => {
   const handleDeleteProject = async () => {
     if (!projectToDelete) return;
     
-    const { setProjects } = useSharedData();
     setProjects(prev => prev.filter(p => p.id !== projectToDelete));
     setProjectToDelete(null);
     setIsDeleteDialogOpen(false);
