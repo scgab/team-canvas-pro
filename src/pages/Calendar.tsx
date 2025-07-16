@@ -286,13 +286,14 @@ const Calendar = () => {
             <h1 className="text-3xl font-bold text-foreground">Calendar</h1>
             <p className="text-muted-foreground mt-1">Manage your schedule and project milestones</p>
           </div>
-          <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-primary hover:bg-primary-dark">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Event
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-primary hover:bg-primary-dark">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Schedule Meeting
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Create New Event</DialogTitle>
@@ -405,6 +406,7 @@ const Calendar = () => {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

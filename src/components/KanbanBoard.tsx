@@ -76,47 +76,19 @@ export function KanbanBoard() {
       console.error('Error loading kanban tasks:', error);
     }
     
-    // Default columns
+    // Start with empty columns - remove all fake tasks
     return [
       {
         id: "todo",
         title: "To Do",
         color: "border-muted",
-        tasks: [
-          {
-            id: "1",
-            title: "Design Homepage",
-            description: "Create wireframes and mockups for the main landing page",
-            priority: "high",
-            assignee: "HNA User",
-            assigneeAvatar: "",
-            dueDate: "Dec 20",
-            comments: 3,
-            attachments: 2,
-            tags: ["design", "ui"],
-            status: "todo"
-          }
-        ]
+        tasks: []
       },
       {
         id: "inprogress",
         title: "In Progress",
         color: "border-warning",
-        tasks: [
-          {
-            id: "2",
-            title: "Backend API Integration",
-            description: "Connect frontend with REST API endpoints",
-            priority: "urgent",
-            assignee: "MYH User",
-            assigneeAvatar: "",
-            dueDate: "Dec 18",
-            comments: 5,
-            attachments: 1,
-            tags: ["backend", "api"],
-            status: "inprogress"
-          }
-        ]
+        tasks: []
       },
       {
         id: "review",
@@ -128,21 +100,7 @@ export function KanbanBoard() {
         id: "done",
         title: "Done",
         color: "border-success",
-        tasks: [
-          {
-            id: "3",
-            title: "Project Setup",
-            description: "Initialize project structure and dependencies",
-            priority: "medium",
-            assignee: "HNA User",
-            assigneeAvatar: "",
-            dueDate: "Dec 15",
-            comments: 1,
-            attachments: 0,
-            tags: ["setup"],
-            status: "done"
-          }
-        ]
+        tasks: []
       }
     ];
   });

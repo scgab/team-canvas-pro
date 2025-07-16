@@ -50,6 +50,10 @@ export function TeamMessaging({ currentUser, teamMembers }: TeamMessagingProps) 
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Get current user data
+  const currentUserData = teamMembers.find(m => m.name === currentUser);
+  const currentUserEmail = currentUserData?.email || currentUser;
+
   const handleFileUpload = (files: File[]) => {
     if (files.length + selectedFiles.length > 5) {
       toast({
@@ -96,15 +100,41 @@ export function TeamMessaging({ currentUser, teamMembers }: TeamMessagingProps) 
     handleFileUpload(files);
   };
 
+  const sendMessage = (senderId: string, senderEmail: string, receiverId: string, receiverEmail: string, content: string, files?: FileAttachment[]) => {
+    const newMessage: Message = {
+      id: Date.now().toString() + Math.random(),
+      from: senderId,
+      fromEmail: senderEmail,
+      to: receiverId,
+      toEmail: receiverEmail,
+      content: content,
+      timestamp: new Date(),
+      read: false,
+      files: files,
+      deliveryStatus: 'sent'
+    };
+    
+    setMessages(prev => {
+      const updated = [...prev, newMessage];
+      return updated;
+    });
+    
+    // Simulate message delivery
+    setTimeout(() => {
+      setMessages(prev => prev.map(m => 
+        m.id === newMessage.id ? { ...m, deliveryStatus: 'delivered' } : m
+      ));
+    }, 1000);
+
+    return newMessage;
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() && selectedFiles.length === 0) return;
     if (!selectedMember) return;
 
     const selectedMemberData = teamMembers.find(m => m.id === selectedMember);
     if (!selectedMemberData) return;
-
-    const currentUserData = teamMembers.find(m => m.name === currentUser);
-    const currentUserEmail = currentUserData?.email || currentUser;
 
     // Create file attachments
     const fileAttachments: FileAttachment[] = selectedFiles.map(file => ({
@@ -115,29 +145,17 @@ export function TeamMessaging({ currentUser, teamMembers }: TeamMessagingProps) 
       url: URL.createObjectURL(file) // In real app, upload to server
     }));
 
-    const message: Message = {
-      id: Date.now().toString(),
-      from: currentUser,
-      fromEmail: currentUserEmail,
-      to: selectedMember,
-      toEmail: selectedMemberData.email,
-      content: newMessage.trim(),
-      timestamp: new Date(),
-      read: false,
-      files: fileAttachments.length > 0 ? fileAttachments : undefined,
-      deliveryStatus: 'sent'
-    };
+    const message = sendMessage(
+      currentUser,
+      currentUserEmail,
+      selectedMemberData.name,
+      selectedMemberData.email,
+      newMessage.trim(),
+      fileAttachments.length > 0 ? fileAttachments : undefined
+    );
 
-    setMessages(prev => [...prev, message]);
     setNewMessage("");
     setSelectedFiles([]);
-
-    // Simulate message delivery
-    setTimeout(() => {
-      setMessages(prev => prev.map(m => 
-        m.id === message.id ? { ...m, deliveryStatus: 'delivered' } : m
-      ));
-    }, 1000);
 
     toast({
       title: "Message Sent",
@@ -145,39 +163,35 @@ export function TeamMessaging({ currentUser, teamMembers }: TeamMessagingProps) 
     });
   };
 
+  const getUserMessages = (user1: string, user1Email: string, user2: string, user2Email: string) => {
+    return messages.filter(msg => 
+      (msg.fromEmail === user1Email && msg.toEmail === user2Email) ||
+      (msg.fromEmail === user2Email && msg.toEmail === user1Email) ||
+      (msg.from === user1 && msg.to === user2) ||
+      (msg.from === user2 && msg.to === user1)
+    ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  };
+
   const getConversationMessages = (memberId: string) => {
     const selectedMemberData = teamMembers.find(m => m.id === memberId);
     if (!selectedMemberData) return [];
 
-    const currentUserData = teamMembers.find(m => m.name === currentUser);
-    const currentUserEmail = currentUserData?.email || currentUser;
-
-    return messages.filter(
-      msg => 
-        // Messages from current user to selected member
-        (msg.from === currentUser && msg.to === memberId) ||
-        (msg.fromEmail === currentUserEmail && msg.to === memberId) ||
-        (msg.from === currentUser && msg.toEmail === selectedMemberData.email) ||
-        // Messages from selected member to current user  
-        (msg.from === selectedMemberData.name && msg.to === currentUser) ||
-        (msg.fromEmail === selectedMemberData.email && msg.to === currentUser) ||
-        (msg.from === selectedMemberData.name && msg.toEmail === currentUserEmail) ||
-        (msg.fromEmail === selectedMemberData.email && msg.toEmail === currentUserEmail)
-    ).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    return getUserMessages(
+      currentUser,
+      currentUserEmail,
+      selectedMemberData.name,
+      selectedMemberData.email
+    );
   };
 
   const getUnreadCount = (memberId: string) => {
     const selectedMemberData = teamMembers.find(m => m.id === memberId);
     if (!selectedMemberData) return 0;
 
-    const currentUserData = teamMembers.find(m => m.name === currentUser);
-    const currentUserEmail = currentUserData?.email || currentUser;
-
     return messages.filter(
       msg => 
         !msg.read && 
-        ((msg.from === selectedMemberData.name || msg.fromEmail === selectedMemberData.email) &&
-        (msg.to === currentUser || msg.toEmail === currentUserEmail))
+        (msg.fromEmail === selectedMemberData.email && msg.toEmail === currentUserEmail)
     ).length;
   };
 

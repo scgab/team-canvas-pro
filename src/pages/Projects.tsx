@@ -54,10 +54,10 @@ const Projects = () => {
   console.log('Current user:', currentUser);
   console.log('All projects:', projects);
   
-  // Filter projects to show only those the user has access to
-  const userProjects = currentUser ? getProjectsForUser(currentUser.id) : [];
+  // Show ALL projects to all team members - remove filtering
+  const userProjects = projects;
   
-  console.log('User projects:', userProjects);
+  console.log('All projects shown to user:', userProjects);
 
   const handleProjectCreated = () => {
     console.log("Project created successfully");
