@@ -64,12 +64,18 @@ export const useAuth = () => {
   const signInWithGoogle = async () => {
     const redirectUrl = `${window.location.origin}/`;
     
+    console.log('Starting Google OAuth with redirect URL:', redirectUrl);
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: redirectUrl
       }
     });
+    
+    if (error) {
+      console.error('Google OAuth error:', error);
+    }
     
     return { error };
   };

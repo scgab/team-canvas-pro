@@ -23,13 +23,19 @@ export default function Auth() {
     setLoading(true);
     setAuthError(null);
     
+    console.log('Current domain:', window.location.origin);
+    console.log('Attempting Google OAuth...');
+    
     const { error } = await signInWithGoogle();
     
     if (error) {
+      console.error('Authentication error details:', error);
       if (error.message.includes('email')) {
         setAuthError("Access restricted. Please contact administrator.");
+      } else if (error.message.includes('invalid') || error.message.includes('blocked')) {
+        setAuthError("OAuth configuration error. Please check Google Cloud Console setup.");
       } else {
-        setAuthError(error.message);
+        setAuthError(`Authentication failed: ${error.message}`);
       }
     }
     setLoading(false);
