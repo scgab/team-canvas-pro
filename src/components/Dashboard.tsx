@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
 import { TaskCreateModal, MeetingScheduleModal, TeamMemberModal, ReportModal } from "@/components/QuickActionModals";
-import { useProjects } from "@/contexts/ProjectsContext";
+import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { 
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 export function Dashboard() {
-  const { projects, loading } = useProjects();
+  const { projects, loading, createProject, getProjectStats } = useProjects();
   const { user } = useAuth();
   const { isReturningUser, getUserInfo, registerUser } = useUserManagement();
   
@@ -40,11 +40,7 @@ export function Dashboard() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
-  const stats = {
-    total: projects.length,
-    completed: projects.filter(p => p.status === 'completed').length,
-    overdue: projects.filter(p => p.deadline && new Date(p.deadline) < new Date()).length
-  };
+  const stats = getProjectStats();
   
   // Get user info for welcome message
   const userInfo = user ? getUserInfo(user.id) : null;
@@ -57,7 +53,7 @@ export function Dashboard() {
   const projectStats = [
     { name: "Active Projects", value: stats.total, icon: FolderOpen, color: "text-primary" },
     { name: "Tasks Completed", value: stats.completed, icon: CheckCircle, color: "text-success" },
-    { name: "Team Members", value: projects.reduce((sum, p) => sum + (p.assignedMembers?.length || 1), 0), icon: Users, color: "text-warning" },
+    { name: "Team Members", value: projects.reduce((sum, p) => sum + p.team_size, 0), icon: Users, color: "text-warning" },
     { name: "Overdue Projects", value: stats.overdue, icon: Clock, color: "text-destructive" },
   ];
 
@@ -138,12 +134,12 @@ export function Dashboard() {
                 <h3 className="text-lg font-medium text-foreground mb-4">Recent Projects</h3>
                 {projects.slice(0, 3).map((project) => (
                   <div key={project.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors">
-                    <div className="w-3 h-3 rounded-full bg-primary" />
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color }} />
                     <div className="flex-1">
                       <h4 className="font-medium text-sm">{project.title}</h4>
-                      <p className="text-xs text-muted-foreground">Status: {project.status}</p>
+                      <p className="text-xs text-muted-foreground">Progress: {project.progress}%</p>
                     </div>
-                    <Progress value={75} className="w-16 h-2" />
+                    <Progress value={project.progress} className="w-16 h-2" />
                   </div>
                 ))}
                 {projects.length > 3 && (

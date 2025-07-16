@@ -3,14 +3,14 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { UserColorProvider } from './components/UserColorContext'
-import { ProjectsProvider } from './contexts/ProjectsContext'
+import { SharedDataProvider } from './contexts/SharedDataContext'
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <UserColorProvider>
-      <ProjectsProvider>
+      <SharedDataProvider>
         <App />
-      </ProjectsProvider>
+      </SharedDataProvider>
     </UserColorProvider>
   </StrictMode>,
 );
