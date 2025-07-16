@@ -29,47 +29,50 @@ export default function Auth() {
     
     console.log('=== Starting Google Signup Process ===');
     console.log('Current URL:', window.location.href);
-    console.log('Origin:', window.location.origin);
-    console.log('Protocol:', window.location.protocol);
-    console.log('Port:', window.location.port || 'default');
     
     const { error } = await signUpWithGoogle();
     
     if (error) {
-      console.error('=== Signup Error Details ===');
-      console.error('Error message:', error.message);
-      console.error('Error status:', error.status);
+      console.error('=== Signup Error ===');
+      console.error('Error:', error.message);
       
-      // Provide specific error messages and solutions
-      if (error.message.includes('redirect_uri_mismatch')) {
-        setAuthError(
-          `Redirect URI mismatch error. Please add these URLs to your Google Console:
-          
-• ${window.location.origin}/auth/google/callback
-• ${window.location.origin}/auth/callback  
-• ${window.location.origin}/callback
-• ${window.location.origin}/
+      // Handle specific Google OAuth errors
+      if (error.message === 'GOOGLE_CONSENT_SCREEN_ERROR') {
+        setAuthError(`🚫 Google OAuth Access Denied (403 Error)
 
-Current origin: ${window.location.origin}`
-        );
-      } else if (error.message.includes('invalid_client')) {
-        setAuthError("Invalid Google Client ID. Please check your Supabase Google provider configuration.");
-      } else if (error.message.includes('access_denied')) {
-        setAuthError("Access denied. Please try again or check your Google account permissions.");
-      } else if (error.message.includes('popup_closed')) {
-        setAuthError("Signup cancelled. Please try again.");
+IMMEDIATE FIX REQUIRED:
+
+1. Go to Google Cloud Console OAuth Consent Screen
+2. Set User Type to "External" 
+3. Set Publishing Status to "In Production"
+4. OR add your email as a Test User if keeping it in Testing
+
+The app is currently in testing mode and you're not added as a test user.`);
+        setShowTroubleshooting(true);
+      } else if (error.message === 'REDIRECT_URI_MISMATCH') {
+        setAuthError(`🔧 Redirect URI Mismatch Error
+
+ADD THESE URLs TO GOOGLE CONSOLE:
+• ${window.location.origin}/
+• ${window.location.origin}/auth/callback
+
+Current origin: ${window.location.origin}`);
+        setShowTroubleshooting(true);
+      } else if (error.message === 'UNAUTHORIZED_CLIENT') {
+        setAuthError(`⚠️ Unauthorized Client Error
+
+FIXES:
+• Verify Google Client ID in Supabase
+• Check OAuth consent screen configuration
+• Ensure proper scopes are configured`);
+        setShowTroubleshooting(true);
       } else {
-        setAuthError(`Signup failed: ${error.message}`);
+        setAuthError(`❌ Signup Failed: ${error.message}
+
+Check console for detailed error information.`);
+        setShowTroubleshooting(true);
       }
-      
-      // Show helpful console information
-      console.error('=== Troubleshooting Info ===');
-      console.error('1. Check Google Console redirect URIs');
-      console.error('2. Verify Supabase Google provider setup');
-      console.error('3. Ensure OAuth consent screen is configured');
-      
     } else {
-      console.log('Google signup initiated successfully');
       toast({
         title: "Redirecting to Google",
         description: "Please complete your signup with Google...",

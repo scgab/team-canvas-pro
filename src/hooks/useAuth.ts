@@ -78,55 +78,51 @@ export const useAuth = () => {
     }
   };
 
-  // Google Signup - Primary authentication method
+  // Google Signup with 403 error handling
   const signUpWithGoogle = async () => {
-    // Try multiple redirect URI patterns for better compatibility
     const baseUrl = window.location.origin;
-    const redirectUrls = [
-      `${baseUrl}/auth/google/callback`,
-      `${baseUrl}/auth/callback`, 
-      `${baseUrl}/callback`,
-      `${baseUrl}/`
-    ];
+    const redirectUrl = `${baseUrl}/`;
     
     console.log('=== Google Signup Debug Info ===');
     console.log('Base URL:', baseUrl);
-    console.log('Trying redirect URLs:', redirectUrls);
-    console.log('User Agent:', navigator.userAgent);
+    console.log('Redirect URL:', redirectUrl);
     
-    // Use the most common Supabase redirect pattern
-    const redirectUrl = `${baseUrl}/`;
-    
-    console.log('Selected redirect URL:', redirectUrl);
-    console.log('Starting Google OAuth signup flow...');
-    
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-          hd: undefined // Allow any domain
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account', // Force account selection
+            hd: undefined // Allow any domain
+          }
+        }
+      });
+      
+      if (error) {
+        console.error('=== Google OAuth Error ===');
+        console.error('Error message:', error.message);
+        console.error('Full error:', error);
+        
+        // Handle specific Google errors
+        if (error.message.includes('403') || error.message.includes('access_denied')) {
+          throw new Error('GOOGLE_CONSENT_SCREEN_ERROR');
+        } else if (error.message.includes('redirect_uri_mismatch')) {
+          throw new Error('REDIRECT_URI_MISMATCH');
+        } else if (error.message.includes('unauthorized_client')) {
+          throw new Error('UNAUTHORIZED_CLIENT');
+        } else {
+          throw error;
         }
       }
-    });
-    
-    if (error) {
-      console.error('=== Google OAuth Error ===');
-      console.error('Error code:', error.message);
-      console.error('Full error:', error);
       
-      // Provide specific error guidance
-      if (error.message.includes('redirect_uri_mismatch')) {
-        console.error('REDIRECT URI MISMATCH - Configure these URLs in Google Console:');
-        redirectUrls.forEach(url => console.error(`- ${url}`));
-      }
-    } else {
-      console.log('OAuth request sent successfully');
+      return { error: null };
+      
+    } catch (error: any) {
+      console.error('OAuth signup error:', error);
+      return { error };
     }
-    
-    return { error };
   };
 
 
