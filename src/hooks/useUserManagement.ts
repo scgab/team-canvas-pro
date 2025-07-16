@@ -65,10 +65,17 @@ export const useUserManagement = () => {
       
       // Show welcome toast for new users
       toast({
-        title: "Welcome!",
-        description: `Welcome to the team, ${newUser.full_name || newUser.email}!`,
-        duration: 5000
+        title: "🎉 Welcome to the Team!",
+        description: `Account created successfully! Welcome ${newUser.full_name || newUser.email}. Let's manage our way to +$100M together!`,
+        duration: 8000
       });
+      
+      // Log successful signup
+      console.log('=== New User Signup Successful ===');
+      console.log('User ID:', newUser.id);
+      console.log('Email:', newUser.email);
+      console.log('Name:', newUser.full_name);
+      console.log('Signup time:', newUser.registered_at);
     }
   };
 

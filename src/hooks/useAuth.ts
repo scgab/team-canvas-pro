@@ -78,20 +78,52 @@ export const useAuth = () => {
     }
   };
 
-  const signInWithGoogle = async () => {
-    const redirectUrl = `${window.location.origin}/`;
+  // Google Signup - Primary authentication method
+  const signUpWithGoogle = async () => {
+    // Try multiple redirect URI patterns for better compatibility
+    const baseUrl = window.location.origin;
+    const redirectUrls = [
+      `${baseUrl}/auth/google/callback`,
+      `${baseUrl}/auth/callback`, 
+      `${baseUrl}/callback`,
+      `${baseUrl}/`
+    ];
     
-    console.log('Starting Google OAuth with redirect URL:', redirectUrl);
+    console.log('=== Google Signup Debug Info ===');
+    console.log('Base URL:', baseUrl);
+    console.log('Trying redirect URLs:', redirectUrls);
+    console.log('User Agent:', navigator.userAgent);
+    
+    // Use the most common Supabase redirect pattern
+    const redirectUrl = `${baseUrl}/`;
+    
+    console.log('Selected redirect URL:', redirectUrl);
+    console.log('Starting Google OAuth signup flow...');
     
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectUrl
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+          hd: undefined // Allow any domain
+        }
       }
     });
     
     if (error) {
-      console.error('Google OAuth error:', error);
+      console.error('=== Google OAuth Error ===');
+      console.error('Error code:', error.message);
+      console.error('Full error:', error);
+      
+      // Provide specific error guidance
+      if (error.message.includes('redirect_uri_mismatch')) {
+        console.error('REDIRECT URI MISMATCH - Configure these URLs in Google Console:');
+        redirectUrls.forEach(url => console.error(`- ${url}`));
+      }
+    } else {
+      console.log('OAuth request sent successfully');
     }
     
     return { error };
@@ -128,7 +160,7 @@ export const useAuth = () => {
     user,
     session,
     loading,
-    signInWithGoogle,
+    signUpWithGoogle,
     signInWithEmail,
     signUpWithEmail,
     signOut
