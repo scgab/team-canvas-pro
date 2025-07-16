@@ -42,7 +42,7 @@ export default function Auth() {
         {/* Header Section */}
         <div className="space-y-4">
           <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            +$100M
+            Let's manage our way to +$100M!
           </h1>
           <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
             Project Management
