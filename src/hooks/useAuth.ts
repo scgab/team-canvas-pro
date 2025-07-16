@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+// Allowed email addresses for restricted access
+const ALLOWED_EMAILS = [
+  'HNA@SCANDAC.COM',
+  'MYH@SCANDAC.COM'
+];
+
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -10,7 +16,21 @@ export const useAuth = () => {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        if (session?.user?.email) {
+          // Validate email against allowed list
+          const isEmailAllowed = ALLOWED_EMAILS.includes(session.user.email.toUpperCase().trim());
+          
+          if (!isEmailAllowed) {
+            // Sign out unauthorized user immediately
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -18,7 +38,21 @@ export const useAuth = () => {
     );
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user?.email) {
+        // Validate email against allowed list
+        const isEmailAllowed = ALLOWED_EMAILS.includes(session.user.email.toUpperCase().trim());
+        
+        if (!isEmailAllowed) {
+          // Sign out unauthorized user immediately
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -38,6 +72,10 @@ export const useAuth = () => {
     });
     
     return { error };
+  };
+
+  const isEmailAllowed = (email: string): boolean => {
+    return ALLOWED_EMAILS.includes(email.toUpperCase().trim());
   };
 
   const signInWithEmail = async (email: string, password: string) => {
@@ -71,8 +109,7 @@ export const useAuth = () => {
     session,
     loading,
     signInWithGoogle,
-    signInWithEmail,
-    signUpWithEmail,
-    signOut
+    signOut,
+    isEmailAllowed
   };
 };
