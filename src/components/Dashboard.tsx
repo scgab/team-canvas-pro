@@ -24,7 +24,14 @@ import {
 export function Dashboard() {
   const { projects, loading, createProject, getProjectStats } = useProjects();
   const { user } = useAuth();
-  const { isReturningUser, getUserInfo } = useUserManagement();
+  const { isReturningUser, getUserInfo, registerUser } = useUserManagement();
+  
+  // Register user in management system when they access dashboard
+  useEffect(() => {
+    if (user) {
+      registerUser(user);
+    }
+  }, [user, registerUser]);
   
   // Modal states
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);

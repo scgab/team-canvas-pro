@@ -1,20 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { OAuthTroubleshooting } from '@/components/OAuthTroubleshooting';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Eye, EyeOff, LogIn, User, Lock } from 'lucide-react';
 
 export default function Auth() {
+  const [emailOrUsername, setEmailOrUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [showTroubleshooting, setShowTroubleshooting] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signUpWithGoogle } = useAuth();
+  const { user, signInWithCredentials } = useAuth();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -23,61 +28,56 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
-  const handleGoogleSignup = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
-    setAuthError(null);
-    
-    console.log('=== Starting Google Signup Process ===');
-    console.log('Current URL:', window.location.href);
-    
-    const { error } = await signUpWithGoogle();
-    
-    if (error) {
-      console.error('=== Signup Error ===');
-      console.error('Error:', error.message);
-      
-      // Handle the specific redirect URI mismatch error from the screenshot
-      if (error.message === 'REDIRECT_URI_MISMATCH' || error.message.includes('redirect_uri_mismatch')) {
-        setAuthError(`🔧 REDIRECT URI MISMATCH ERROR (Error 400)
+    setLoginError(null);
 
-URGENT FIX REQUIRED:
-
-1. Go to Google Cloud Console OAuth Client Settings
-2. Add this EXACT redirect URI:
-   https://susniyygjqxfvisjwpun.supabase.co/auth/v1/callback
-
-3. Also add this for local development:
-   ${window.location.origin}/
-
-Current error: The redirect URI in your Google Console doesn't match what Supabase is sending.
-
-This is the EXACT error you're seeing in the screenshot!`);
-        setShowTroubleshooting(true);
-      } else if (error.message === 'ACCESS_DENIED') {
-        setAuthError(`🚫 ACCESS DENIED ERROR
-
-The Google OAuth consent screen is blocking access.
-
-FIXES:
-1. Set OAuth consent screen to "In Production"
-2. OR add your email as a test user`);
-        setShowTroubleshooting(true);
-      } else {
-        setAuthError(`❌ Signup Failed: ${error.message}
-
-Check the troubleshooting guide below for solutions.`);
-        setShowTroubleshooting(true);
-      }
-    } else {
-      toast({
-        title: "Redirecting to Google",
-        description: "Please complete your signup with Google...",
-      });
+    // Basic validation
+    if (!emailOrUsername.trim()) {
+      setLoginError('Please enter your email or username');
+      setLoading(false);
+      return;
     }
-    
+
+    if (!password) {
+      setLoginError('Please enter your password');
+      setLoading(false);
+      return;
+    }
+
+    console.log('=== Login Attempt ===');
+    console.log('Email/Username:', emailOrUsername);
+    console.log('Password length:', password.length);
+
+    const { error } = await signInWithCredentials(emailOrUsername, password);
+
+    if (error) {
+      console.error('Login failed:', error.message);
+      setLoginError(error.message);
+      
+      // Show toast for failed login
+      toast({
+        title: "Login Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      console.log('Login successful, redirecting to dashboard...');
+      
+      // Show success toast
+      toast({
+        title: "Welcome back!",
+        description: "You've been successfully logged in. Let's manage our way to +$100M!",
+        duration: 3000
+      });
+      
+      // Navigate to dashboard
+      navigate('/');
+    }
+
     setLoading(false);
   };
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-secondary/20 p-4">
@@ -95,82 +95,120 @@ Check the troubleshooting guide below for solutions.`);
           </p>
         </div>
 
-        {/* Authentication Card */}
+        {/* Login Card */}
         <Card className="w-full max-w-md mx-auto shadow-lg border-border/50">
           <CardHeader className="space-y-2">
-            <CardTitle className="text-xl font-semibold text-center">
-              Create Your Account
+            <CardTitle className="text-xl font-semibold text-center flex items-center justify-center gap-2">
+              <LogIn className="w-5 h-5" />
+              Welcome Back
             </CardTitle>
             <CardDescription className="text-center">
-              Sign up with Google to join our project management team
+              Sign in to access your project management dashboard
             </CardDescription>
           </CardHeader>
+          
           <CardContent className="space-y-4">
-            {authError && (
-              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs text-left whitespace-pre-line">
-                <div className="font-medium mb-1">Configuration Error:</div>
-                {authError}
+            {loginError && (
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                {loginError}
               </div>
             )}
-            
-            <Button 
-              onClick={handleGoogleSignup}
-              disabled={loading}
-              className="w-full h-12 text-base font-medium"
-              size="lg"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                  Creating account...
-                </div>
-              ) : (
-                <>
-                  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  Sign Up with Google
-                </>
-              )}
-            </Button>
-            
-            {/* Troubleshooting Section */}
-            {authError && (
-              <Collapsible open={showTroubleshooting} onOpenChange={setShowTroubleshooting}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full text-xs">
-                    {showTroubleshooting ? (
-                      <>
-                        <ChevronUp className="w-3 h-3 mr-1" />
-                        Hide Configuration Help
-                      </>
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              {/* Email/Username Field */}
+              <div className="space-y-2">
+                <Label htmlFor="emailOrUsername" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Email or Username
+                </Label>
+                <Input
+                  id="emailOrUsername"
+                  type="text"
+                  placeholder="Enter your email or username"
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
+                  required
+                  autoFocus
+                  className="h-11"
+                />
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-11 pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-11 px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
                     ) : (
-                      <>
-                        <ChevronDown className="w-3 h-3 mr-1" />
-                        Show Configuration Help
-                      </>
+                      <Eye className="w-4 h-4 text-muted-foreground" />
                     )}
                   </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-4">
-                  <OAuthTroubleshooting />
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+                </div>
+              </div>
+
+              {/* Remember Me */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                />
+                <Label htmlFor="rememberMe" className="text-sm text-muted-foreground">
+                  Remember me for 24 hours
+                </Label>
+              </div>
+
+              {/* Login Button */}
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="w-full h-12 text-base font-medium"
+                size="lg"
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                    Signing in...
+                  </div>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Sign In
+                  </>
+                )}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 
         {/* Footer */}
         <div className="text-center space-y-2">
           <p className="text-sm text-muted-foreground">
-            Secure signup • Join the team managing their way to +$100M
+            Secure authentication • Welcome to the +$100M management team
           </p>
-          <p className="text-xs text-muted-foreground">
-            Current URL: {window.location.origin} • Check console for debug info
-          </p>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>Demo Accounts:</strong></p>
+            <p>hna@scandac.com • myh@scandac.com</p>
+          </div>
         </div>
       </div>
     </div>

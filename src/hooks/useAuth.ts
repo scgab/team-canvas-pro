@@ -1,165 +1,155 @@
 import { useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { useUserManagement } from './useUserManagement';
+import { authenticateUser, getUserById, User } from '@/utils/userDatabase';
 
-// Future restriction: Add email allowlist when needed
-// const ALLOWED_EMAILS = [
-//   'HNA@SCANDAC.COM',
-//   'MYH@SCANDAC.COM'
-// ];
+interface AuthUser extends User {
+  user_metadata?: {
+    full_name?: string;
+    name?: string;
+    avatar_url?: string;
+  };
+}
+
+interface AuthSession {
+  user: AuthUser;
+  access_token: string;
+  expires_at: number;
+}
 
 export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(true);
-  const { registerUser } = useUserManagement();
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
-        
-        // Register/update user in local management system
-        if (session?.user) {
-          registerUser(session.user);
-          await createUserProfile(session.user);
-        }
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        registerUser(session.user);
-        await createUserProfile(session.user);
-      }
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    // Check for existing session on app load
+    checkExistingSession();
   }, []);
 
-  // Create or update user profile in our database
-  const createUserProfile = async (user: User) => {
+  const checkExistingSession = () => {
     try {
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!existingProfile) {
-        // Create new profile for first-time user
-        const { error } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: user.id,
-            email: user.email,
-            full_name: user.user_metadata?.full_name || user.user_metadata?.name,
-            avatar_url: user.user_metadata?.avatar_url
-          });
-
-        if (error) {
-          console.error('Error creating user profile:', error);
+      const storedSession = localStorage.getItem('auth_session');
+      if (storedSession) {
+        const parsedSession = JSON.parse(storedSession);
+        
+        // Check if session is still valid
+        if (parsedSession.expires_at > Date.now()) {
+          const userData = getUserById(parsedSession.user.id);
+          if (userData) {
+            const authUser: AuthUser = {
+              ...userData,
+              user_metadata: {
+                full_name: userData.name,
+                name: userData.name,
+                avatar_url: userData.avatar_url
+              }
+            };
+            
+            setUser(authUser);
+            setSession(parsedSession);
+          } else {
+            // User not found, clear invalid session
+            localStorage.removeItem('auth_session');
+          }
         } else {
-          console.log('User profile created successfully for:', user.email);
+          // Session expired, clear it
+          localStorage.removeItem('auth_session');
         }
       }
     } catch (error) {
-      console.error('Error checking/creating user profile:', error);
+      console.error('Error checking existing session:', error);
+      localStorage.removeItem('auth_session');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Google Signup with redirect URI fix
-  const signUpWithGoogle = async () => {
-    const baseUrl = window.location.origin;
-    
-    // The EXACT redirect URI that Supabase uses
-    const redirectUrl = `https://susniyygjqxfvisjwpun.supabase.co/auth/v1/callback`;
-    
-    console.log('=== Google OAuth Debug ===');
-    console.log('Current URL:', window.location.href);
-    console.log('Origin:', baseUrl);
-    console.log('Supabase Redirect URI:', redirectUrl);
-    console.log('Project ID: susniyygjqxfvisjwpun');
-    
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${baseUrl}/`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'select_account'
-          }
-        }
-      });
-      
-      if (error) {
-        console.error('=== OAuth Error ===');
-        console.error('Error:', error.message);
-        console.error('Status:', error.status);
-        
-        // Handle specific errors
-        if (error.message.includes('redirect_uri_mismatch') || error.message.includes('400')) {
-          throw new Error('REDIRECT_URI_MISMATCH');
-        } else if (error.message.includes('403') || error.message.includes('access_denied')) {
-          throw new Error('ACCESS_DENIED');
-        } else {
-          throw error;
-        }
+  const createSession = (userData: User) => {
+    const authUser: AuthUser = {
+      ...userData,
+      user_metadata: {
+        full_name: userData.name,
+        name: userData.name,
+        avatar_url: userData.avatar_url
       }
+    };
+
+    const session: AuthSession = {
+      user: authUser,
+      access_token: `auth_token_${userData.id}_${Date.now()}`,
+      expires_at: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+    };
+
+    // Store session in localStorage
+    localStorage.setItem('auth_session', JSON.stringify(session));
+    
+    setUser(authUser);
+    setSession(session);
+    
+    return session;
+  };
+
+  const signInWithCredentials = async (emailOrUsername: string, password: string) => {
+    try {
+      setLoading(true);
+      
+      // Authenticate user
+      const userData = authenticateUser(emailOrUsername, password);
+      
+      if (!userData) {
+        return { 
+          error: { 
+            message: 'Invalid credentials. Please check your email/username and password.' 
+          } 
+        };
+      }
+
+      // Create session
+      createSession(userData);
+      
+      console.log('User authenticated successfully:', userData.email);
       
       return { error: null };
       
-    } catch (error: any) {
-      console.error('OAuth signup error:', error);
-      return { error };
+    } catch (error) {
+      console.error('Authentication error:', error);
+      return { 
+        error: { 
+          message: 'Authentication failed. Please try again.' 
+        } 
+      };
+    } finally {
+      setLoading(false);
     }
   };
 
-
-  const signInWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    return { error };
-  };
-
-  const signUpWithEmail = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl
-      }
-    });
-    return { error };
-  };
-
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    try {
+      // Clear stored session
+      localStorage.removeItem('auth_session');
+      
+      // Clear state
+      setUser(null);
+      setSession(null);
+      
+      console.log('User signed out successfully');
+      
+      return { error: null };
+      
+    } catch (error) {
+      console.error('Sign out error:', error);
+      return { 
+        error: { 
+          message: 'Failed to sign out. Please try again.' 
+        } 
+      };
+    }
   };
 
   return {
     user,
     session,
     loading,
-    signUpWithGoogle,
-    signInWithEmail,
-    signUpWithEmail,
+    signInWithCredentials,
     signOut
   };
 };
