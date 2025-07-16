@@ -148,14 +148,17 @@ const Calendar = () => {
     });
   };
 
-  // Get calendar grid
+  // Get calendar grid with Monday start
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+    
+    // Adjust to start from Monday (0 = Monday, 6 = Sunday)
+    let startingDayOfWeek = firstDay.getDay() - 1;
+    if (startingDayOfWeek < 0) startingDayOfWeek = 6; // Handle Sunday
 
     const days = [];
     
@@ -372,8 +375,8 @@ const Calendar = () => {
             <CardContent>
               {/* Calendar Grid */}
               <div className="grid grid-cols-7 gap-1 mb-4">
-                {/* Day headers */}
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                {/* Day headers - Monday start */}
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                   <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
                     {day}
                   </div>

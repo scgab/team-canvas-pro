@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
+import { useProjects } from "@/hooks/useProjects";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -20,12 +21,13 @@ interface ProjectCreateDialogProps {
 
 export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: ProjectCreateDialogProps) {
   const { toast } = useToast();
+  const { createProject } = useProjects();
   const [isLoading, setIsLoading] = useState(false);
   const [newProject, setNewProject] = useState({
     title: "",
     description: "",
     priority: "medium" as const,
-    deadline: new Date()
+    deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default to 30 days from now
   });
 
   const handleCreateProject = async () => {
@@ -41,11 +43,19 @@ export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: Pr
     setIsLoading(true);
 
     try {
-      // Simulate project creation
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Creating project with data:', newProject);
+      
+      const createdProject = await createProject({
+        title: newProject.title,
+        description: newProject.description,
+        priority: newProject.priority,
+        deadline: newProject.deadline
+      });
+
+      console.log('Project created:', createdProject);
 
       toast({
-        title: "Project Created",
+        title: "Success!",
         description: `${newProject.title} has been created successfully.`,
       });
 
@@ -54,12 +64,13 @@ export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: Pr
         title: "",
         description: "",
         priority: "medium",
-        deadline: new Date()
+        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       });
 
       onProjectCreated?.();
       onOpenChange(false);
     } catch (error) {
+      console.error('Error creating project:', error);
       toast({
         title: "Error",
         description: "Failed to create project. Please try again.",

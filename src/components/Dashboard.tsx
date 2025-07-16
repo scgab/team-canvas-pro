@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
 import { TaskCreateModal, MeetingScheduleModal, TeamMemberModal, ReportModal } from "@/components/QuickActionModals";
+import { useProjects } from "@/hooks/useProjects";
 import { 
   BarChart3, 
   Calendar, 
@@ -18,8 +20,7 @@ import {
 } from "lucide-react";
 
 export function Dashboard() {
-  const [projects] = useState([]); // Empty - user creates projects
-  const [tasks] = useState([]); // Empty - user creates tasks
+  const { projects, loading, createProject, getProjectStats } = useProjects();
   
   // Modal states
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
@@ -28,19 +29,21 @@ export function Dashboard() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
+  const stats = getProjectStats();
+
   const handleProjectCreated = () => {
-    // Refresh dashboard data
-    console.log("Project created, refreshing dashboard...");
+    console.log("Project created, dashboard will refresh automatically");
   };
   
   const projectStats = [
-    { name: "Active Projects", value: projects.length, icon: FolderOpen, color: "text-primary" },
-    { name: "Tasks Completed", value: 0, icon: CheckCircle, color: "text-success" },
-    { name: "Team Members", value: 0, icon: Users, color: "text-warning" },
-    { name: "Upcoming Deadlines", value: 0, icon: Clock, color: "text-destructive" },
+    { name: "Active Projects", value: stats.total, icon: FolderOpen, color: "text-primary" },
+    { name: "Tasks Completed", value: stats.completed, icon: CheckCircle, color: "text-success" },
+    { name: "Team Members", value: projects.reduce((sum, p) => sum + p.team_size, 0), icon: Users, color: "text-warning" },
+    { name: "Overdue Projects", value: stats.overdue, icon: Clock, color: "text-destructive" },
   ];
 
   return (
+    <Layout>
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -83,18 +86,37 @@ export function Dashboard() {
             <CardTitle className="text-xl font-semibold">Get Started</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-center py-8">
-              <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No projects yet</h3>
-              <p className="text-muted-foreground mb-4">Create your first project to get started with ProManage</p>
-              <Button 
-                className="bg-gradient-primary hover:bg-primary-dark"
-                onClick={() => setIsProjectDialogOpen(true)}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Project
-              </Button>
-            </div>
+            {projects.length === 0 ? (
+              <div className="text-center py-8">
+                <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No projects yet</h3>
+                <p className="text-muted-foreground mb-4">Create your first project to get started with ProManage</p>
+                <Button 
+                  className="bg-gradient-primary hover:bg-primary-dark"
+                  onClick={() => setIsProjectDialogOpen(true)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Project
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h3 className="text-lg font-medium text-foreground mb-4">Recent Projects</h3>
+                {projects.slice(0, 3).map((project) => (
+                  <div key={project.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color }} />
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{project.title}</h4>
+                      <p className="text-xs text-muted-foreground">Progress: {project.progress}%</p>
+                    </div>
+                    <Progress value={project.progress} className="w-16 h-2" />
+                  </div>
+                ))}
+                {projects.length > 3 && (
+                  <p className="text-sm text-muted-foreground text-center">+{projects.length - 3} more projects</p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -201,5 +223,6 @@ export function Dashboard() {
         onOpenChange={setIsReportModalOpen}
       />
     </div>
+    </Layout>
   );
 }
