@@ -9,7 +9,9 @@ import Projects from "./pages/Projects";
 import Calendar from "./pages/Calendar";
 import Team from "./pages/Team";
 import Analytics from "./pages/Analytics";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { AuthGuard } from "./components/AuthGuard";
 
 const queryClient = new QueryClient();
 
@@ -20,12 +22,13 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/board" element={<Board />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/team" element={<Team />} />
-          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<AuthGuard><Index /></AuthGuard>} />
+          <Route path="/projects" element={<AuthGuard><Projects /></AuthGuard>} />
+          <Route path="/board" element={<AuthGuard><Board /></AuthGuard>} />
+          <Route path="/calendar" element={<AuthGuard><Calendar /></AuthGuard>} />
+          <Route path="/team" element={<AuthGuard><Team /></AuthGuard>} />
+          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
