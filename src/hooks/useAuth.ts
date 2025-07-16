@@ -78,40 +78,41 @@ export const useAuth = () => {
     }
   };
 
-  // Google Signup with 403 error handling
+  // Google Signup with redirect URI fix
   const signUpWithGoogle = async () => {
     const baseUrl = window.location.origin;
-    const redirectUrl = `${baseUrl}/`;
     
-    console.log('=== Google Signup Debug Info ===');
-    console.log('Base URL:', baseUrl);
-    console.log('Redirect URL:', redirectUrl);
+    // The EXACT redirect URI that Supabase uses
+    const redirectUrl = `https://susniyygjqxfvisjwpun.supabase.co/auth/v1/callback`;
+    
+    console.log('=== Google OAuth Debug ===');
+    console.log('Current URL:', window.location.href);
+    console.log('Origin:', baseUrl);
+    console.log('Supabase Redirect URI:', redirectUrl);
+    console.log('Project ID: susniyygjqxfvisjwpun');
     
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: `${baseUrl}/`,
           queryParams: {
             access_type: 'offline',
-            prompt: 'select_account', // Force account selection
-            hd: undefined // Allow any domain
+            prompt: 'select_account'
           }
         }
       });
       
       if (error) {
-        console.error('=== Google OAuth Error ===');
-        console.error('Error message:', error.message);
-        console.error('Full error:', error);
+        console.error('=== OAuth Error ===');
+        console.error('Error:', error.message);
+        console.error('Status:', error.status);
         
-        // Handle specific Google errors
-        if (error.message.includes('403') || error.message.includes('access_denied')) {
-          throw new Error('GOOGLE_CONSENT_SCREEN_ERROR');
-        } else if (error.message.includes('redirect_uri_mismatch')) {
+        // Handle specific errors
+        if (error.message.includes('redirect_uri_mismatch') || error.message.includes('400')) {
           throw new Error('REDIRECT_URI_MISMATCH');
-        } else if (error.message.includes('unauthorized_client')) {
-          throw new Error('UNAUTHORIZED_CLIENT');
+        } else if (error.message.includes('403') || error.message.includes('access_denied')) {
+          throw new Error('ACCESS_DENIED');
         } else {
           throw error;
         }

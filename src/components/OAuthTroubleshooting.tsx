@@ -31,90 +31,70 @@ export const OAuthTroubleshooting = () => {
 
   return (
     <div className="space-y-6">
-      {/* URGENT 403 ERROR FIX */}
+      {/* URGENT REDIRECT URI MISMATCH FIX */}
       <Card className="border-destructive bg-destructive/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
-            <Shield className="w-5 h-5" />
-            🚨 URGENT: Fix 403 "Access Denied" Error
+            <AlertTriangle className="w-5 h-5" />
+            🚨 URGENT: Fix Error 400 - redirect_uri_mismatch
           </CardTitle>
           <CardDescription>
-            The Google OAuth consent screen is not configured for external users
+            The redirect URI in Google Console doesn't match what Supabase is sending
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert className="border-destructive">
             <AlertTriangle className="h-4 w-4 text-destructive" />
             <AlertDescription className="text-destructive font-medium">
-              Your app is in testing mode and you're not added as a test user, OR the consent screen needs to be published.
+              This is the EXACT error from your screenshot! The Google OAuth client needs the correct redirect URI.
             </AlertDescription>
           </Alert>
 
-          <div className="space-y-3">
-            <div className="flex gap-3">
-              <div className="w-6 h-6 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-bold">!</div>
-              <div className="flex-1">
-                <h5 className="font-bold text-sm text-destructive">IMMEDIATE ACTION REQUIRED</h5>
-                <p className="text-xs text-muted-foreground mb-2">Fix Google OAuth Consent Screen Configuration</p>
-                <Button variant="destructive" size="sm" onClick={openGoogleConsentScreen}>
-                  <ExternalLink className="w-3 h-3 mr-1" />
-                  Open Consent Screen Settings
+          <div className="space-y-4">
+            <div>
+              <h5 className="font-bold text-sm mb-2">REQUIRED REDIRECT URI FOR GOOGLE CONSOLE:</h5>
+              <div className="flex items-center justify-between p-3 bg-destructive/10 rounded border border-destructive">
+                <code className="text-sm font-mono text-destructive font-bold">
+                  https://susniyygjqxfvisjwpun.supabase.co/auth/v1/callback
+                </code>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => copyToClipboard('https://susniyygjqxfvisjwpun.supabase.co/auth/v1/callback')}
+                >
+                  <Copy className="w-3 h-3 mr-1" />
+                  Copy
                 </Button>
               </div>
             </div>
-          </div>
 
-          <div className="p-3 bg-muted/10 rounded border space-y-2">
-            <h5 className="font-bold text-sm">Choose ONE of these fixes:</h5>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-start gap-2">
-                <div className="w-5 h-5 rounded-full bg-success text-success-foreground text-xs flex items-center justify-center font-bold">1</div>
-                <div>
-                  <div className="font-medium">OPTION 1: Publish the App (Recommended)</div>
-                  <div className="text-xs text-muted-foreground">Set Publishing Status to "In Production"</div>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-5 h-5 rounded-full bg-warning text-warning-foreground text-xs flex items-center justify-center font-bold">2</div>
-                <div>
-                  <div className="font-medium">OPTION 2: Add Test Users</div>
-                  <div className="text-xs text-muted-foreground">Add your email address as a test user</div>
-                </div>
+            <div>
+              <h5 className="font-bold text-sm mb-2">ALSO ADD FOR LOCAL DEVELOPMENT:</h5>
+              <div className="flex items-center justify-between p-3 bg-muted/20 rounded border">
+                <code className="text-sm font-mono">{currentOrigin}/</code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(`${currentOrigin}/`)}
+                >
+                  <Copy className="w-3 h-3 mr-1" />
+                  Copy
+                </Button>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* REDIRECT URI CONFIGURATION */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Redirect URI Configuration</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              Add this redirect URI to your Google Cloud Console OAuth client
-            </AlertDescription>
-          </Alert>
-          
-          <div className="flex items-center justify-between p-3 bg-muted/20 rounded border">
-            <code className="text-sm font-mono flex-1">{currentOrigin}/</code>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => copyToClipboard(`${currentOrigin}/`)}
-              className="h-8 w-8 p-0"
-            >
-              <Copy className="w-3 h-3" />
+            <Alert className="border-warning bg-warning/5">
+              <Shield className="h-4 w-4 text-warning" />
+              <AlertDescription className="text-warning font-medium">
+                You MUST add the Supabase redirect URI to fix the Error 400 shown in your screenshot!
+              </AlertDescription>
+            </Alert>
+
+            <Button variant="destructive" onClick={openGoogleConsole} className="w-full">
+              <ExternalLink className="w-4 h-4 mr-2" />
+              OPEN GOOGLE CONSOLE - FIX REDIRECT URI NOW
             </Button>
           </div>
-
-          <Button variant="outline" onClick={openGoogleConsole}>
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Open Google Console OAuth Settings
-          </Button>
         </CardContent>
       </Card>
 

@@ -36,40 +36,36 @@ export default function Auth() {
       console.error('=== Signup Error ===');
       console.error('Error:', error.message);
       
-      // Handle specific Google OAuth errors
-      if (error.message === 'GOOGLE_CONSENT_SCREEN_ERROR') {
-        setAuthError(`🚫 Google OAuth Access Denied (403 Error)
+      // Handle the specific redirect URI mismatch error from the screenshot
+      if (error.message === 'REDIRECT_URI_MISMATCH' || error.message.includes('redirect_uri_mismatch')) {
+        setAuthError(`🔧 REDIRECT URI MISMATCH ERROR (Error 400)
 
-IMMEDIATE FIX REQUIRED:
+URGENT FIX REQUIRED:
 
-1. Go to Google Cloud Console OAuth Consent Screen
-2. Set User Type to "External" 
-3. Set Publishing Status to "In Production"
-4. OR add your email as a Test User if keeping it in Testing
+1. Go to Google Cloud Console OAuth Client Settings
+2. Add this EXACT redirect URI:
+   https://susniyygjqxfvisjwpun.supabase.co/auth/v1/callback
 
-The app is currently in testing mode and you're not added as a test user.`);
+3. Also add this for local development:
+   ${window.location.origin}/
+
+Current error: The redirect URI in your Google Console doesn't match what Supabase is sending.
+
+This is the EXACT error you're seeing in the screenshot!`);
         setShowTroubleshooting(true);
-      } else if (error.message === 'REDIRECT_URI_MISMATCH') {
-        setAuthError(`🔧 Redirect URI Mismatch Error
+      } else if (error.message === 'ACCESS_DENIED') {
+        setAuthError(`🚫 ACCESS DENIED ERROR
 
-ADD THESE URLs TO GOOGLE CONSOLE:
-• ${window.location.origin}/
-• ${window.location.origin}/auth/callback
-
-Current origin: ${window.location.origin}`);
-        setShowTroubleshooting(true);
-      } else if (error.message === 'UNAUTHORIZED_CLIENT') {
-        setAuthError(`⚠️ Unauthorized Client Error
+The Google OAuth consent screen is blocking access.
 
 FIXES:
-• Verify Google Client ID in Supabase
-• Check OAuth consent screen configuration
-• Ensure proper scopes are configured`);
+1. Set OAuth consent screen to "In Production"
+2. OR add your email as a test user`);
         setShowTroubleshooting(true);
       } else {
         setAuthError(`❌ Signup Failed: ${error.message}
 
-Check console for detailed error information.`);
+Check the troubleshooting guide below for solutions.`);
         setShowTroubleshooting(true);
       }
     } else {
