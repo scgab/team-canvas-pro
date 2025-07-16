@@ -51,11 +51,20 @@ const Projects = () => {
     (window as any).currentUserEmail = user.email;
   }
   
+  console.log('Current user:', currentUser);
+  console.log('All projects:', projects);
+  
   // Filter projects to show only those the user has access to
   const userProjects = currentUser ? getProjectsForUser(currentUser.id) : [];
+  
+  console.log('User projects:', userProjects);
 
   const handleProjectCreated = () => {
-    console.log("Project created, projects list will refresh automatically");
+    console.log("Project created successfully");
+    toast({
+      title: "Success!",
+      description: "Project created successfully.",
+    });
   };
 
   const handleViewProject = (projectId: string) => {
@@ -108,12 +117,17 @@ const Projects = () => {
 
   // Filter projects based on search and filters
   const filteredProjects = userProjects.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || project.status === statusFilter;
-    const matchesPriority = priorityFilter === "all" || project.priority === priorityFilter;
-    
-    return matchesSearch && matchesStatus && matchesPriority;
+    try {
+      const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesStatus = statusFilter === "all" || project.status === statusFilter;
+      const matchesPriority = priorityFilter === "all" || project.priority === priorityFilter;
+      
+      return matchesSearch && matchesStatus && matchesPriority;
+    } catch (error) {
+      console.error('Error filtering project:', project, error);
+      return false;
+    }
   });
 
   const getStatusColor = (status: string) => {

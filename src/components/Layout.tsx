@@ -28,15 +28,25 @@ export function Layout({ children }: LayoutProps) {
   
   // Calculate unread message count
   const getUnreadMessageCount = () => {
-    return messages.filter((msg: any) => 
-      !msg.read && (msg.to === currentUserName || msg.toEmail === user?.email)
-    ).length;
+    try {
+      return messages.filter((msg: any) => 
+        !msg.read && (msg.to === currentUserName || msg.toEmail === user?.email)
+      ).length;
+    } catch (error) {
+      console.error('Error calculating unread messages:', error);
+      return 0;
+    }
   };
 
   // Calculate total notifications
   const [notifications] = usePersistedState('notifications', []);
   const getUnreadNotificationCount = () => {
-    return notifications.filter((notif: any) => !notif.read).length;
+    try {
+      return notifications.filter((notif: any) => !notif.read).length;
+    } catch (error) {
+      console.error('Error calculating unread notifications:', error);
+      return 0;
+    }
   };
 
   const handleSignOut = async () => {

@@ -24,60 +24,87 @@ export const useProjects = () => {
 
   // Load projects from localStorage on mount
   useEffect(() => {
-    const savedProjects = localStorage.getItem('projects');
-    if (savedProjects) {
-      try {
-        const parsedProjects = JSON.parse(savedProjects).map((p: any) => ({
-          ...p,
-          deadline: new Date(p.deadline),
-          created_at: new Date(p.created_at),
-          updated_at: new Date(p.updated_at)
-        }));
-        setProjects(parsedProjects);
-      } catch (error) {
-        console.error('Error parsing saved projects:', error);
+    try {
+      const savedProjects = localStorage.getItem('projects');
+      if (savedProjects) {
+        try {
+          const parsedProjects = JSON.parse(savedProjects).map((p: any) => ({
+            ...p,
+            deadline: new Date(p.deadline),
+            created_at: new Date(p.created_at),
+            updated_at: new Date(p.updated_at),
+            shared_with: p.shared_with || [] // Ensure shared_with exists
+          }));
+          setProjects(parsedProjects);
+          console.log('Loaded projects from localStorage:', parsedProjects);
+        } catch (parseError) {
+          console.error('Error parsing saved projects:', parseError);
+          // Clear corrupted data
+          localStorage.removeItem('projects');
+        }
       }
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   // Save projects to localStorage whenever projects change
   useEffect(() => {
-    if (!loading) {
-      localStorage.setItem('projects', JSON.stringify(projects));
+    if (!loading && projects.length >= 0) {
+      try {
+        localStorage.setItem('projects', JSON.stringify(projects));
+        console.log('Saved projects to localStorage:', projects.length, 'projects');
+      } catch (error) {
+        console.error('Error saving projects to localStorage:', error);
+      }
     }
   }, [projects, loading]);
 
   const createProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'user_id' | 'status' | 'shared_with'> & { team_members?: string[] }) => {
-    const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    try {
+      const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
-    // Get current user from user database to set as owner
-    const users = await import('@/utils/userDatabase');
-    const userList = users.getUsers();
-    const currentUser = userList.find(u => u.email === (window as any).currentUserEmail);
+      // Get current user from global window or fallback
+      const currentUserEmail = (window as any).currentUserEmail;
+      let currentUserId = '1'; // Default fallback
+      
+      if (currentUserEmail) {
+        // Find user ID based on email
+        if (currentUserEmail === 'hna@scandac.com') {
+          currentUserId = '1';
+        } else if (currentUserEmail === 'myh@scandac.com') {
+          currentUserId = '2';
+        }
+      }
 
-    const newProject: Project = {
-      ...projectData,
-      id: Date.now().toString(),
-      created_at: new Date(),
-      updated_at: new Date(),
-      progress: 0,
-      color: randomColor,
-      team_size: (projectData.team_members?.length || 0) + 1, // Include creator
-      status: 'planning',
-      user_id: currentUser?.id,
-      shared_with: projectData.team_members || []
-    };
+      const newProject: Project = {
+        ...projectData,
+        id: Date.now().toString(),
+        created_at: new Date(),
+        updated_at: new Date(),
+        progress: 0,
+        color: randomColor,
+        team_size: (projectData.team_members?.length || 0) + 1, // Include creator
+        status: 'planning',
+        user_id: currentUserId,
+        shared_with: projectData.team_members || []
+      };
 
-    console.log('Creating project:', newProject);
-    setProjects(prev => {
-      const updated = [...prev, newProject];
-      console.log('Updated projects:', updated);
-      return updated;
-    });
+      console.log('Creating project:', newProject);
+      setProjects(prev => {
+        const updated = [...prev, newProject];
+        console.log('Updated projects:', updated);
+        return updated;
+      });
 
-    return newProject;
+      return newProject;
+    } catch (error) {
+      console.error('Error creating project:', error);
+      throw error;
+    }
   };
 
   const updateProject = async (id: string, updates: Partial<Project>) => {
@@ -113,9 +140,17 @@ export const useProjects = () => {
   };
 
   const getProjectsForUser = (userId: string) => {
-    return projects.filter(project => 
-      project.user_id === userId || project.shared_with.includes(userId)
-    );
+    try {
+      return projects.filter(project => {
+        // User owns the project or is in shared_with array
+        const isOwner = project.user_id === userId;
+        const isShared = project.shared_with && project.shared_with.includes(userId);
+        return isOwner || isShared;
+      });
+    } catch (error) {
+      console.error('Error filtering projects for user:', error);
+      return [];
+    }
   };
 
   const getProjectStats = () => {
