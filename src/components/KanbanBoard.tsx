@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,32 +64,97 @@ interface Column {
 
 export function KanbanBoard() {
   const { toast } = useToast();
-  const [columns, setColumns] = useState<Column[]>([
-    {
-      id: "todo",
-      title: "To Do",
-      color: "border-muted",
-      tasks: []
-    },
-    {
-      id: "inprogress",
-      title: "In Progress",
-      color: "border-warning",
-      tasks: []
-    },
-    {
-      id: "review",
-      title: "Review",
-      color: "border-primary",
-      tasks: []
-    },
-    {
-      id: "done",
-      title: "Done",
-      color: "border-success",
-      tasks: []
+  
+  // Load tasks from localStorage on mount and save when changed
+  const [columns, setColumns] = useState<Column[]>(() => {
+    try {
+      const savedTasks = localStorage.getItem('kanban_tasks');
+      if (savedTasks) {
+        return JSON.parse(savedTasks);
+      }
+    } catch (error) {
+      console.error('Error loading kanban tasks:', error);
     }
-  ]);
+    
+    // Default columns
+    return [
+      {
+        id: "todo",
+        title: "To Do",
+        color: "border-muted",
+        tasks: [
+          {
+            id: "1",
+            title: "Design Homepage",
+            description: "Create wireframes and mockups for the main landing page",
+            priority: "high",
+            assignee: "HNA User",
+            assigneeAvatar: "",
+            dueDate: "Dec 20",
+            comments: 3,
+            attachments: 2,
+            tags: ["design", "ui"],
+            status: "todo"
+          }
+        ]
+      },
+      {
+        id: "inprogress",
+        title: "In Progress",
+        color: "border-warning",
+        tasks: [
+          {
+            id: "2",
+            title: "Backend API Integration",
+            description: "Connect frontend with REST API endpoints",
+            priority: "urgent",
+            assignee: "MYH User",
+            assigneeAvatar: "",
+            dueDate: "Dec 18",
+            comments: 5,
+            attachments: 1,
+            tags: ["backend", "api"],
+            status: "inprogress"
+          }
+        ]
+      },
+      {
+        id: "review",
+        title: "Review",
+        color: "border-primary",
+        tasks: []
+      },
+      {
+        id: "done",
+        title: "Done",
+        color: "border-success",
+        tasks: [
+          {
+            id: "3",
+            title: "Project Setup",
+            description: "Initialize project structure and dependencies",
+            priority: "medium",
+            assignee: "HNA User",
+            assigneeAvatar: "",
+            dueDate: "Dec 15",
+            comments: 1,
+            attachments: 0,
+            tags: ["setup"],
+            status: "done"
+          }
+        ]
+      }
+    ];
+  });
+
+  // Save to localStorage whenever columns change
+  useEffect(() => {
+    try {
+      localStorage.setItem('kanban_tasks', JSON.stringify(columns));
+    } catch (error) {
+      console.error('Error saving kanban tasks:', error);
+    }
+  }, [columns]);
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);

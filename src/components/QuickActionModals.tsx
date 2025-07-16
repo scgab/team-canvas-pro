@@ -5,13 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { usePersistedState } from "@/hooks/useDataPersistence";
+import { 
+  CheckCircle, 
+  Calendar, 
+  Users, 
+  FileText, 
+  Plus, 
+  X 
+} from "lucide-react";
 
+// Task Creation Modal
 interface TaskCreateModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -19,17 +24,17 @@ interface TaskCreateModalProps {
 
 export function TaskCreateModal({ open, onOpenChange }: TaskCreateModalProps) {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [newTask, setNewTask] = useState({
+  const [tasks, setTasks] = usePersistedState('quick_tasks', []);
+  const [formData, setFormData] = useState({
     title: "",
     description: "",
-    priority: "medium" as const,
-    dueDate: new Date(),
-    assignee: ""
+    priority: "medium",
+    assignee: "",
+    dueDate: ""
   });
 
-  const handleCreateTask = async () => {
-    if (!newTask.title.trim()) {
+  const handleSubmit = () => {
+    if (!formData.title.trim()) {
       toast({
         title: "Error",
         description: "Please enter a task title.",
@@ -38,86 +43,54 @@ export function TaskCreateModal({ open, onOpenChange }: TaskCreateModalProps) {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast({
-        title: "Task Created",
-        description: `${newTask.title} has been created successfully.`,
-      });
-      setNewTask({ title: "", description: "", priority: "medium", dueDate: new Date(), assignee: "" });
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create task. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    const newTask = {
+      id: Date.now().toString(),
+      ...formData,
+      createdAt: new Date(),
+      status: "todo"
+    };
+
+    setTasks(prev => [...prev, newTask]);
+    setFormData({ title: "", description: "", priority: "medium", assignee: "", dueDate: "" });
+    onOpenChange(false);
+
+    toast({
+      title: "Task Created",
+      description: `"${newTask.title}" has been created successfully.`,
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Create New Task</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5" />
+            Create New Task
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label htmlFor="task-title">Task Title *</Label>
+            <Label>Task Title *</Label>
             <Input
-              id="task-title"
-              value={newTask.title}
-              onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               placeholder="Enter task title"
-              disabled={isLoading}
             />
           </div>
           <div>
-            <Label htmlFor="task-description">Description</Label>
+            <Label>Description</Label>
             <Textarea
-              id="task-description"
-              value={newTask.description}
-              onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Task description"
               rows={3}
-              disabled={isLoading}
             />
-          </div>
-          <div>
-            <Label>Due Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn("w-full justify-start text-left font-normal", !newTask.dueDate && "text-muted-foreground")}
-                  disabled={isLoading}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {newTask.dueDate ? format(newTask.dueDate, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={newTask.dueDate}
-                  onSelect={(date) => date && setNewTask(prev => ({ ...prev, dueDate: date }))}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="priority">Priority</Label>
-              <Select 
-                value={newTask.priority} 
-                onValueChange={(value: any) => setNewTask(prev => ({ ...prev, priority: value }))}
-                disabled={isLoading}
-              >
+              <Label>Priority</Label>
+              <Select value={formData.priority} onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -130,22 +103,32 @@ export function TaskCreateModal({ open, onOpenChange }: TaskCreateModalProps) {
               </Select>
             </div>
             <div>
-              <Label htmlFor="assignee">Assignee</Label>
+              <Label>Due Date</Label>
               <Input
-                id="assignee"
-                value={newTask.assignee}
-                onChange={(e) => setNewTask(prev => ({ ...prev, assignee: e.target.value }))}
-                placeholder="Assign to"
-                disabled={isLoading}
+                type="date"
+                value={formData.dueDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
               />
             </div>
           </div>
+          <div>
+            <Label>Assignee</Label>
+            <Select value={formData.assignee} onValueChange={(value) => setFormData(prev => ({ ...prev, assignee: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select assignee" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="HNA User">HNA User</SelectItem>
+                <SelectItem value="MYH User">MYH User</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateTask} disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Task"}
+            <Button onClick={handleSubmit}>
+              Create Task
             </Button>
           </div>
         </div>
@@ -154,6 +137,7 @@ export function TaskCreateModal({ open, onOpenChange }: TaskCreateModalProps) {
   );
 }
 
+// Meeting Schedule Modal
 interface MeetingScheduleModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -161,147 +145,126 @@ interface MeetingScheduleModalProps {
 
 export function MeetingScheduleModal({ open, onOpenChange }: MeetingScheduleModalProps) {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [newMeeting, setNewMeeting] = useState({
+  const [meetings, setMeetings] = usePersistedState('meetings', []);
+  const [formData, setFormData] = useState({
     title: "",
     description: "",
-    date: new Date(),
+    date: "",
     time: "",
-    duration: "60",
+    duration: "1 hour",
     attendees: "",
     location: ""
   });
 
-  const handleScheduleMeeting = async () => {
-    if (!newMeeting.title.trim()) {
+  const handleSubmit = () => {
+    if (!formData.title.trim() || !formData.date) {
       toast({
         title: "Error",
-        description: "Please enter a meeting title.",
+        description: "Please enter meeting title and date.",
         variant: "destructive"
       });
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast({
-        title: "Meeting Scheduled",
-        description: `${newMeeting.title} has been scheduled successfully.`,
-      });
-      setNewMeeting({ title: "", description: "", date: new Date(), time: "", duration: "60", attendees: "", location: "" });
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to schedule meeting. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    const newMeeting = {
+      id: Date.now().toString(),
+      ...formData,
+      createdAt: new Date()
+    };
+
+    setMeetings(prev => [...prev, newMeeting]);
+    setFormData({ title: "", description: "", date: "", time: "", duration: "1 hour", attendees: "", location: "" });
+    onOpenChange(false);
+
+    toast({
+      title: "Meeting Scheduled",
+      description: `"${newMeeting.title}" has been scheduled successfully.`,
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Schedule Meeting</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Schedule Meeting
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label htmlFor="meeting-title">Meeting Title *</Label>
+            <Label>Meeting Title *</Label>
             <Input
-              id="meeting-title"
-              value={newMeeting.title}
-              onChange={(e) => setNewMeeting(prev => ({ ...prev, title: e.target.value }))}
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               placeholder="Enter meeting title"
-              disabled={isLoading}
             />
           </div>
           <div>
-            <Label htmlFor="meeting-description">Description</Label>
+            <Label>Description</Label>
             <Textarea
-              id="meeting-description"
-              value={newMeeting.description}
-              onChange={(e) => setNewMeeting(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Meeting description"
-              rows={3}
-              disabled={isLoading}
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Meeting agenda"
+              rows={2}
             />
-          </div>
-          <div>
-            <Label>Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn("w-full justify-start text-left font-normal", !newMeeting.date && "text-muted-foreground")}
-                  disabled={isLoading}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {newMeeting.date ? format(newMeeting.date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={newMeeting.date}
-                  onSelect={(date) => date && setNewMeeting(prev => ({ ...prev, date }))}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="time">Time</Label>
+              <Label>Date *</Label>
               <Input
-                id="time"
-                type="time"
-                value={newMeeting.time}
-                onChange={(e) => setNewMeeting(prev => ({ ...prev, time: e.target.value }))}
-                disabled={isLoading}
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
               />
             </div>
             <div>
-              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Label>Time</Label>
               <Input
-                id="duration"
-                value={newMeeting.duration}
-                onChange={(e) => setNewMeeting(prev => ({ ...prev, duration: e.target.value }))}
-                placeholder="60"
-                disabled={isLoading}
+                type="time"
+                value={formData.time}
+                onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Duration</Label>
+              <Select value={formData.duration} onValueChange={(value) => setFormData(prev => ({ ...prev, duration: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30 minutes">30 minutes</SelectItem>
+                  <SelectItem value="1 hour">1 hour</SelectItem>
+                  <SelectItem value="1.5 hours">1.5 hours</SelectItem>
+                  <SelectItem value="2 hours">2 hours</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Location</Label>
+              <Input
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                placeholder="Meeting room/link"
               />
             </div>
           </div>
           <div>
-            <Label htmlFor="attendees">Attendees</Label>
+            <Label>Attendees</Label>
             <Input
-              id="attendees"
-              value={newMeeting.attendees}
-              onChange={(e) => setNewMeeting(prev => ({ ...prev, attendees: e.target.value }))}
+              value={formData.attendees}
+              onChange={(e) => setFormData(prev => ({ ...prev, attendees: e.target.value }))}
               placeholder="Comma separated emails"
-              disabled={isLoading}
-            />
-          </div>
-          <div>
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              value={newMeeting.location}
-              onChange={(e) => setNewMeeting(prev => ({ ...prev, location: e.target.value }))}
-              placeholder="Meeting location or URL"
-              disabled={isLoading}
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleScheduleMeeting} disabled={isLoading}>
-              {isLoading ? "Scheduling..." : "Schedule Meeting"}
+            <Button onClick={handleSubmit}>
+              Schedule Meeting
             </Button>
           </div>
         </div>
@@ -310,6 +273,7 @@ export function MeetingScheduleModal({ open, onOpenChange }: MeetingScheduleModa
   );
 }
 
+// Team Member Modal
 interface TeamMemberModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -317,16 +281,17 @@ interface TeamMemberModalProps {
 
 export function TeamMemberModal({ open, onOpenChange }: TeamMemberModalProps) {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [newMember, setNewMember] = useState({
+  const [teamMembers, setTeamMembers] = usePersistedState('team_members', []);
+  const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "member" as const,
-    department: ""
+    role: "",
+    department: "",
+    phone: ""
   });
 
-  const handleAddMember = async () => {
-    if (!newMember.name.trim() || !newMember.email.trim()) {
+  const handleSubmit = () => {
+    if (!formData.name.trim() || !formData.email.trim()) {
       toast({
         title: "Error",
         description: "Please enter name and email.",
@@ -335,90 +300,83 @@ export function TeamMemberModal({ open, onOpenChange }: TeamMemberModalProps) {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast({
-        title: "Team Member Added",
-        description: `${newMember.name} has been added to the team.`,
-      });
-      setNewMember({ name: "", email: "", role: "member", department: "" });
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add team member. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    const newMember = {
+      id: Date.now().toString(),
+      ...formData,
+      addedAt: new Date()
+    };
+
+    setTeamMembers(prev => [...prev, newMember]);
+    setFormData({ name: "", email: "", role: "", department: "", phone: "" });
+    onOpenChange(false);
+
+    toast({
+      title: "Team Member Added",
+      description: `${newMember.name} has been added to the team.`,
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Team Member</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Add Team Member
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="member-name">Name *</Label>
-            <Input
-              id="member-name"
-              value={newMember.name}
-              onChange={(e) => setNewMember(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter member name"
-              disabled={isLoading}
-            />
-          </div>
-          <div>
-            <Label htmlFor="member-email">Email *</Label>
-            <Input
-              id="member-email"
-              type="email"
-              value={newMember.email}
-              onChange={(e) => setNewMember(prev => ({ ...prev, email: e.target.value }))}
-              placeholder="Enter email address"
-              disabled={isLoading}
-            />
-          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="role">Role</Label>
-              <Select 
-                value={newMember.role} 
-                onValueChange={(value: any) => setNewMember(prev => ({ ...prev, role: value }))}
-                disabled={isLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="lead">Team Lead</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Full Name *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="John Doe"
+              />
             </div>
             <div>
-              <Label htmlFor="department">Department</Label>
+              <Label>Email *</Label>
               <Input
-                id="department"
-                value={newMember.department}
-                onChange={(e) => setNewMember(prev => ({ ...prev, department: e.target.value }))}
-                placeholder="e.g., Engineering"
-                disabled={isLoading}
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="john@company.com"
               />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Role</Label>
+              <Input
+                value={formData.role}
+                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+                placeholder="Developer"
+              />
+            </div>
+            <div>
+              <Label>Department</Label>
+              <Input
+                value={formData.department}
+                onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                placeholder="Engineering"
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Phone</Label>
+            <Input
+              value={formData.phone}
+              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+              placeholder="+1 (555) 123-4567"
+            />
+          </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddMember} disabled={isLoading}>
-              {isLoading ? "Adding..." : "Add Member"}
+            <Button onClick={handleSubmit}>
+              Add Member
             </Button>
           </div>
         </div>
@@ -427,6 +385,7 @@ export function TeamMemberModal({ open, onOpenChange }: TeamMemberModalProps) {
   );
 }
 
+// Report Modal
 interface ReportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -434,63 +393,131 @@ interface ReportModalProps {
 
 export function ReportModal({ open, onOpenChange }: ReportModalProps) {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [reportType, setReportType] = useState("project-summary");
+  const [reports, setReports] = usePersistedState('reports', []);
+  const [formData, setFormData] = useState({
+    title: "",
+    type: "project",
+    dateRange: "week",
+    includeCharts: true,
+    includeMetrics: true,
+    format: "pdf"
+  });
 
-  const handleGenerateReport = async () => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast({
-        title: "Report Generated",
-        description: "Your report has been generated and will be available shortly.",
-      });
-      onOpenChange(false);
-    } catch (error) {
+  const handleSubmit = () => {
+    if (!formData.title.trim()) {
       toast({
         title: "Error",
-        description: "Failed to generate report. Please try again.",
+        description: "Please enter a report title.",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
+      return;
     }
+
+    const newReport = {
+      id: Date.now().toString(),
+      ...formData,
+      generatedAt: new Date(),
+      status: "generated"
+    };
+
+    setReports(prev => [...prev, newReport]);
+    setFormData({ title: "", type: "project", dateRange: "week", includeCharts: true, includeMetrics: true, format: "pdf" });
+    onOpenChange(false);
+
+    toast({
+      title: "Report Generated",
+      description: `"${newReport.title}" has been generated successfully.`,
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Generate Report</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Generate Report
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label htmlFor="report-type">Report Type</Label>
-            <Select 
-              value={reportType} 
-              onValueChange={setReportType}
-              disabled={isLoading}
-            >
+            <Label>Report Title *</Label>
+            <Input
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="Weekly Project Summary"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Report Type</Label>
+              <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="project">Project Report</SelectItem>
+                  <SelectItem value="team">Team Report</SelectItem>
+                  <SelectItem value="task">Task Report</SelectItem>
+                  <SelectItem value="time">Time Report</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Date Range</Label>
+              <Select value={formData.dateRange} onValueChange={(value) => setFormData(prev => ({ ...prev, dateRange: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="quarter">This Quarter</SelectItem>
+                  <SelectItem value="year">This Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <Label>Include in Report</Label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.includeCharts}
+                  onChange={(e) => setFormData(prev => ({ ...prev, includeCharts: e.target.checked }))}
+                />
+                <span className="text-sm">Charts and Graphs</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.includeMetrics}
+                  onChange={(e) => setFormData(prev => ({ ...prev, includeMetrics: e.target.checked }))}
+                />
+                <span className="text-sm">Performance Metrics</span>
+              </label>
+            </div>
+          </div>
+          <div>
+            <Label>Export Format</Label>
+            <Select value={formData.format} onValueChange={(value) => setFormData(prev => ({ ...prev, format: value }))}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="project-summary">Project Summary</SelectItem>
-                <SelectItem value="task-completion">Task Completion</SelectItem>
-                <SelectItem value="team-performance">Team Performance</SelectItem>
-                <SelectItem value="timeline-analysis">Timeline Analysis</SelectItem>
+                <SelectItem value="pdf">PDF</SelectItem>
+                <SelectItem value="excel">Excel</SelectItem>
+                <SelectItem value="csv">CSV</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="text-sm text-muted-foreground">
-            This report will include data from the last 30 days and will be sent to your email.
-          </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleGenerateReport} disabled={isLoading}>
-              {isLoading ? "Generating..." : "Generate Report"}
+            <Button onClick={handleSubmit}>
+              Generate Report
             </Button>
           </div>
         </div>

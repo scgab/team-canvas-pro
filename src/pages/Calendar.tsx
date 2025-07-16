@@ -40,6 +40,8 @@ interface CalendarEvent {
   attendees?: string[];
   location?: string;
   color: string;
+  isProjectDeadline?: boolean;
+  projectId?: string;
 }
 
 interface PublicHoliday {
