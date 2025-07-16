@@ -63,15 +63,23 @@ export function ProjectShareDialog({ project, open, onOpenChange }: ProjectShare
     if (!project) return;
 
     // Share project with selected members
-    await shareProject(project.id, selectedMembers);
+    try {
+      await shareProject(project.id, selectedMembers);
 
-    toast({
-      title: "Project Shared",
-      description: `Project shared with ${selectedMembers.length} team member(s) with ${sharePermission} access.`
-    });
-    
-    setSelectedMembers([]);
-    onOpenChange(false);
+      toast({
+        title: "Project Shared",
+        description: `Project shared with ${selectedMembers.length} team member(s) with ${sharePermission} access.`
+      });
+      
+      setSelectedMembers([]);
+      onOpenChange(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to share project. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const toggleMemberSelection = (memberId: string) => {

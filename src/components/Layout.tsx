@@ -29,7 +29,7 @@ export function Layout({ children }: LayoutProps) {
   // Calculate unread message count
   const getUnreadMessageCount = () => {
     return messages.filter((msg: any) => 
-      !msg.read && msg.to === currentUserName
+      !msg.read && (msg.to === currentUserName || msg.toEmail === user?.email)
     ).length;
   };
 

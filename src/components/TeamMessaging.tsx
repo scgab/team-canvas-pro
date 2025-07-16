@@ -103,6 +103,9 @@ export function TeamMessaging({ currentUser, teamMembers }: TeamMessagingProps) 
     const selectedMemberData = teamMembers.find(m => m.id === selectedMember);
     if (!selectedMemberData) return;
 
+    const currentUserData = teamMembers.find(m => m.name === currentUser);
+    const currentUserEmail = currentUserData?.email || currentUser;
+
     // Create file attachments
     const fileAttachments: FileAttachment[] = selectedFiles.map(file => ({
       id: Date.now().toString() + Math.random(),
@@ -115,7 +118,7 @@ export function TeamMessaging({ currentUser, teamMembers }: TeamMessagingProps) 
     const message: Message = {
       id: Date.now().toString(),
       from: currentUser,
-      fromEmail: teamMembers.find(m => m.name === currentUser)?.email || currentUser,
+      fromEmail: currentUserEmail,
       to: selectedMember,
       toEmail: selectedMemberData.email,
       content: newMessage.trim(),
@@ -146,12 +149,20 @@ export function TeamMessaging({ currentUser, teamMembers }: TeamMessagingProps) 
     const selectedMemberData = teamMembers.find(m => m.id === memberId);
     if (!selectedMemberData) return [];
 
+    const currentUserData = teamMembers.find(m => m.name === currentUser);
+    const currentUserEmail = currentUserData?.email || currentUser;
+
     return messages.filter(
       msg => 
+        // Messages from current user to selected member
         (msg.from === currentUser && msg.to === memberId) ||
+        (msg.fromEmail === currentUserEmail && msg.to === memberId) ||
+        (msg.from === currentUser && msg.toEmail === selectedMemberData.email) ||
+        // Messages from selected member to current user  
         (msg.from === selectedMemberData.name && msg.to === currentUser) ||
         (msg.fromEmail === selectedMemberData.email && msg.to === currentUser) ||
-        (msg.from === currentUser && msg.toEmail === selectedMemberData.email)
+        (msg.from === selectedMemberData.name && msg.toEmail === currentUserEmail) ||
+        (msg.fromEmail === selectedMemberData.email && msg.toEmail === currentUserEmail)
     ).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   };
 
@@ -159,11 +170,14 @@ export function TeamMessaging({ currentUser, teamMembers }: TeamMessagingProps) 
     const selectedMemberData = teamMembers.find(m => m.id === memberId);
     if (!selectedMemberData) return 0;
 
+    const currentUserData = teamMembers.find(m => m.name === currentUser);
+    const currentUserEmail = currentUserData?.email || currentUser;
+
     return messages.filter(
       msg => 
         !msg.read && 
-        (msg.from === selectedMemberData.name || msg.fromEmail === selectedMemberData.email) &&
-        (msg.to === currentUser)
+        ((msg.from === selectedMemberData.name || msg.fromEmail === selectedMemberData.email) &&
+        (msg.to === currentUser || msg.toEmail === currentUserEmail))
     ).length;
   };
 
