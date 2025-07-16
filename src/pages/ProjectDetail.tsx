@@ -12,7 +12,7 @@ import { FileSharing } from "@/components/FileSharing";
 import { ProjectEditDialog } from "@/components/ProjectEditDialog";
 import { ProjectShareDialog } from "@/components/ProjectShareDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { useProjects } from "@/hooks/useProjects";
+import { useSharedData } from "@/contexts/SharedDataContext";
 import { useAuth } from "@/hooks/useAuth";
 import { getUsers } from "@/utils/userDatabase";
 import { useToast } from "@/hooks/use-toast";
@@ -32,9 +32,11 @@ import {
 const ProjectDetail = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const { getProjectById, updateProject, deleteProject } = useProjects();
+  const { projects, setProjects } = useSharedData();
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  const getProjectById = (id: string) => projects.find(p => p.id === id);
   const [project, setProject] = useState(() => projectId ? getProjectById(projectId) : null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -106,7 +108,7 @@ const ProjectDetail = () => {
   const handleArchiveProject = () => {
     if (!project) return;
     
-    deleteProject(project.id);
+    setProjects(prev => prev.filter(p => p.id !== project.id));
     navigate("/projects");
     
     toast({

@@ -9,16 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getUsers } from "@/utils/userDatabase";
 import { useUserColors } from "@/components/UserColorContext";
-import { useProjects } from "@/hooks/useProjects";
+import { useSharedData } from "@/contexts/SharedDataContext";
 import { Copy, Link, Mail, Users } from "lucide-react";
 
-interface Project {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  shared_with: string[];
-}
+import { Project } from "@/contexts/SharedDataContext";
 
 interface ProjectShareDialogProps {
   project: Project | null;
@@ -29,7 +23,7 @@ interface ProjectShareDialogProps {
 export function ProjectShareDialog({ project, open, onOpenChange }: ProjectShareDialogProps) {
   const { toast } = useToast();
   const { getColorByEmail } = useUserColors();
-  const { shareProject } = useProjects();
+  const { setProjects } = useSharedData();
   const [sharePermission, setSharePermission] = useState("view");
   const [shareLink, setShareLink] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -64,7 +58,12 @@ export function ProjectShareDialog({ project, open, onOpenChange }: ProjectShare
 
     // Share project with selected members
     try {
-      await shareProject(project.id, selectedMembers);
+      // Update project with new assigned members
+      setProjects(prev => prev.map(p => 
+        p.id === project.id 
+          ? { ...p, assignedMembers: [...(p.assignedMembers || []), ...selectedMembers] }
+          : p
+      ));
 
       toast({
         title: "Project Shared",

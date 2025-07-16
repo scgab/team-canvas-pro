@@ -6,21 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useProjects } from "@/hooks/useProjects";
+import { useSharedData } from "@/contexts/SharedDataContext";
 
-interface Project {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority: string;
-  deadline: Date;
-  progress: number;
-  team_size: number;
-  color: string;
-  created_at: Date;
-  updated_at: Date;
-}
+import { Project } from "@/contexts/SharedDataContext";
 
 interface ProjectEditDialogProps {
   project: Project | null;
@@ -31,7 +19,7 @@ interface ProjectEditDialogProps {
 
 export function ProjectEditDialog({ project, open, onOpenChange, onProjectUpdated }: ProjectEditDialogProps) {
   const { toast } = useToast();
-  const { updateProject } = useProjects();
+  const { setProjects } = useSharedData();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -81,7 +69,7 @@ export function ProjectEditDialog({ project, open, onOpenChange, onProjectUpdate
       updated_at: new Date()
     };
 
-    updateProject(project.id, updatedProject);
+    setProjects(prev => prev.map(p => p.id === project.id ? updatedProject : p));
     onProjectUpdated();
     onOpenChange(false);
 
