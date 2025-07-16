@@ -9,9 +9,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { FileSharing } from "@/components/FileSharing";
+import { ProjectEditDialog } from "@/components/ProjectEditDialog";
+import { ProjectShareDialog } from "@/components/ProjectShareDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { getUsers } from "@/utils/userDatabase";
+import { useToast } from "@/hooks/use-toast";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -28,9 +32,13 @@ import {
 const ProjectDetail = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const { getProjectById, updateProject } = useProjects();
+  const { getProjectById, updateProject, deleteProject } = useProjects();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [project, setProject] = useState(() => projectId ? getProjectById(projectId) : null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!project && projectId) {
@@ -88,6 +96,25 @@ const ProjectDetail = () => {
 
   const teamMembers = getTeamMembers();
 
+  const handleProjectUpdated = () => {
+    if (projectId) {
+      const updatedProject = getProjectById(projectId);
+      setProject(updatedProject);
+    }
+  };
+
+  const handleArchiveProject = () => {
+    if (!project) return;
+    
+    deleteProject(project.id);
+    navigate("/projects");
+    
+    toast({
+      title: "Project Archived",
+      description: `${project.title} has been archived successfully.`
+    });
+  };
+
   return (
     <Layout>
       <div className="p-6 space-y-6">
@@ -105,15 +132,15 @@ const ProjectDetail = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
               <Share2 className="w-4 h-4 mr-2" />
               Share
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setArchiveDialogOpen(true)}>
               <Archive className="w-4 h-4 mr-2" />
               Archive
             </Button>
@@ -326,6 +353,30 @@ const ProjectDetail = () => {
             <FileSharing />
           </TabsContent>
         </Tabs>
+
+        {/* Dialogs */}
+        <ProjectEditDialog
+          project={project}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onProjectUpdated={handleProjectUpdated}
+        />
+
+        <ProjectShareDialog
+          project={project}
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+        />
+
+        <ConfirmDialog
+          open={archiveDialogOpen}
+          onOpenChange={setArchiveDialogOpen}
+          title="Archive Project"
+          description={`Are you sure you want to archive "${project?.title}"? This action will remove it from your active projects list.`}
+          onConfirm={handleArchiveProject}
+          confirmText="Archive"
+          variant="destructive"
+        />
       </div>
     </Layout>
   );

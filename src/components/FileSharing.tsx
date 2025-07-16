@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,8 @@ import {
   Trash2,
   Share,
   Users,
-  Calendar
+  Calendar,
+  Plus
 } from "lucide-react";
 
 interface FileItem {
@@ -55,6 +56,8 @@ export function FileSharing() {
   const [currentFolder, setCurrentFolder] = useState("root");
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCreateFolder = () => {
     if (!newFolderName.trim()) {
@@ -84,11 +87,33 @@ export function FileSharing() {
     });
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFiles = event.target.files;
-    if (!uploadedFiles) return;
+  const handleFileUpload = (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    
+    fileArray.forEach(file => {
+      // File type validation
+      const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument', 'text/'];
+      const isValidType = allowedTypes.some(type => file.type.startsWith(type));
+      
+      if (!isValidType) {
+        toast({
+          title: "Invalid File Type",
+          description: `${file.name} is not a supported file type.`,
+          variant: "destructive"
+        });
+        return;
+      }
 
-    Array.from(uploadedFiles).forEach(file => {
+      // File size validation (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: `${file.name} is too large. Maximum size is 10MB.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
       const fileItem: FileItem = {
         id: Date.now().toString() + Math.random(),
         name: file.name,
@@ -106,11 +131,38 @@ export function FileSharing() {
 
     toast({
       title: "Files Uploaded",
-      description: `${uploadedFiles.length} file(s) uploaded successfully.`,
+      description: `${fileArray.length} file(s) uploaded successfully.`,
     });
+  };
 
-    // Reset input
+  const handleInputFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFiles = event.target.files;
+    if (!uploadedFiles) return;
+
+    handleFileUpload(uploadedFiles);
     event.target.value = "";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      handleFileUpload(droppedFiles);
+    }
   };
 
   const handleDeleteItem = (id: string, type: "file" | "folder") => {
@@ -174,7 +226,25 @@ export function FileSharing() {
   };
 
   return (
-    <div className="space-y-6">
+    <div 
+      className={`space-y-6 min-h-96 transition-colors ${
+        isDragOver ? 'bg-primary/5 border-2 border-dashed border-primary rounded-lg p-4' : ''
+      }`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragOver && (
+        <div className="fixed inset-0 bg-primary/20 z-40 flex items-center justify-center pointer-events-none">
+          <div className="bg-background p-8 rounded-lg border-2 border-dashed border-primary">
+            <div className="text-center">
+              <Upload className="w-16 h-16 mx-auto mb-4 text-primary" />
+              <p className="text-lg font-medium text-primary">Drop files here to upload</p>
+              <p className="text-sm text-muted-foreground">Supports images, documents, and PDFs</p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -223,19 +293,22 @@ export function FileSharing() {
             </DialogContent>
           </Dialog>
 
-          <div className="relative">
+          <div className="flex gap-2">
             <input
+              ref={fileInputRef}
               type="file"
               multiple
-              onChange={handleFileUpload}
-              className="absolute inset-0 opacity-0 cursor-pointer"
-              id="file-upload"
+              onChange={handleInputFileUpload}
+              className="hidden"
+              accept="image/*,.pdf,.doc,.docx,.txt"
             />
-            <Button asChild>
-              <label htmlFor="file-upload" className="cursor-pointer">
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Files
-              </label>
+            <Button onClick={() => fileInputRef.current?.click()}>
+              <Upload className="w-4 h-4 mr-2" />
+              Upload Files
+            </Button>
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Drag & Drop Zone
             </Button>
           </div>
         </div>

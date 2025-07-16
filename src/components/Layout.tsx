@@ -1,11 +1,15 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { Bell, Search, User, LogOut } from "lucide-react";
+import { NotificationPanel } from "@/components/NotificationPanel";
+import { Bell, Search, User, LogOut, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedState } from "@/hooks/useDataPersistence";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 interface LayoutProps {
@@ -15,6 +19,25 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+  const [messages] = usePersistedState('team_messages', []);
+  
+  // Get current user name
+  const currentUserName = user?.user_metadata?.full_name || user?.email || 'User';
+  
+  // Calculate unread message count
+  const getUnreadMessageCount = () => {
+    return messages.filter((msg: any) => 
+      !msg.read && msg.to === currentUserName
+    ).length;
+  };
+
+  // Calculate total notifications
+  const [notifications] = usePersistedState('notifications', []);
+  const getUnreadNotificationCount = () => {
+    return notifications.filter((notif: any) => !notif.read).length;
+  };
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -49,12 +72,34 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Messages */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="relative"
+                onClick={() => navigate("/team")}
+              >
+                <MessageSquare className="w-5 h-5" />
+                {getUnreadMessageCount() > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full text-xs flex items-center justify-center text-white">
+                    {getUnreadMessageCount()}
+                  </span>
+                )}
+              </Button>
+
               {/* Notifications */}
-              <Button variant="ghost" size="sm" className="relative">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="relative"
+                onClick={() => setNotificationPanelOpen(!notificationPanelOpen)}
+              >
                 <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full text-xs flex items-center justify-center text-white">
-                  3
-                </span>
+                {getUnreadNotificationCount() > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full text-xs flex items-center justify-center text-white">
+                    {getUnreadNotificationCount()}
+                  </span>
+                )}
               </Button>
 
               {/* User Menu */}
@@ -93,6 +138,13 @@ export function Layout({ children }: LayoutProps) {
             {children}
           </main>
         </div>
+
+        {/* Notification Panel */}
+        <NotificationPanel
+          open={notificationPanelOpen}
+          onOpenChange={setNotificationPanelOpen}
+          currentUser={currentUserName}
+        />
       </div>
     </SidebarProvider>
   );

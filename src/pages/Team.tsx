@@ -1,219 +1,73 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { TeamMessaging } from "@/components/TeamMessaging";
+import { AnnouncementModal } from "@/components/AnnouncementModal";
+import { AddTeamMemberDialog } from "@/components/AddTeamMemberDialog";
+import { FileSharing } from "@/components/FileSharing";
 import { useAuth } from "@/hooks/useAuth";
 import { getUsers } from "@/utils/userDatabase";
-import { usePersistedState } from "@/hooks/useDataPersistence";
 import { useUserColors } from "@/components/UserColorContext";
-import { TeamMessaging } from "@/components/TeamMessaging";
-import { FileSharing } from "@/components/FileSharing";
-import { AnnouncementModal } from "@/components/AnnouncementModal";
+import { useToast } from "@/hooks/use-toast";
 import { 
-  Plus, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Calendar,
-  Users,
-  MoreHorizontal,
-  User,
-  Search,
-  Crown,
-  Star,
-  Edit,
-  Trash2,
-  MessageSquare,
-  FolderOpen,
-  Megaphone,
+  Users, 
+  MessageSquare, 
+  Calendar, 
+  UserPlus, 
   FileText,
-  UserPlus,
-  CalendarPlus
+  Mail,
+  Phone,
+  MapPin,
+  Award,
+  FolderOpen,
+  Megaphone
 } from "lucide-react";
-
-interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string;
-  phone?: string;
-  location?: string;
-  joinDate: Date;
-  avatar?: string;
-  status: "active" | "inactive" | "busy";
-  skills: string[];
-  projects: number;
-}
-
-interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  type: 'info' | 'warning' | 'success' | 'urgent';
-  author: string;
-  authorEmail: string;
-  createdAt: Date;
-  recipients: 'all' | 'team' | 'managers';
-}
 
 const Team = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { getColorByEmail } = useUserColors();
-  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [announcements, setAnnouncements] = usePersistedState<Announcement[]>('team_announcements', []);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
+  const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   
-  // Load authenticated users as default team members
-  useEffect(() => {
-    const authenticatedUsers = getUsers();
-    const defaultTeamMembers: TeamMember[] = authenticatedUsers.map((authUser, index) => ({
-      id: authUser.id,
-      name: authUser.name,
-      email: authUser.email,
-      role: authUser.role === 'admin' ? 'Project Manager' : 'Team Member',
-      department: 'Management',
-      phone: index === 0 ? '+1 (555) 123-4567' : '+1 (555) 234-5678',
-      location: 'Remote',
-      joinDate: new Date('2024-01-01'),
-      status: 'active' as const,
-      skills: ['Project Management', 'Leadership', 'Strategy'],
-      projects: 5 + index
-    }));
-    
-    setTeamMembers(defaultTeamMembers);
-  }, []);
+  const currentUser = user?.user_metadata?.full_name || user?.email || 'Current User';
+  const teamMembers = getUsers();
 
-  const [newMember, setNewMember] = useState({
-    name: "",
-    email: "",
-    role: "",
-    department: "",
-    phone: "",
-    location: "",
-    skills: ""
-  });
+  const handleScheduleMeeting = () => {
+    toast({
+      title: "Team Meeting Scheduled",
+      description: "A team meeting has been scheduled for all members."
+    });
+  };
 
   const handleAddMember = () => {
-    if (!newMember.name.trim() || !newMember.email.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter name and email.",
-        variant: "destructive"
-      });
-      return;
-    }
+    setAddMemberDialogOpen(true);
+  };
 
-    const member: TeamMember = {
-      id: Date.now().toString(),
-      name: newMember.name,
-      email: newMember.email,
-      role: newMember.role || "Team Member",
-      department: newMember.department || "General",
-      phone: newMember.phone,
-      location: newMember.location,
-      joinDate: new Date(),
-      status: "active",
-      skills: newMember.skills ? newMember.skills.split(",").map(s => s.trim()) : [],
-      projects: 0
-    };
-
-    setTeamMembers(prev => [...prev, member]);
-    setNewMember({
-      name: "",
-      email: "",
-      role: "",
-      department: "",
-      phone: "",
-      location: "",
-      skills: ""
-    });
-    setIsAddMemberOpen(false);
-
+  const handleMemberAdded = () => {
     toast({
       title: "Team Member Added",
-      description: `${member.name} has been added to the team.`,
+      description: "The new team member has been added successfully."
     });
   };
 
-  const handleDeleteMember = (memberId: string) => {
-    setTeamMembers(prev => prev.filter(m => m.id !== memberId));
+  const handleGenerateReport = () => {
     toast({
-      title: "Team Member Removed",
-      description: "Team member has been removed from the team.",
+      title: "Team Report Generated",
+      description: "Team performance report has been generated successfully."
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active": return "bg-success";
-      case "busy": return "bg-warning";
-      case "inactive": return "bg-muted";
-      default: return "bg-muted";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "active": return "Available";
-      case "busy": return "Busy";
-      case "inactive": return "Offline";
-      default: return "Unknown";
-    }
-  };
-
-  const getRoleIcon = (role: string) => {
-    const lowerRole = role.toLowerCase();
-    if (lowerRole.includes("manager") || lowerRole.includes("lead")) {
-      return <Crown className="w-4 h-4 text-warning" />;
-    }
-    if (lowerRole.includes("senior")) {
-      return <Star className="w-4 h-4 text-primary" />;
-    }
-    return <User className="w-4 h-4 text-muted-foreground" />;
-  };
-
-  const handleQuickAction = (action: string) => {
-    switch (action) {
-      case 'announcement':
-        setIsAnnouncementOpen(true);
-        break;
-      case 'meeting':
-        toast({
-          title: "Team Meeting Scheduled",
-          description: "A team meeting has been scheduled for all members.",
-        });
-        break;
-      case 'addMember':
-        setIsAddMemberOpen(true);
-        break;
-      case 'report':
-        toast({
-          title: "Team Report Generated",
-          description: "Team performance report has been generated successfully.",
-        });
-        break;
-      default:
-        toast({
-          title: "Action Performed",
-          description: `${action} action has been executed.`,
-        });
-    }
-  };
-
-  const handleAnnouncementSent = (announcement: Announcement) => {
-    setAnnouncements(prev => [announcement, ...prev]);
+  const handleAnnouncementSent = () => {
+    toast({
+      title: "Announcement Sent",
+      description: "Your announcement has been sent to all team members."
+    });
   };
 
   return (
@@ -223,375 +77,88 @@ const Team = () => {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Team</h1>
-            <p className="text-muted-foreground mt-1">Manage your team members and their roles</p>
+            <p className="text-muted-foreground mt-1">Manage your team members and collaboration</p>
           </div>
           <div className="flex gap-2">
-            <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-primary hover:bg-primary-dark">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Member
-                </Button>
-              </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Add Team Member</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="member-name">Name *</Label>
-                  <Input
-                    id="member-name"
-                    value={newMember.name}
-                    onChange={(e) => setNewMember(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter full name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="member-email">Email *</Label>
-                  <Input
-                    id="member-email"
-                    type="email"
-                    value={newMember.email}
-                    onChange={(e) => setNewMember(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="Enter email address"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="member-role">Role</Label>
-                    <Input
-                      id="member-role"
-                      value={newMember.role}
-                      onChange={(e) => setNewMember(prev => ({ ...prev, role: e.target.value }))}
-                      placeholder="e.g., Developer"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="member-department">Department</Label>
-                    <Input
-                      id="member-department"
-                      value={newMember.department}
-                      onChange={(e) => setNewMember(prev => ({ ...prev, department: e.target.value }))}
-                      placeholder="e.g., Engineering"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="member-phone">Phone</Label>
-                    <Input
-                      id="member-phone"
-                      value={newMember.phone}
-                      onChange={(e) => setNewMember(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="Phone number"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="member-location">Location</Label>
-                    <Input
-                      id="member-location"
-                      value={newMember.location}
-                      onChange={(e) => setNewMember(prev => ({ ...prev, location: e.target.value }))}
-                      placeholder="City, Country"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="member-skills">Skills</Label>
-                  <Textarea
-                    id="member-skills"
-                    value={newMember.skills}
-                    onChange={(e) => setNewMember(prev => ({ ...prev, skills: e.target.value }))}
-                    placeholder="Comma separated skills (e.g., React, TypeScript, Design)"
-                    rows={3}
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsAddMemberOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddMember}>
-                    Add Member
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Quick Actions */}
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => handleQuickAction('announcement')}>
+            <Button variant="outline" onClick={() => setAnnouncementModalOpen(true)}>
               <Megaphone className="w-4 h-4 mr-2" />
               Send Announcement
             </Button>
-            <Button variant="outline" onClick={() => handleQuickAction('meeting')}>
-              <CalendarPlus className="w-4 h-4 mr-2" />
+            <Button variant="outline" onClick={handleScheduleMeeting}>
+              <Calendar className="w-4 h-4 mr-2" />
               Schedule Meeting
             </Button>
-            <Button variant="outline" onClick={() => handleQuickAction('report')}>
+            <Button onClick={handleAddMember}>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Member
+            </Button>
+            <Button variant="outline" onClick={handleGenerateReport}>
               <FileText className="w-4 h-4 mr-2" />
               Generate Report
             </Button>
           </div>
         </div>
+
+        {/* Team Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {teamMembers.map((member) => {
+            const memberColor = getColorByEmail(member.email);
+            
+            return (
+              <Card key={member.id} className="bg-gradient-card shadow-custom-card">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-12 h-12">
+                      <AvatarFallback 
+                        className="text-white"
+                        style={{ backgroundColor: memberColor.primary }}
+                      >
+                        {member.name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-medium text-foreground">{member.name}</h3>
+                      <p className="text-sm text-muted-foreground">{member.role}</p>
+                      <Badge className="bg-success text-success-foreground text-xs mt-1">
+                        Active
+                      </Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="w-4 h-4" />
+                      <span className="truncate">{member.email}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        {/* Tabs Navigation */}
-        <Tabs defaultValue="members" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="members" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Team Members
-            </TabsTrigger>
-            <TabsTrigger value="messaging" className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
+        {/* Tabs */}
+        <Tabs defaultValue="messaging" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="messaging">
+              <MessageSquare className="w-4 h-4 mr-2" />
               Messaging
             </TabsTrigger>
-            <TabsTrigger value="files" className="flex items-center gap-2">
-              <FolderOpen className="w-4 h-4" />
-              Shared Files
+            <TabsTrigger value="files">
+              <FolderOpen className="w-4 h-4 mr-2" />
+              Files
             </TabsTrigger>
-            <TabsTrigger value="announcements" className="flex items-center gap-2">
-              <Megaphone className="w-4 h-4" />
+            <TabsTrigger value="announcements">
+              <Megaphone className="w-4 h-4 mr-2" />
               Announcements
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="members" className="space-y-6">
-            {/* Search and Filters */}
-            <div className="flex gap-4 items-center">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input 
-                  placeholder="Search team members..."
-                  className="pl-10"
-                />
-              </div>
-              <Button variant="outline">
-                Filter by Department
-              </Button>
-              <Button variant="outline">
-                Filter by Role
-              </Button>
-            </div>
-
-            {/* Team Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="bg-gradient-card shadow-custom-card">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{teamMembers.length}</div>
-                  <div className="text-sm text-muted-foreground">Total Members</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-gradient-card shadow-custom-card">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-success">{teamMembers.filter(m => m.status === 'active').length}</div>
-                  <div className="text-sm text-muted-foreground">Available</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-gradient-card shadow-custom-card">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-warning">{teamMembers.filter(m => m.status === 'busy').length}</div>
-                  <div className="text-sm text-muted-foreground">Busy</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-gradient-card shadow-custom-card">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-foreground">{new Set(teamMembers.map(m => m.department)).size}</div>
-                  <div className="text-sm text-muted-foreground">Departments</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Team Members Grid */}
-            {teamMembers.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {teamMembers.map((member) => {
-                  const memberColor = getColorByEmail(member.email);
-                  
-                  return (
-                    <Card key={member.id} className="bg-gradient-card shadow-custom-card hover:shadow-custom-md transition-all duration-200 group">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="w-12 h-12">
-                              <AvatarImage src={member.avatar} />
-                              <AvatarFallback 
-                                className="text-white"
-                                style={{ backgroundColor: memberColor.primary }}
-                              >
-                                {member.name.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium text-foreground">{member.name}</h3>
-                              {getRoleIcon(member.role)}
-                            </div>
-                            <p className="text-sm text-muted-foreground">{member.role}</p>
-                            <Badge className={`text-xs ${getStatusColor(member.status)} text-white`}>
-                              {getStatusLabel(member.status)}
-                            </Badge>
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="sm" className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="space-y-3">
-                      {/* Contact Info */}
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Mail className="w-4 h-4" />
-                          <span className="truncate">{member.email}</span>
-                        </div>
-                        {member.phone && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Phone className="w-4 h-4" />
-                            <span>{member.phone}</span>
-                          </div>
-                        )}
-                        {member.location && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <MapPin className="w-4 h-4" />
-                            <span>{member.location}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Calendar className="w-4 h-4" />
-                          <span>Joined {member.joinDate.toLocaleDateString()}</span>
-                        </div>
-                      </div>
-
-                      {/* Department */}
-                      <div>
-                        <Badge variant="secondary" className="text-xs">
-                          {member.department}
-                        </Badge>
-                      </div>
-
-                      {/* Skills */}
-                      {member.skills.length > 0 && (
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-2">Skills:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {member.skills.slice(0, 3).map((skill, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                            {member.skills.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{member.skills.length - 3}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex gap-2 pt-2">
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Edit className="w-3 h-3 mr-1" />
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteMember(member.id)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  );
-                })}
-              </div>
-            ) : (
-              /* Empty State */
-              <Card className="bg-gradient-card shadow-custom-card">
-                <CardContent className="p-12 text-center">
-                  <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">No team members yet</h3>
-                  <p className="text-muted-foreground mb-6">Add your first team member to get started with team management</p>
-                  <Button 
-                    className="bg-gradient-primary hover:bg-primary-dark"
-                    onClick={() => setIsAddMemberOpen(true)}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add First Member
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Team Overview */}
-            {teamMembers.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="bg-gradient-card shadow-custom-card">
-                  <CardHeader>
-                    <CardTitle>Department Distribution</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {Array.from(new Set(teamMembers.map(m => m.department))).map(dept => {
-                        const count = teamMembers.filter(m => m.department === dept).length;
-                        const percentage = (count / teamMembers.length) * 100;
-                        return (
-                          <div key={dept} className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{dept}</span>
-                            <div className="flex items-center gap-2">
-                              <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-primary rounded-full"
-                                  style={{ width: `${percentage}%` }}
-                                />
-                              </div>
-                              <span className="text-sm text-muted-foreground">{count}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-card shadow-custom-card">
-                  <CardHeader>
-                    <CardTitle>Quick Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button variant="outline" className="w-full justify-start" size="lg">
-                      <Mail className="w-5 h-5 mr-3" />
-                      Send Team Announcement
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" size="lg">
-                      <Users className="w-5 h-5 mr-3" />
-                      Schedule Team Meeting
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" size="lg">
-                      <Calendar className="w-5 h-5 mr-3" />
-                      Create Team Event
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </TabsContent>
-
           <TabsContent value="messaging">
             <TeamMessaging 
-              currentUser="Current User"
-              teamMembers={teamMembers.map(member => ({
-                id: member.id,
-                name: member.name,
-                email: member.email
-              }))}
+              currentUser={currentUser}
+              teamMembers={teamMembers}
             />
           </TabsContent>
 
@@ -600,84 +167,33 @@ const Team = () => {
           </TabsContent>
 
           <TabsContent value="announcements">
-            <div className="space-y-6">
-              {/* Announcements Header */}
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-semibold">Team Announcements</h3>
-                  <p className="text-sm text-muted-foreground">Recent announcements and updates</p>
-                </div>
-                <Button onClick={() => setIsAnnouncementOpen(true)}>
+            <Card className="bg-gradient-card shadow-custom-card">
+              <CardContent className="p-12 text-center">
+                <Megaphone className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No announcements yet</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Send your first team announcement to get started
+                </p>
+                <Button onClick={() => setAnnouncementModalOpen(true)}>
                   <Megaphone className="w-4 h-4 mr-2" />
-                  New Announcement
+                  Send Announcement
                 </Button>
-              </div>
-
-              {/* Announcements List */}
-              <div className="space-y-4">
-                {announcements.length > 0 ? (
-                  announcements.map(announcement => (
-                    <Card key={announcement.id} className="bg-gradient-card shadow-custom-card">
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className={`p-2 rounded-full ${
-                            announcement.type === 'info' ? 'bg-primary/20 text-primary' :
-                            announcement.type === 'warning' ? 'bg-warning/20 text-warning' :
-                            announcement.type === 'success' ? 'bg-success/20 text-success' :
-                            'bg-destructive/20 text-destructive'
-                          }`}>
-                            <Megaphone className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-start justify-between">
-                              <h4 className="font-medium">{announcement.title}</h4>
-                              <Badge className={`text-xs ${
-                                announcement.type === 'info' ? 'bg-primary' :
-                                announcement.type === 'warning' ? 'bg-warning' :
-                                announcement.type === 'success' ? 'bg-success' :
-                                'bg-destructive'
-                              } text-white`}>
-                                {announcement.type.charAt(0).toUpperCase() + announcement.type.slice(1)}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{announcement.content}</p>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>By {announcement.author}</span>
-                              <span>•</span>
-                              <span>{announcement.createdAt.toLocaleDateString()}</span>
-                              <span>•</span>
-                              <span>Sent to {announcement.recipients === 'all' ? 'all team members' : announcement.recipients}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : (
-                  <Card className="bg-gradient-card shadow-custom-card">
-                    <CardContent className="p-12 text-center">
-                      <Megaphone className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">No announcements yet</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Send your first team announcement to get started
-                      </p>
-                      <Button onClick={() => setIsAnnouncementOpen(true)}>
-                        <Megaphone className="w-4 h-4 mr-2" />
-                        Send First Announcement
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
         {/* Modals */}
         <AnnouncementModal
-          open={isAnnouncementOpen}
-          onOpenChange={setIsAnnouncementOpen}
+          open={announcementModalOpen}
+          onOpenChange={setAnnouncementModalOpen}
           onAnnouncementSent={handleAnnouncementSent}
+        />
+
+        <AddTeamMemberDialog
+          open={addMemberDialogOpen}
+          onOpenChange={setAddMemberDialogOpen}
+          onMemberAdded={handleMemberAdded}
         />
       </div>
     </Layout>
