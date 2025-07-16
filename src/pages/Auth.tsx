@@ -10,7 +10,7 @@ export default function Auth() {
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signInWithGoogle, isEmailAllowed } = useAuth();
+  const { user, signInWithGoogle } = useAuth();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -30,10 +30,10 @@ export default function Auth() {
     
     if (error) {
       console.error('Authentication error details:', error);
-      if (error.message.includes('email')) {
-        setAuthError("Access restricted. Please contact administrator.");
-      } else if (error.message.includes('invalid') || error.message.includes('blocked')) {
-        setAuthError("OAuth configuration error. Please check Google Cloud Console setup.");
+      if (error.message.includes('invalid') || error.message.includes('blocked')) {
+        setAuthError("OAuth configuration error. Check redirect URI in Google Console.");
+      } else if (error.message.includes('redirect_uri_mismatch')) {
+        setAuthError("Redirect URI mismatch. Please configure Google Console with the correct redirect URI.");
       } else {
         setAuthError(`Authentication failed: ${error.message}`);
       }
@@ -65,7 +65,7 @@ export default function Auth() {
               Welcome
             </CardTitle>
             <CardDescription className="text-center">
-              Sign in with your authorized Google account
+              Sign in with your Google account to get started
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -103,7 +103,7 @@ export default function Auth() {
 
         {/* Footer */}
         <p className="text-sm text-muted-foreground">
-          Restricted access • Contact administrator for support
+          Secure authentication • Welcome to the team
         </p>
       </div>
     </div>

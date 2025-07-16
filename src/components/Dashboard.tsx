@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
 import { TaskCreateModal, MeetingScheduleModal, TeamMemberModal, ReportModal } from "@/components/QuickActionModals";
 import { useProjects } from "@/hooks/useProjects";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserManagement } from "@/hooks/useUserManagement";
 import { 
   BarChart3, 
   Calendar, 
@@ -21,6 +23,8 @@ import {
 
 export function Dashboard() {
   const { projects, loading, createProject, getProjectStats } = useProjects();
+  const { user } = useAuth();
+  const { isReturningUser, getUserInfo } = useUserManagement();
   
   // Modal states
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
@@ -30,6 +34,10 @@ export function Dashboard() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const stats = getProjectStats();
+  
+  // Get user info for welcome message
+  const userInfo = user ? getUserInfo(user.id) : null;
+  const isReturning = user ? isReturningUser(user.id) : false;
 
   const handleProjectCreated = () => {
     console.log("Project created, dashboard will refresh automatically");
@@ -46,10 +54,25 @@ export function Dashboard() {
     <Layout>
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome to ProManage! Start by creating your first project.</p>
+      <div className="flex justify-between items-start">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold text-foreground">
+            {isReturning ? 'Welcome back' : 'Welcome to the team'}, {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there'}!
+          </h1>
+          <p className="text-muted-foreground">
+            {isReturning 
+              ? "Ready to continue managing your way to +$100M?" 
+              : "Let's manage our way to +$100M together! Start by creating your first project."
+            }
+          </p>
+          {userInfo && (
+            <p className="text-sm text-muted-foreground">
+              {isReturning 
+                ? `You've been with us since ${new Date(userInfo.registered_at).toLocaleDateString()}`
+                : "You're now part of our project management team!"
+              }
+            </p>
+          )}
         </div>
         <Button 
           className="bg-gradient-primary hover:bg-primary-dark"
