@@ -48,9 +48,14 @@ export const useProjects = () => {
     }
   }, [projects, loading]);
 
-  const createProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'user_id' | 'status' | 'shared_with'>) => {
+  const createProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'user_id' | 'status' | 'shared_with'> & { team_members?: string[] }) => {
     const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+    // Get current user from user database to set as owner
+    const users = await import('@/utils/userDatabase');
+    const userList = users.getUsers();
+    const currentUser = userList.find(u => u.email === (window as any).currentUserEmail);
 
     const newProject: Project = {
       ...projectData,
@@ -59,9 +64,10 @@ export const useProjects = () => {
       updated_at: new Date(),
       progress: 0,
       color: randomColor,
-      team_size: 1,
+      team_size: (projectData.team_members?.length || 0) + 1, // Include creator
       status: 'planning',
-      shared_with: []
+      user_id: currentUser?.id,
+      shared_with: projectData.team_members || []
     };
 
     console.log('Creating project:', newProject);

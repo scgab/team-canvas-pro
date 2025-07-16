@@ -46,8 +46,13 @@ const Projects = () => {
   const users = getUsers();
   const currentUser = users.find(u => u.email === user?.email);
   
+  // Store current user email globally for project creation
+  if (user?.email && typeof window !== 'undefined') {
+    (window as any).currentUserEmail = user.email;
+  }
+  
   // Filter projects to show only those the user has access to
-  const userProjects = currentUser ? getProjectsForUser(currentUser.id) : projects;
+  const userProjects = currentUser ? getProjectsForUser(currentUser.id) : [];
 
   const handleProjectCreated = () => {
     console.log("Project created, projects list will refresh automatically");

@@ -7,11 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useProjects } from "@/hooks/useProjects";
+import { getUsers } from "@/utils/userDatabase";
+import { useUserColors } from "@/components/UserColorContext";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Users } from "lucide-react";
 
 interface ProjectCreateDialogProps {
   open: boolean;
@@ -22,13 +26,17 @@ interface ProjectCreateDialogProps {
 export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: ProjectCreateDialogProps) {
   const { toast } = useToast();
   const { createProject } = useProjects();
+  const { getColorByEmail } = useUserColors();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedTeamMembers, setSelectedTeamMembers] = useState<string[]>([]);
   const [newProject, setNewProject] = useState({
     title: "",
     description: "",
     priority: "medium" as const,
     deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default to 30 days from now
   });
+
+  const teamMembers = getUsers();
 
   const handleCreateProject = async () => {
     if (!newProject.title.trim()) {
@@ -49,7 +57,8 @@ export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: Pr
         title: newProject.title,
         description: newProject.description,
         priority: newProject.priority,
-        deadline: newProject.deadline
+        deadline: newProject.deadline,
+        team_members: selectedTeamMembers
       });
 
       console.log('Project created:', createdProject);
@@ -60,6 +69,7 @@ export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: Pr
       });
 
       // Reset form
+      setSelectedTeamMembers([]);
       setNewProject({
         title: "",
         description: "",
@@ -79,6 +89,14 @@ export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: Pr
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleTeamMember = (memberId: string) => {
+    setSelectedTeamMembers(prev => 
+      prev.includes(memberId) 
+        ? prev.filter(id => id !== memberId)
+        : [...prev, memberId]
+    );
   };
 
   return (
@@ -151,6 +169,52 @@ export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: Pr
               </SelectContent>
             </Select>
           </div>
+          
+          {/* Team Members Assignment */}
+          <div>
+            <Label className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Assign Team Members
+            </Label>
+            <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+              {teamMembers.map(member => {
+                const isSelected = selectedTeamMembers.includes(member.id);
+                const memberColor = getColorByEmail(member.email);
+                
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                    onClick={() => toggleTeamMember(member.id)}
+                  >
+                    <Checkbox 
+                      checked={isSelected}
+                      onChange={() => toggleTeamMember(member.id)}
+                      disabled={isLoading}
+                    />
+                    <Avatar className="w-6 h-6">
+                      <AvatarFallback 
+                        className="text-white text-xs"
+                        style={{ backgroundColor: memberColor.primary }}
+                      >
+                        {member.name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{member.name}</div>
+                      <div className="text-xs text-muted-foreground">{member.email}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {selectedTeamMembers.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {selectedTeamMembers.length} member(s) selected
+              </p>
+            )}
+          </div>
+          
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancel
