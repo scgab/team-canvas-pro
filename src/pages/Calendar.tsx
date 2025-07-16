@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedState } from "@/hooks/useDataPersistence";
+import { useProjects } from "@/hooks/useProjects";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { 
@@ -22,7 +24,9 @@ import {
   Clock,
   Users,
   MapPin,
-  User
+  User,
+  Target,
+  Briefcase
 } from "lucide-react";
 
 interface CalendarEvent {
@@ -46,9 +50,10 @@ interface PublicHoliday {
 
 const Calendar = () => {
   const { toast } = useToast();
+  const { projects } = useProjects();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = usePersistedState<CalendarEvent[]>('calendar_events', []);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -99,7 +104,9 @@ const Calendar = () => {
   };
 
   const goToToday = () => {
-    setCurrentDate(new Date());
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
   };
 
   // Add new event
@@ -178,11 +185,31 @@ const Calendar = () => {
   const days = getDaysInMonth(currentDate);
   const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  // Get events for a specific date
+  // Get events for a specific date (including project deadlines)
   const getEventsForDate = (date: Date) => {
-    return events.filter(event => 
+    const userEvents = events.filter(event => 
       event.date.toDateString() === date.toDateString()
     );
+
+    // Add project deadlines as events
+    const projectDeadlines = projects
+      .filter(project => project.deadline.toDateString() === date.toDateString())
+      .map(project => ({
+        id: `project-${project.id}`,
+        title: `${project.title} Deadline`,
+        description: `Project deadline: ${project.title}`,
+        date: project.deadline,
+        time: "All day",
+        duration: "All day",
+        type: "deadline" as const,
+        attendees: [],
+        location: "",
+        color: project.color || "#EF4444",
+        isProjectDeadline: true,
+        projectId: project.id
+      }));
+
+    return [...userEvents, ...projectDeadlines];
   };
 
   // Get holidays for a specific date
@@ -196,6 +223,36 @@ const Calendar = () => {
   const isToday = (date: Date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
+  };
+
+  // Get upcoming events (next 30 days)
+  const getUpcomingEvents = () => {
+    const today = new Date();
+    const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+    
+    const upcomingUserEvents = events.filter(event => 
+      event.date >= today && event.date <= in30Days
+    );
+
+    const upcomingProjectDeadlines = projects
+      .filter(project => project.deadline >= today && project.deadline <= in30Days)
+      .map(project => ({
+        id: `project-${project.id}`,
+        title: `${project.title} Deadline`,
+        description: `Project deadline: ${project.title}`,
+        date: project.deadline,
+        time: "All day",
+        duration: "All day",
+        type: "deadline" as const,
+        attendees: [],
+        location: "",
+        color: project.color || "#EF4444",
+        isProjectDeadline: true,
+        projectId: project.id
+      }));
+
+    return [...upcomingUserEvents, ...upcomingProjectDeadlines]
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
   };
 
   const getEventTypeColor = (type: string) => {
@@ -470,11 +527,16 @@ const Calendar = () => {
               ))}
 
               {/* Show events */}
-              {(selectedDate ? getEventsForDate(selectedDate) : events.slice(0, 5)).map(event => (
+              {(selectedDate ? getEventsForDate(selectedDate) : getUpcomingEvents().slice(0, 5)).map(event => (
                 <div key={event.id} className="p-3 bg-muted/20 rounded-lg space-y-2">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-medium text-sm">{event.title}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium text-sm">{event.title}</h4>
+                        {(event as any).isProjectDeadline && (
+                          <Briefcase className="w-3 h-3 text-muted-foreground" />
+                        )}
+                      </div>
                       {event.description && (
                         <p className="text-xs text-muted-foreground mt-1">{event.description}</p>
                       )}
@@ -527,7 +589,7 @@ const Calendar = () => {
               )}
 
               {/* Show empty state for no user events */}
-              {!selectedDate && events.length === 0 && (
+              {!selectedDate && getUpcomingEvents().length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No events created yet</p>

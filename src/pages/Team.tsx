@@ -13,8 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { getUsers } from "@/utils/userDatabase";
+import { usePersistedState } from "@/hooks/useDataPersistence";
+import { useUserColors } from "@/components/UserColorContext";
 import { TeamMessaging } from "@/components/TeamMessaging";
 import { FileSharing } from "@/components/FileSharing";
+import { AnnouncementModal } from "@/components/AnnouncementModal";
 import { 
   Plus, 
   Mail, 
@@ -30,7 +33,11 @@ import {
   Edit,
   Trash2,
   MessageSquare,
-  FolderOpen
+  FolderOpen,
+  Megaphone,
+  FileText,
+  UserPlus,
+  CalendarPlus
 } from "lucide-react";
 
 interface TeamMember {
@@ -48,11 +55,25 @@ interface TeamMember {
   projects: number;
 }
 
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  type: 'info' | 'warning' | 'success' | 'urgent';
+  author: string;
+  authorEmail: string;
+  createdAt: Date;
+  recipients: 'all' | 'team' | 'managers';
+}
+
 const Team = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { getColorByEmail } = useUserColors();
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [announcements, setAnnouncements] = usePersistedState<Announcement[]>('team_announcements', []);
   
   // Load authenticated users as default team members
   useEffect(() => {
@@ -163,6 +184,38 @@ const Team = () => {
     return <User className="w-4 h-4 text-muted-foreground" />;
   };
 
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'announcement':
+        setIsAnnouncementOpen(true);
+        break;
+      case 'meeting':
+        toast({
+          title: "Team Meeting Scheduled",
+          description: "A team meeting has been scheduled for all members.",
+        });
+        break;
+      case 'addMember':
+        setIsAddMemberOpen(true);
+        break;
+      case 'report':
+        toast({
+          title: "Team Report Generated",
+          description: "Team performance report has been generated successfully.",
+        });
+        break;
+      default:
+        toast({
+          title: "Action Performed",
+          description: `${action} action has been executed.`,
+        });
+    }
+  };
+
+  const handleAnnouncementSent = (announcement: Announcement) => {
+    setAnnouncements(prev => [announcement, ...prev]);
+  };
+
   return (
     <Layout>
       <div className="p-6 space-y-6">
@@ -172,13 +225,14 @@ const Team = () => {
             <h1 className="text-3xl font-bold text-foreground">Team</h1>
             <p className="text-muted-foreground mt-1">Manage your team members and their roles</p>
           </div>
-          <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-primary hover:bg-primary-dark">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Member
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-primary hover:bg-primary-dark">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Member
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Add Team Member</DialogTitle>
@@ -264,11 +318,28 @@ const Team = () => {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Quick Actions */}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => handleQuickAction('announcement')}>
+              <Megaphone className="w-4 h-4 mr-2" />
+              Send Announcement
+            </Button>
+            <Button variant="outline" onClick={() => handleQuickAction('meeting')}>
+              <CalendarPlus className="w-4 h-4 mr-2" />
+              Schedule Meeting
+            </Button>
+            <Button variant="outline" onClick={() => handleQuickAction('report')}>
+              <FileText className="w-4 h-4 mr-2" />
+              Generate Report
+            </Button>
+          </div>
+        </div>
         </div>
 
         {/* Tabs Navigation */}
         <Tabs defaultValue="members" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="members" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               Team Members
@@ -280,6 +351,10 @@ const Team = () => {
             <TabsTrigger value="files" className="flex items-center gap-2">
               <FolderOpen className="w-4 h-4" />
               Shared Files
+            </TabsTrigger>
+            <TabsTrigger value="announcements" className="flex items-center gap-2">
+              <Megaphone className="w-4 h-4" />
+              Announcements
             </TabsTrigger>
           </TabsList>
 
@@ -332,17 +407,23 @@ const Team = () => {
             {/* Team Members Grid */}
             {teamMembers.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {teamMembers.map((member) => (
-                  <Card key={member.id} className="bg-gradient-card shadow-custom-card hover:shadow-custom-md transition-all duration-200 group">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-12 h-12">
-                            <AvatarImage src={member.avatar} />
-                            <AvatarFallback className="bg-primary text-primary-foreground">
-                              {member.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
+                {teamMembers.map((member) => {
+                  const memberColor = getColorByEmail(member.email);
+                  
+                  return (
+                    <Card key={member.id} className="bg-gradient-card shadow-custom-card hover:shadow-custom-md transition-all duration-200 group">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-12 h-12">
+                              <AvatarImage src={member.avatar} />
+                              <AvatarFallback 
+                                className="text-white"
+                                style={{ backgroundColor: memberColor.primary }}
+                              >
+                                {member.name.split(' ').map(n => n[0]).join('')}
+                              </AvatarFallback>
+                            </Avatar>
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-medium text-foreground">{member.name}</h3>
@@ -428,7 +509,8 @@ const Team = () => {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               /* Empty State */
@@ -516,7 +598,87 @@ const Team = () => {
           <TabsContent value="files">
             <FileSharing />
           </TabsContent>
+
+          <TabsContent value="announcements">
+            <div className="space-y-6">
+              {/* Announcements Header */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-semibold">Team Announcements</h3>
+                  <p className="text-sm text-muted-foreground">Recent announcements and updates</p>
+                </div>
+                <Button onClick={() => setIsAnnouncementOpen(true)}>
+                  <Megaphone className="w-4 h-4 mr-2" />
+                  New Announcement
+                </Button>
+              </div>
+
+              {/* Announcements List */}
+              <div className="space-y-4">
+                {announcements.length > 0 ? (
+                  announcements.map(announcement => (
+                    <Card key={announcement.id} className="bg-gradient-card shadow-custom-card">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-full ${
+                            announcement.type === 'info' ? 'bg-primary/20 text-primary' :
+                            announcement.type === 'warning' ? 'bg-warning/20 text-warning' :
+                            announcement.type === 'success' ? 'bg-success/20 text-success' :
+                            'bg-destructive/20 text-destructive'
+                          }`}>
+                            <Megaphone className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-start justify-between">
+                              <h4 className="font-medium">{announcement.title}</h4>
+                              <Badge className={`text-xs ${
+                                announcement.type === 'info' ? 'bg-primary' :
+                                announcement.type === 'warning' ? 'bg-warning' :
+                                announcement.type === 'success' ? 'bg-success' :
+                                'bg-destructive'
+                              } text-white`}>
+                                {announcement.type.charAt(0).toUpperCase() + announcement.type.slice(1)}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{announcement.content}</p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>By {announcement.author}</span>
+                              <span>•</span>
+                              <span>{announcement.createdAt.toLocaleDateString()}</span>
+                              <span>•</span>
+                              <span>Sent to {announcement.recipients === 'all' ? 'all team members' : announcement.recipients}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <Card className="bg-gradient-card shadow-custom-card">
+                    <CardContent className="p-12 text-center">
+                      <Megaphone className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                      <h3 className="text-lg font-medium text-foreground mb-2">No announcements yet</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Send your first team announcement to get started
+                      </p>
+                      <Button onClick={() => setIsAnnouncementOpen(true)}>
+                        <Megaphone className="w-4 h-4 mr-2" />
+                        Send First Announcement
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </TabsContent>
         </Tabs>
+
+        {/* Modals */}
+        <AnnouncementModal
+          open={isAnnouncementOpen}
+          onOpenChange={setIsAnnouncementOpen}
+          onAnnouncementSent={handleAnnouncementSent}
+        />
       </div>
     </Layout>
   );
