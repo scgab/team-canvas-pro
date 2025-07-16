@@ -1,377 +1,271 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Layout } from "@/components/Layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Calendar, Users, ArrowRight, MoreVertical, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { useSharedData } from "@/contexts/SharedDataContext";
+import { useProjects } from "@/contexts/ProjectsContext";
 import { useAuth } from "@/hooks/useAuth";
-import { getUsers } from "@/utils/userDatabase";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  Plus, 
-  MoreHorizontal, 
-  Users, 
-  Calendar, 
-  FolderOpen,
-  User,
-  Search,
-  Filter,
-  Eye,
-  Edit,
-  Copy,
-  Trash2
-} from "lucide-react";
 
 const Projects = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { projects, createProject, setProjects } = useSharedData();
+  const { projects, loading, createProject, deleteProject } = useProjects();
   const { user } = useAuth();
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  
-  // Get current user ID from user database
-  const users = getUsers();
-  const currentUser = users.find(u => u.email === user?.email);
-  
-  // Store current user email globally for project creation
-  if (user?.email && typeof window !== 'undefined') {
-    (window as any).currentUserEmail = user.email;
-  }
-  
-  // DEBUGGING: Log project state
-  console.log('=== PROJECTS DEBUGGING ===');
-  console.log('Current user:', currentUser);
-  console.log('Projects from SharedDataContext:', projects);
-  console.log('Projects length:', projects.length);
-  console.log('LocalStorage sharedProjects:', localStorage.getItem('sharedProjects'));
-  
-  // Show ALL projects to all team members - remove filtering
-  const userProjects = projects;
-  
-  console.log('Projects displayed to user:', userProjects);
-  console.log('=== END DEBUGGING ===');
-
-  const handleProjectCreated = () => {
-    console.log("Project created successfully");
-    toast({
-      title: "Success!",
-      description: "Project created successfully.",
-    });
-  };
-
-  const handleViewProject = (projectId: string) => {
-    navigate(`/projects/${projectId}`);
-  };
-
-  const handleEditProject = (projectId: string) => {
-    // TODO: Implement edit functionality
-    toast({
-      title: "Coming Soon",
-      description: "Edit functionality will be implemented soon.",
-    });
-  };
-
-  const handleDuplicateProject = async (projectId: string) => {
-    const originalProject = projects.find(p => p.id === projectId);
-    if (!originalProject) return;
-
-    const duplicateData = {
-      title: `${originalProject.title} (Copy)`,
-      description: originalProject.description,
-      priority: originalProject.priority,
-      deadline: new Date(originalProject.deadline.getTime() + 7 * 24 * 60 * 60 * 1000), // Add 7 days
-      status: 'planning' as const,
-      assignedMembers: originalProject.assignedMembers || []
-    };
-
-    await createProject(duplicateData);
-    toast({
-      title: "Project Duplicated",
-      description: "A copy of the project has been created.",
-    });
-  };
-
-  const handleDeleteProject = async () => {
-    if (!projectToDelete) return;
-    
-    setProjects(prev => prev.filter(p => p.id !== projectToDelete));
-    setProjectToDelete(null);
-    setIsDeleteDialogOpen(false);
-    
-    toast({
-      title: "Project Deleted",
-      description: "The project has been permanently deleted.",
-    });
-  };
-
-  const openDeleteDialog = (projectId: string) => {
-    setProjectToDelete(projectId);
-    setIsDeleteDialogOpen(true);
-  };
-
-  // Filter projects based on search and filters
-  const filteredProjects = userProjects.filter(project => {
-    try {
-      const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesStatus = statusFilter === "all" || project.status === statusFilter;
-      const matchesPriority = priorityFilter === "all" || project.priority === priorityFilter;
-      
-      return matchesSearch && matchesStatus && matchesPriority;
-    } catch (error) {
-      console.error('Error filtering project:', project, error);
-      return false;
-    }
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    deadline: '',
+    status: 'active' as 'active' | 'completed' | 'paused',
+    createdBy: '',
+    assignedMembers: [] as string[]
   });
+  
+  // Set current user email
+  const currentUser = {
+    email: user?.email || 'hna@scandac.com'
+  };
+  
+  console.log('ProjectsPage render - projects:', projects);
+  console.log('Projects length:', projects.length);
+  console.log('LocalStorage app_projects:', localStorage.getItem('app_projects'));
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "in-progress": return "bg-warning text-warning-foreground";
-      case "planning": return "bg-muted text-muted-foreground";
-      case "review": return "bg-primary text-primary-foreground";
-      case "completed": return "bg-success text-success-foreground";
-      default: return "bg-muted text-muted-foreground";
+  // Add test project for debugging
+  const addTestProject = () => {
+    const testProject = {
+      title: 'Test Project',
+      description: 'This is a test project to verify the system works',
+      priority: 'high' as 'high',
+      deadline: '2025-08-01',
+      status: 'active' as 'active',
+      createdBy: currentUser.email,
+      assignedMembers: []
+    };
+    
+    createProject(testProject);
+    console.log('Test project created');
+  };
+
+  const handleCreateProject = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Creating project with form data:', formData);
+    
+    if (!formData.title.trim()) {
+      toast({
+        title: "Error",
+        description: "Project title is required",
+        variant: "destructive"
+      });
+      return;
     }
+    
+    const projectData = {
+      ...formData,
+      createdBy: currentUser.email
+    };
+    
+    const newProject = createProject(projectData);
+    console.log('Project created:', newProject);
+    
+    // Reset form and close modal
+    setFormData({ 
+      title: '', 
+      description: '', 
+      priority: 'medium', 
+      deadline: '',
+      status: 'active',
+      createdBy: '',
+      assignedMembers: []
+    });
+    setShowCreateModal(false);
+    
+    toast({
+      title: "Project created",
+      description: "Your project has been created successfully.",
+    });
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "urgent": return "bg-red-500";
-      case "high": return "bg-orange-500";
-      case "medium": return "bg-yellow-500";
-      case "low": return "bg-green-500";
-      default: return "bg-gray-500";
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'default';
+      case 'low':
+        return 'secondary';
+      default:
+        return 'default';
     }
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
-    });
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Loading projects...</div>
+      </div>
+    );
+  }
+
   return (
-    <Layout>
-      <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Projects</h1>
-            <p className="text-muted-foreground mt-1">Manage and track all your projects in one place.</p>
-          </div>
-          <Button 
-            className="bg-gradient-primary hover:bg-primary-dark"
-            onClick={() => setIsAddDialogOpen(true)}
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Projects ({projects.length})</h1>
+          <p className="text-muted-foreground">Manage and track your team's projects</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={addTestProject}
+            variant="outline"
+            className="bg-red-50 text-red-600 border-red-200"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            New Project
+            Add Test Project (Debug)
           </Button>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="flex gap-4 items-center flex-wrap">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input 
-              placeholder="Search projects..."
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <Filter className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Status</span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="planning">Planning</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="review">Review</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-40">
-              <span className="hidden sm:inline">Priority</span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priority</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="urgent">Urgent</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-
-        {/* Projects Grid */}
-        <div className="space-y-4">
-          {filteredProjects.length === 0 ? (
-            <Card className="border-2 border-dashed border-border hover:border-primary transition-colors">
-              <CardContent className="p-8 text-center">
-                <FolderOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">
-                  {projects.length === 0 ? "No projects yet" : "No projects match your filters"}
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  {projects.length === 0 
-                    ? "Start by creating your first project to organize your tasks and collaborate with your team."
-                    : "Try adjusting your search or filter criteria."
-                  }
-                </p>
-                {projects.length === 0 && (
-                  <Button 
-                    className="bg-gradient-primary hover:bg-primary-dark"
-                    onClick={() => setIsAddDialogOpen(true)}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Project
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((project) => (
-              <Card 
-                key={project.id} 
-                className="bg-gradient-card shadow-custom-card hover:shadow-custom-md transition-all duration-200 cursor-pointer group"
-                onClick={() => handleViewProject(project.id)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color }} />
-                      <div className="flex items-center gap-1">
-                        <span className={`w-2 h-2 rounded-full ${getPriorityColor(project.priority)}`} />
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewProject(project.id); }}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Project
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditProject(project.id); }}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit Project
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicateProject(project.id); }}>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Duplicate Project
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={(e) => { e.stopPropagation(); openDeleteDialog(project.id); }}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete Project
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                    {project.title}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {project.description || "No description provided"}
-                  </p>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  {/* Progress */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{project.progress}%</span>
-                    </div>
-                    <Progress value={project.progress} className="h-2" />
-                  </div>
-
-                  {/* Status and Deadline */}
-                  <div className="flex items-center justify-between">
-                    <Badge className={getStatusColor(project.status)}>
-                      {project.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </Badge>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        {project.team_size}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {formatDate(project.deadline)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Team Avatars */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex -space-x-2">
-                      {[1, 2, 3].slice(0, project.team_size).map((_, index) => (
-                        <Avatar key={index} className="w-7 h-7 border-2 border-background">
-                          <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                            <User className="w-3 h-3" />
-                          </AvatarFallback>
-                        </Avatar>
-                      ))}
-                      {project.team_size > 3 && (
-                        <div className="w-7 h-7 bg-muted rounded-full border-2 border-background flex items-center justify-center">
-                          <span className="text-xs text-muted-foreground">+{project.team_size - 3}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          )}
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Create New Project
+          </Button>
         </div>
       </div>
 
-      {/* Project Create Dialog */}
-      <ProjectCreateDialog 
-        open={isAddDialogOpen} 
-        onOpenChange={setIsAddDialogOpen}
-        onProjectCreated={handleProjectCreated}
-      />
+      {projects.length === 0 ? (
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
+          <p className="text-gray-600 mb-4">Create your first project to get started</p>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Create Project
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {projects.map(project => (
+            <Card key={project.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg">{project.title}</CardTitle>
+                <div className="flex gap-2">
+                  <Badge variant={getPriorityColor(project.priority)}>
+                    {project.priority}
+                  </Badge>
+                  <Badge variant="outline">
+                    {project.status}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="mb-3">{project.description}</CardDescription>
+                <div className="space-y-1 text-sm">
+                  <p><span className="font-medium">Deadline:</span> {project.deadline || 'No deadline'}</p>
+                  <p><span className="font-medium">Created by:</span> {project.createdBy}</p>
+                </div>
+                <div className="flex justify-between items-center mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                  >
+                    View Details
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => deleteProject(project.id)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        title="Delete Project"
-        description="Are you sure you want to delete this project? This action cannot be undone."
-        onConfirm={handleDeleteProject}
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="destructive"
-      />
-    </Layout>
+      {/* Create Project Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Create New Project</h2>
+            <form onSubmit={handleCreateProject}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Title</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Priority</label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) => setFormData({...formData, priority: e.target.value as 'low' | 'medium' | 'high'})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2">Deadline</label>
+                <input
+                  type="date"
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex justify-end space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Create Project
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
