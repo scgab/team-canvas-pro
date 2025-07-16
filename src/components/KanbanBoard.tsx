@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { TaskFormDialog } from "./TaskFormDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { useSharedData } from "@/contexts/SharedDataContext";
 import {
   DndContext,
   DragEndEvent,
@@ -41,7 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface Task {
+interface KanbanTask {
   id: string;
   title: string;
   description?: string;
@@ -58,67 +59,71 @@ interface Task {
 interface Column {
   id: string;
   title: string;
-  tasks: Task[];
+  tasks: KanbanTask[];
   color: string;
 }
 
 export function KanbanBoard() {
   const { toast } = useToast();
+  const { tasks } = useSharedData();
   
-  // Load tasks from localStorage on mount and save when changed
-  const [columns, setColumns] = useState<Column[]>(() => {
-    try {
-      const savedTasks = localStorage.getItem('kanban_tasks');
-      if (savedTasks) {
-        return JSON.parse(savedTasks);
-      }
-    } catch (error) {
-      console.error('Error loading kanban tasks:', error);
+  // Convert shared tasks to kanban columns
+  const [columns, setColumns] = useState<Column[]>([
+    {
+      id: "todo",
+      title: "To Do",
+      color: "border-muted",
+      tasks: []
+    },
+    {
+      id: "inProgress",
+      title: "In Progress",
+      color: "border-warning",
+      tasks: []
+    },
+    {
+      id: "review",
+      title: "Review",
+      color: "border-primary",
+      tasks: []
+    },
+    {
+      id: "done",
+      title: "Done",
+      color: "border-success",
+      tasks: []
     }
-    
-    // Start with empty columns - remove all fake tasks
-    return [
-      {
-        id: "todo",
-        title: "To Do",
-        color: "border-muted",
-        tasks: []
-      },
-      {
-        id: "inprogress",
-        title: "In Progress",
-        color: "border-warning",
-        tasks: []
-      },
-      {
-        id: "review",
-        title: "Review",
-        color: "border-primary",
-        tasks: []
-      },
-      {
-        id: "done",
-        title: "Done",
-        color: "border-success",
-        tasks: []
-      }
-    ];
-  });
+  ]);
 
-  // Save to localStorage whenever columns change
+  // Update columns when tasks change
   useEffect(() => {
-    try {
-      localStorage.setItem('kanban_tasks', JSON.stringify(columns));
-    } catch (error) {
-      console.error('Error saving kanban tasks:', error);
-    }
-  }, [columns]);
+    const convertTaskToKanbanTask = (task: any): KanbanTask => ({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      assignee: task.assignee,
+      status: task.status,
+      tags: [],
+      comments: 0,
+      attachments: 0,
+    });
 
-  const [activeTask, setActiveTask] = useState<Task | null>(null);
+    setColumns(prevColumns => 
+      prevColumns.map(column => ({
+        ...column,
+        tasks: tasks
+          .filter(task => task.status === column.id)
+          .map(convertTaskToKanbanTask)
+      }))
+    );
+  }, [tasks]);
+
+  const [activeTask, setActiveTask] = useState<KanbanTask | null>(null);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<KanbanTask | null>(null);
+  const [deletingTask, setDeletingTask] = useState<KanbanTask | null>(null);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [selectedColumn, setSelectedColumn] = useState<string>('todo');
 
@@ -220,83 +225,76 @@ export function KanbanBoard() {
     setActiveTask(null);
   };
 
-  const handleCreateTask = (taskData: Omit<Task, 'id' | 'comments' | 'attachments'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: Date.now().toString(),
-      comments: 0,
-      attachments: 0,
-    };
-
-    setColumns(prevColumns => 
-      prevColumns.map(column => 
-        column.id === taskData.status 
-          ? { ...column, tasks: [...column.tasks, newTask] }
-          : column
-      )
-    );
+  const handleCreateTask = (taskData: Omit<KanbanTask, 'id' | 'comments' | 'attachments'>) => {
+    const { createTask } = useSharedData();
+    
+    // Create task in shared data
+    createTask({
+      title: taskData.title,
+      description: taskData.description || '',
+      priority: taskData.priority,
+      assignee: taskData.assignee || '',
+      status: taskData.status as 'todo' | 'inProgress' | 'review' | 'done'
+    });
 
     toast({
       title: "Task Created",
-      description: `"${newTask.title}" has been added to ${columns.find(c => c.id === taskData.status)?.title}`,
+      description: `"${taskData.title}" has been added to ${columns.find(c => c.id === taskData.status)?.title}`,
     });
   };
 
-  const handleEditTask = (taskData: Omit<Task, 'id' | 'comments' | 'attachments'>) => {
+  const handleEditTask = (taskData: Omit<KanbanTask, 'id' | 'comments' | 'attachments'>) => {
     if (!editingTask) return;
 
-    const updatedTask = {
-      ...editingTask,
-      ...taskData,
-    };
-
-    setColumns(prevColumns => 
-      prevColumns.map(column => ({
-        ...column,
-        tasks: column.tasks.map(task => 
-          task.id === editingTask.id ? updatedTask : task
-        )
-      }))
-    );
+    const { setTasks } = useSharedData();
+    
+    // Update task in shared data
+    setTasks(prev => prev.map(task => 
+      task.id === editingTask.id 
+        ? {
+            ...task,
+            title: taskData.title,
+            description: taskData.description || '',
+            priority: taskData.priority,
+            assignee: taskData.assignee || '',
+            status: taskData.status as 'todo' | 'inProgress' | 'review' | 'done'
+          }
+        : task
+    ));
 
     toast({
       title: "Task Updated",
-      description: `"${updatedTask.title}" has been updated`,
+      description: `"${taskData.title}" has been updated`,
     });
 
     setEditingTask(null);
   };
 
-  const handleDuplicateTask = (task: Task) => {
-    const duplicatedTask: Task = {
-      ...task,
-      id: Date.now().toString(),
+  const handleDuplicateTask = (task: KanbanTask) => {
+    const { createTask } = useSharedData();
+    
+    // Create duplicate task in shared data
+    createTask({
       title: `${task.title} (Copy)`,
-    };
-
-    setColumns(prevColumns => 
-      prevColumns.map(column => 
-        column.id === task.status 
-          ? { ...column, tasks: [...column.tasks, duplicatedTask] }
-          : column
-      )
-    );
+      description: task.description || '',
+      priority: task.priority,
+      assignee: task.assignee || '',
+      status: task.status as 'todo' | 'inProgress' | 'review' | 'done'
+    });
 
     toast({
       title: "Task Duplicated",
-      description: `"${duplicatedTask.title}" has been created`,
+      description: `"${task.title} (Copy)" has been created`,
     });
   };
 
   const handleDeleteTask = () => {
     if (!deletingTask) return;
 
-    setColumns(prevColumns => 
-      prevColumns.map(column => ({
-        ...column,
-        tasks: column.tasks.filter(task => task.id !== deletingTask.id)
-      }))
-    );
+    const { setTasks } = useSharedData();
+    
+    // Remove task from shared data
+    setTasks(prev => prev.filter(task => task.id !== deletingTask.id));
 
     toast({
       title: "Task Deleted",
@@ -307,6 +305,17 @@ export function KanbanBoard() {
     setConfirmDialogOpen(false);
   };
 
+  const openEditDialog = (task: KanbanTask) => {
+    setEditingTask(task);
+    setDialogMode('edit');
+    setTaskDialogOpen(true);
+  };
+
+  const openDeleteDialog = (task: KanbanTask) => {
+    setDeletingTask(task);
+    setConfirmDialogOpen(true);
+  };
+
   const openCreateDialog = (columnId: string) => {
     setSelectedColumn(columnId);
     setDialogMode('create');
@@ -314,18 +323,7 @@ export function KanbanBoard() {
     setTaskDialogOpen(true);
   };
 
-  const openEditDialog = (task: Task) => {
-    setEditingTask(task);
-    setDialogMode('edit');
-    setTaskDialogOpen(true);
-  };
-
-  const openDeleteDialog = (task: Task) => {
-    setDeletingTask(task);
-    setConfirmDialogOpen(true);
-  };
-
-  const SortableTask = ({ task }: { task: Task }) => {
+  const SortableTask = ({ task }: { task: KanbanTask }) => {
     const {
       attributes,
       listeners,

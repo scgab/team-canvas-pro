@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { useProjects } from "@/hooks/useProjects";
+import { useSharedData } from "@/contexts/SharedDataContext";
 import { useAuth } from "@/hooks/useAuth";
 import { getUsers } from "@/utils/userDatabase";
 import { useToast } from "@/hooks/use-toast";
@@ -33,7 +33,7 @@ import {
 const Projects = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { projects, loading, createProject, deleteProject, getProjectsForUser } = useProjects();
+  const { projects, createProject } = useSharedData();
   const { user } = useAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -87,7 +87,9 @@ const Projects = () => {
       title: `${originalProject.title} (Copy)`,
       description: originalProject.description,
       priority: originalProject.priority,
-      deadline: new Date(originalProject.deadline.getTime() + 7 * 24 * 60 * 60 * 1000) // Add 7 days
+      deadline: new Date(originalProject.deadline.getTime() + 7 * 24 * 60 * 60 * 1000), // Add 7 days
+      status: 'planning' as const,
+      assignedMembers: originalProject.assignedMembers || []
     };
 
     await createProject(duplicateData);
@@ -100,7 +102,8 @@ const Projects = () => {
   const handleDeleteProject = async () => {
     if (!projectToDelete) return;
     
-    await deleteProject(projectToDelete);
+    const { setProjects } = useSharedData();
+    setProjects(prev => prev.filter(p => p.id !== projectToDelete));
     setProjectToDelete(null);
     setIsDeleteDialogOpen(false);
     
@@ -214,16 +217,34 @@ const Projects = () => {
           </Select>
         </div>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Loading projects...</p>
-          </div>
-        )}
 
         {/* Projects Grid */}
-        {!loading && (
+        <div className="space-y-4">
+          {filteredProjects.length === 0 ? (
+            <Card className="border-2 border-dashed border-border hover:border-primary transition-colors">
+              <CardContent className="p-8 text-center">
+                <FolderOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">
+                  {projects.length === 0 ? "No projects yet" : "No projects match your filters"}
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {projects.length === 0 
+                    ? "Start by creating your first project to organize your tasks and collaborate with your team."
+                    : "Try adjusting your search or filter criteria."
+                  }
+                </p>
+                {projects.length === 0 && (
+                  <Button 
+                    className="bg-gradient-primary hover:bg-primary-dark"
+                    onClick={() => setIsAddDialogOpen(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Project
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => (
               <Card 
@@ -324,34 +345,8 @@ const Projects = () => {
               </Card>
             ))}
           </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && filteredProjects.length === 0 && (
-          <Card className="border-2 border-dashed border-border hover:border-primary transition-colors">
-            <CardContent className="p-8 text-center">
-              <FolderOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">
-                {userProjects.length === 0 ? "No projects yet" : "No projects match your filters"}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {userProjects.length === 0 
-                  ? "Start by creating your first project to organize your tasks and collaborate with your team."
-                  : "Try adjusting your search or filter criteria."
-                }
-              </p>
-              {userProjects.length === 0 && (
-                <Button 
-                  className="bg-gradient-primary hover:bg-primary-dark"
-                  onClick={() => setIsAddDialogOpen(true)}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Project
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Project Create Dialog */}
