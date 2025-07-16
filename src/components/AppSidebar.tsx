@@ -7,7 +7,8 @@ import {
   BarChart3, 
   Settings, 
   Plus,
-  FolderOpen
+  FolderOpen,
+  Brain
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -31,6 +32,7 @@ const mainNavItems = [
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Team", url: "/team", icon: Users },
   { title: "Gantt Chart", url: "/analytics", icon: BarChart3 },
+  { title: "AI Tools", url: "/ai-tools", icon: Brain },
 ];
 
 export function AppSidebar() {
