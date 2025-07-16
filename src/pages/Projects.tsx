@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,9 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useProjects } from "@/hooks/useProjects";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -18,19 +21,74 @@ import {
   FolderOpen,
   User,
   Search,
-  Filter
+  Filter,
+  Eye,
+  Edit,
+  Copy,
+  Trash2
 } from "lucide-react";
 
 const Projects = () => {
   const { toast } = useToast();
-  const { projects, loading } = useProjects();
+  const navigate = useNavigate();
+  const { projects, loading, createProject, deleteProject } = useProjects();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
 
   const handleProjectCreated = () => {
     console.log("Project created, projects list will refresh automatically");
+  };
+
+  const handleViewProject = (projectId: string) => {
+    navigate(`/projects/${projectId}`);
+  };
+
+  const handleEditProject = (projectId: string) => {
+    // TODO: Implement edit functionality
+    toast({
+      title: "Coming Soon",
+      description: "Edit functionality will be implemented soon.",
+    });
+  };
+
+  const handleDuplicateProject = async (projectId: string) => {
+    const originalProject = projects.find(p => p.id === projectId);
+    if (!originalProject) return;
+
+    const duplicateData = {
+      title: `${originalProject.title} (Copy)`,
+      description: originalProject.description,
+      priority: originalProject.priority,
+      deadline: new Date(originalProject.deadline.getTime() + 7 * 24 * 60 * 60 * 1000) // Add 7 days
+    };
+
+    await createProject(duplicateData);
+    toast({
+      title: "Project Duplicated",
+      description: "A copy of the project has been created.",
+    });
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+    
+    await deleteProject(projectToDelete);
+    setProjectToDelete(null);
+    setIsDeleteDialogOpen(false);
+    
+    toast({
+      title: "Project Deleted",
+      description: "The project has been permanently deleted.",
+    });
+  };
+
+  const openDeleteDialog = (projectId: string) => {
+    setProjectToDelete(projectId);
+    setIsDeleteDialogOpen(true);
   };
 
   // Filter projects based on search and filters
@@ -139,7 +197,11 @@ const Projects = () => {
         {!loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => (
-              <Card key={project.id} className="bg-gradient-card shadow-custom-card hover:shadow-custom-md transition-all duration-200 cursor-pointer group">
+              <Card 
+                key={project.id} 
+                className="bg-gradient-card shadow-custom-card hover:shadow-custom-md transition-all duration-200 cursor-pointer group"
+                onClick={() => handleViewProject(project.id)}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -148,9 +210,34 @@ const Projects = () => {
                         <span className={`w-2 h-2 rounded-full ${getPriorityColor(project.priority)}`} />
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewProject(project.id); }}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Project
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditProject(project.id); }}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Project
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicateProject(project.id); }}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Duplicate Project
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => { e.stopPropagation(); openDeleteDialog(project.id); }}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Project
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   <CardTitle className="text-lg group-hover:text-primary transition-colors">
                     {project.title}
@@ -243,6 +330,18 @@ const Projects = () => {
         open={isAddDialogOpen} 
         onOpenChange={setIsAddDialogOpen}
         onProjectCreated={handleProjectCreated}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Delete Project"
+        description="Are you sure you want to delete this project? This action cannot be undone."
+        onConfirm={handleDeleteProject}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
       />
     </Layout>
   );

@@ -49,3 +49,7 @@ export const getUserById = (id: string): User | null => {
 export const getUserByEmail = (email: string): User | null => {
   return PREDEFINED_USERS.find(user => user.email.toLowerCase() === email.toLowerCase()) || null;
 };
+
+export const getUsers = (): User[] => {
+  return PREDEFINED_USERS;
+};

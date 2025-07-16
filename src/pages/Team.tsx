@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { getUsers } from "@/utils/userDatabase";
 import { TeamMessaging } from "@/components/TeamMessaging";
 import { FileSharing } from "@/components/FileSharing";
 import { 
@@ -48,10 +50,29 @@ interface TeamMember {
 
 const Team = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
-    // Empty array - no generated data, user creates their own team
-  ]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  
+  // Load authenticated users as default team members
+  useEffect(() => {
+    const authenticatedUsers = getUsers();
+    const defaultTeamMembers: TeamMember[] = authenticatedUsers.map((authUser, index) => ({
+      id: authUser.id,
+      name: authUser.name,
+      email: authUser.email,
+      role: authUser.role === 'admin' ? 'Project Manager' : 'Team Member',
+      department: 'Management',
+      phone: index === 0 ? '+1 (555) 123-4567' : '+1 (555) 234-5678',
+      location: 'Remote',
+      joinDate: new Date('2024-01-01'),
+      status: 'active' as const,
+      skills: ['Project Management', 'Leadership', 'Strategy'],
+      projects: 5 + index
+    }));
+    
+    setTeamMembers(defaultTeamMembers);
+  }, []);
 
   const [newMember, setNewMember] = useState({
     name: "",
