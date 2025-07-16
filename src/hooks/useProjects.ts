@@ -14,6 +14,7 @@ export interface Project {
   progress: number;
   color: string;
   team_size: number;
+  shared_with: string[]; // Array of user IDs who have access to this project
 }
 
 export const useProjects = () => {
@@ -47,7 +48,7 @@ export const useProjects = () => {
     }
   }, [projects, loading]);
 
-  const createProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'user_id' | 'status'>) => {
+  const createProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'user_id' | 'status' | 'shared_with'>) => {
     const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
@@ -59,7 +60,8 @@ export const useProjects = () => {
       progress: 0,
       color: randomColor,
       team_size: 1,
-      status: 'planning'
+      status: 'planning',
+      shared_with: []
     };
 
     console.log('Creating project:', newProject);
@@ -94,6 +96,22 @@ export const useProjects = () => {
     return projects.filter(project => project.status === status);
   };
 
+  const shareProject = async (projectId: string, userIds: string[]) => {
+    setProjects(prev => 
+      prev.map(project => 
+        project.id === projectId 
+          ? { ...project, shared_with: [...new Set([...project.shared_with, ...userIds])], updated_at: new Date() }
+          : project
+      )
+    );
+  };
+
+  const getProjectsForUser = (userId: string) => {
+    return projects.filter(project => 
+      project.user_id === userId || project.shared_with.includes(userId)
+    );
+  };
+
   const getProjectStats = () => {
     return {
       total: projects.length,
@@ -115,6 +133,8 @@ export const useProjects = () => {
     deleteProject,
     getProjectById,
     getProjectsByStatus,
-    getProjectStats
+    getProjectStats,
+    shareProject,
+    getProjectsForUser
   };
 };

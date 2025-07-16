@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getUsers } from "@/utils/userDatabase";
 import { useUserColors } from "@/components/UserColorContext";
+import { useProjects } from "@/hooks/useProjects";
 import { Copy, Link, Mail, Users } from "lucide-react";
 
 interface Project {
@@ -16,6 +17,7 @@ interface Project {
   title: string;
   description: string;
   status: string;
+  shared_with: string[];
 }
 
 interface ProjectShareDialogProps {
@@ -27,6 +29,7 @@ interface ProjectShareDialogProps {
 export function ProjectShareDialog({ project, open, onOpenChange }: ProjectShareDialogProps) {
   const { toast } = useToast();
   const { getColorByEmail } = useUserColors();
+  const { shareProject } = useProjects();
   const [sharePermission, setSharePermission] = useState("view");
   const [shareLink, setShareLink] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -47,7 +50,7 @@ export function ProjectShareDialog({ project, open, onOpenChange }: ProjectShare
     });
   };
 
-  const shareWithMembers = () => {
+  const shareWithMembers = async () => {
     if (selectedMembers.length === 0) {
       toast({
         title: "No Members Selected",
@@ -57,11 +60,17 @@ export function ProjectShareDialog({ project, open, onOpenChange }: ProjectShare
       return;
     }
 
+    if (!project) return;
+
+    // Share project with selected members
+    await shareProject(project.id, selectedMembers);
+
     toast({
       title: "Project Shared",
       description: `Project shared with ${selectedMembers.length} team member(s) with ${sharePermission} access.`
     });
     
+    setSelectedMembers([]);
     onOpenChange(false);
   };
 

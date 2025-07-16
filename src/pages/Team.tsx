@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,12 +32,21 @@ const Team = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { getColorByEmail } = useUserColors();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState("messaging");
   const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   
   const currentUser = user?.user_metadata?.full_name || user?.email || 'Current User';
   const teamMembers = getUsers();
+
+  // Check if messaging tab should be active from URL params
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'messaging') {
+      setActiveTab('messaging');
+    }
+  }, [searchParams]);
 
   const handleScheduleMeeting = () => {
     toast({
@@ -139,7 +149,7 @@ const Team = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="messaging" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="messaging">
               <MessageSquare className="w-4 h-4 mr-2" />

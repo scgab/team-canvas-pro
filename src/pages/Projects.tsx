@@ -12,6 +12,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useProjects } from "@/hooks/useProjects";
+import { useAuth } from "@/hooks/useAuth";
+import { getUsers } from "@/utils/userDatabase";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Plus, 
@@ -31,13 +33,21 @@ import {
 const Projects = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { projects, loading, createProject, deleteProject } = useProjects();
+  const { projects, loading, createProject, deleteProject, getProjectsForUser } = useProjects();
+  const { user } = useAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  
+  // Get current user ID from user database
+  const users = getUsers();
+  const currentUser = users.find(u => u.email === user?.email);
+  
+  // Filter projects to show only those the user has access to
+  const userProjects = currentUser ? getProjectsForUser(currentUser.id) : projects;
 
   const handleProjectCreated = () => {
     console.log("Project created, projects list will refresh automatically");
@@ -92,7 +102,7 @@ const Projects = () => {
   };
 
   // Filter projects based on search and filters
-  const filteredProjects = projects.filter(project => {
+  const filteredProjects = userProjects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          project.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || project.status === statusFilter;
@@ -303,15 +313,15 @@ const Projects = () => {
             <CardContent className="p-8 text-center">
               <FolderOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">
-                {projects.length === 0 ? "No projects yet" : "No projects match your filters"}
+                {userProjects.length === 0 ? "No projects yet" : "No projects match your filters"}
               </h3>
               <p className="text-muted-foreground mb-4">
-                {projects.length === 0 
+                {userProjects.length === 0 
                   ? "Start by creating your first project to organize your tasks and collaborate with your team."
                   : "Try adjusting your search or filter criteria."
                 }
               </p>
-              {projects.length === 0 && (
+              {userProjects.length === 0 && (
                 <Button 
                   className="bg-gradient-primary hover:bg-primary-dark"
                   onClick={() => setIsAddDialogOpen(true)}
