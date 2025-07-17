@@ -17,9 +17,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { aiToolsService } from "@/services/database";
 
 interface AITool {
-  id: number;
+  id: string | number;
   name: string;
   link: string;
   note: string;
@@ -44,10 +45,8 @@ const defaultCategories = {
 
 const AITools = () => {
   const { toast } = useToast();
-  const [aiTools, setAiTools] = useState<Record<string, AITool[]>>(() => {
-    const saved = localStorage.getItem('aiTools');
-    return saved ? JSON.parse(saved) : defaultCategories;
-  });
+  const [aiTools, setAiTools] = useState<Record<string, AITool[]>>(defaultCategories);
+  const [loading, setLoading] = useState(true);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
@@ -71,13 +70,55 @@ const AITools = () => {
     isFavorite: false
   });
 
-  // Save to localStorage whenever aiTools changes
+  // Load data from Supabase
   useEffect(() => {
-    localStorage.setItem('aiTools', JSON.stringify(aiTools));
-  }, [aiTools]);
+    const loadAiTools = async () => {
+      try {
+        setLoading(true);
+        const data = await aiToolsService.getAll();
+        
+        // Group tools by category
+        const grouped = data.reduce((acc: any, tool: any) => {
+          if (!acc[tool.category]) {
+            acc[tool.category] = [];
+          }
+          acc[tool.category].push({
+            id: tool.id,
+            name: tool.name,
+            link: tool.link,
+            note: tool.note,
+            category: tool.category,
+            tags: tool.tags || [],
+            rating: tool.rating,
+            isFavorite: tool.is_favorite,
+            addedBy: tool.added_by,
+            addedAt: tool.created_at
+          });
+          return acc;
+        }, {
+          'Content Creation': [],
+          'Code & Development': [],
+          'Design & Media': [],
+          'Business & Productivity': [],
+          'Data & Analytics': [],
+          'Communication': [],
+          'Research & Learning': [],
+          'Other Tools': []
+        });
+
+        setAiTools(grouped);
+      } catch (error) {
+        console.error('Error loading AI tools:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAiTools();
+  }, []);
 
   // Add new AI tool
-  const addAiTool = (e: React.FormEvent) => {
+  const addAiTool = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newTool.name.trim() || !newTool.link.trim()) {
@@ -89,63 +130,107 @@ const AITools = () => {
       return;
     }
 
-    const tool: AITool = {
-      id: Date.now(),
-      name: newTool.name,
-      link: newTool.link,
-      note: newTool.note,
-      category: newTool.category,
-      addedBy: localStorage.getItem('currentUser') || 'unknown',
-      addedAt: new Date().toISOString(),
-      tags: newTool.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-      rating: newTool.rating,
-      isFavorite: newTool.isFavorite
-    };
+    try {
+      const currentUser = (window as any).currentUserEmail || 'unknown';
+      const newToolData = await aiToolsService.create({
+        name: newTool.name,
+        link: newTool.link,
+        note: newTool.note,
+        category: newTool.category,
+        tags: newTool.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+        rating: newTool.rating,
+        is_favorite: newTool.isFavorite,
+        added_by: currentUser
+      });
 
-    setAiTools(prev => ({
-      ...prev,
-      [newTool.category]: [...prev[newTool.category], tool]
-    }));
+      const tool: AITool = {
+        id: newToolData.id,
+        name: newToolData.name,
+        link: newToolData.link,
+        note: newToolData.note,
+        category: newToolData.category,
+        addedBy: newToolData.added_by,
+        addedAt: newToolData.created_at,
+        tags: newToolData.tags || [],
+        rating: newToolData.rating,
+        isFavorite: newToolData.is_favorite
+      };
 
-    // Reset form
-    setNewTool({
-      name: '',
-      link: '',
-      note: '',
-      category: 'Content Creation',
-      tags: '',
-      rating: 0,
-      isFavorite: false
-    });
-    setShowAddModal(false);
+      setAiTools(prev => ({
+        ...prev,
+        [newTool.category]: [...prev[newTool.category], tool]
+      }));
 
-    toast({
-      title: "Success",
-      description: "AI tool added successfully!"
-    });
+      // Reset form
+      setNewTool({
+        name: '',
+        link: '',
+        note: '',
+        category: 'Content Creation',
+        tags: '',
+        rating: 0,
+        isFavorite: false
+      });
+      setShowAddModal(false);
+
+      toast({
+        title: "Success",
+        description: "AI tool added successfully!"
+      });
+    } catch (error) {
+      console.error('Error adding AI tool:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add AI tool",
+        variant: "destructive"
+      });
+    }
   };
 
   // Delete AI tool
-  const deleteTool = (category: string, toolId: number) => {
-    setAiTools(prev => ({
-      ...prev,
-      [category]: prev[category].filter(tool => tool.id !== toolId)
-    }));
-    
-    toast({
-      title: "Tool deleted",
-      description: "AI tool has been removed"
-    });
+  const deleteTool = async (category: string, toolId: string | number) => {
+    try {
+      await aiToolsService.delete(toolId.toString());
+      setAiTools(prev => ({
+        ...prev,
+        [category]: prev[category].filter(tool => tool.id !== toolId)
+      }));
+      
+      toast({
+        title: "Tool deleted",
+        description: "AI tool has been removed"
+      });
+    } catch (error) {
+      console.error('Error deleting AI tool:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete AI tool",
+        variant: "destructive"
+      });
+    }
   };
 
   // Toggle favorite
-  const toggleFavorite = (category: string, toolId: number) => {
-    setAiTools(prev => ({
-      ...prev,
-      [category]: prev[category].map(tool =>
-        tool.id === toolId ? { ...tool, isFavorite: !tool.isFavorite } : tool
-      )
-    }));
+  const toggleFavorite = async (category: string, toolId: string | number) => {
+    try {
+      const tool = aiTools[category].find(t => t.id == toolId);
+      if (tool) {
+        await aiToolsService.update(toolId.toString(), { is_favorite: !tool.isFavorite });
+        setAiTools(prev => ({
+          ...prev,
+          [category]: prev[category].map(tool =>
+            tool.id == toolId ? { ...tool, isFavorite: !tool.isFavorite } : tool
+          )
+        }));
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update favorite status",
+        variant: "destructive"
+      });
+    }
   };
 
   // Drag and drop handlers
@@ -410,8 +495,15 @@ const AITools = () => {
             </Button>
           </div>
 
-          {/* AI Tools Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {/* Loading State */}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-lg text-muted-foreground">Loading AI tools...</div>
+            </div>
+          ) : (
+            <>
+              {/* AI Tools Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {Object.entries(filteredTools).map(([category, tools]) => (
               <div 
                 key={category} 

@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_tools: {
+        Row: {
+          added_by: string
+          category: string
+          created_at: string | null
+          id: string
+          is_favorite: boolean | null
+          link: string
+          name: string
+          note: string | null
+          rating: number | null
+          tags: string[] | null
+        }
+        Insert: {
+          added_by: string
+          category: string
+          created_at?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          link: string
+          name: string
+          note?: string | null
+          rating?: number | null
+          tags?: string[] | null
+        }
+        Update: {
+          added_by?: string
+          category?: string
+          created_at?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          link?: string
+          name?: string
+          note?: string | null
+          rating?: number | null
+          tags?: string[] | null
+        }
+        Relationships: []
+      }
+      calendar_events: {
+        Row: {
+          attendees: string[] | null
+          created_at: string | null
+          created_by: string
+          date: string
+          description: string | null
+          id: string
+          time: string | null
+          title: string
+          type: string | null
+        }
+        Insert: {
+          attendees?: string[] | null
+          created_at?: string | null
+          created_by: string
+          date: string
+          description?: string | null
+          id?: string
+          time?: string | null
+          title: string
+          type?: string | null
+        }
+        Update: {
+          attendees?: string[] | null
+          created_at?: string | null
+          created_by?: string
+          date?: string
+          description?: string | null
+          id?: string
+          time?: string | null
+          title?: string
+          type?: string | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          read: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          read?: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          read?: boolean | null
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -43,6 +145,104 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          assigned_members: string[] | null
+          color: string | null
+          created_at: string | null
+          created_by: string
+          deadline: string | null
+          description: string | null
+          id: string
+          priority: string | null
+          progress: number | null
+          shared_with: string[] | null
+          status: string | null
+          team_size: number | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_members?: string[] | null
+          color?: string | null
+          created_at?: string | null
+          created_by: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          priority?: string | null
+          progress?: number | null
+          shared_with?: string[] | null
+          status?: string | null
+          team_size?: number | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_members?: string[] | null
+          color?: string | null
+          created_at?: string | null
+          created_by?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          priority?: string | null
+          progress?: number | null
+          shared_with?: string[] | null
+          status?: string | null
+          team_size?: number | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          assignee: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          priority: string | null
+          project_id: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assignee?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          priority?: string | null
+          project_id?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assignee?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          priority?: string | null
+          project_id?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
