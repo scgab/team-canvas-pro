@@ -504,155 +504,157 @@ const AITools = () => {
             <>
               {/* AI Tools Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {Object.entries(filteredTools).map(([category, tools]) => (
-              <div 
-                key={category} 
-                className={`transition-all ${
-                  dragOverCategory === category ? 'ring-2 ring-primary ring-offset-2' : ''
-                }`}
-                onDragOver={(e) => handleDragOver(e, category)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, category)}
-              >
-                <Card className="h-fit">
-                  <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-t-lg">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <CardTitle className="text-lg">{category}</CardTitle>
-                        <p className="text-sm opacity-90">{tools.length} tools</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => editCategory(category)}
-                          className="text-primary-foreground hover:bg-primary-foreground/20 p-1"
-                          title="Edit category name"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteCategory(category)}
-                          className="text-primary-foreground hover:bg-destructive p-1"
-                          title="Delete category"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="p-4 space-y-3 min-h-[200px]">
-                    {tools.length === 0 ? (
-                      <div className="text-muted-foreground text-sm text-center py-8 border-2 border-dashed border-muted rounded-lg">
-                        <p>No tools in this category</p>
-                        <p className="text-xs mt-1">Drag tools here or add new ones</p>
-                      </div>
-                    ) : (
-                      tools.map(tool => (
-                        <div 
-                          key={tool.id} 
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, tool, category)}
-                          className="border rounded-lg p-3 hover:shadow-md transition-shadow bg-card cursor-move hover:bg-muted/50"
-                        >
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-semibold text-sm text-card-foreground flex items-center gap-2">
-                              <GripVertical className="w-3 h-3 text-muted-foreground" />
-                              {tool.name}
-                            </h3>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleFavorite(category, tool.id)}
-                                className={`p-1 h-auto ${tool.isFavorite ? 'text-yellow-500' : 'text-muted-foreground'}`}
-                              >
-                                <Star className="w-3 h-3" fill={tool.isFavorite ? 'currentColor' : 'none'} />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => editTool(tool, category)}
-                                className="p-1 h-auto text-primary hover:text-primary"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteTool(category, tool.id)}
-                                className="p-1 h-auto text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
+                {Object.entries(filteredTools).map(([category, tools]) => (
+                  <div 
+                    key={category} 
+                    className={`transition-all ${
+                      dragOverCategory === category ? 'ring-2 ring-primary ring-offset-2' : ''
+                    }`}
+                    onDragOver={(e) => handleDragOver(e, category)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, category)}
+                  >
+                    <Card className="h-fit">
+                      <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-t-lg">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <CardTitle className="text-lg">{category}</CardTitle>
+                            <p className="text-sm opacity-90">{tools.length} tools</p>
                           </div>
-                          
-                          <a
-                            href={tool.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:text-primary/80 text-xs flex items-center gap-1 mb-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            Visit Tool
-                          </a>
-                          
-                          {tool.note && (
-                            <p className="text-muted-foreground text-xs mb-2">{tool.note}</p>
-                          )}
-                          
-                          {tool.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mb-2">
-                              {tool.tags.map(tag => (
-                                <Badge key={tag} variant="secondary" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                          
-                          <div className="flex justify-between items-center text-xs text-muted-foreground">
-                            <span>Added by {tool.addedBy}</span>
-                            {tool.rating > 0 && (
-                              <div className="flex items-center">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`w-3 h-3 ${i < tool.rating ? 'text-yellow-400 fill-current' : 'text-muted-foreground'}`}
-                                  />
-                                ))}
-                              </div>
-                            )}
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => editCategory(category)}
+                              className="text-primary-foreground hover:bg-primary-foreground/20 p-1"
+                              title="Edit category name"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteCategory(category)}
+                              className="text-primary-foreground hover:bg-destructive p-1"
+                              title="Delete category"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
+                      </CardHeader>
+                      
+                      <CardContent className="p-4 space-y-3 min-h-[200px]">
+                        {tools.length === 0 ? (
+                          <div className="text-muted-foreground text-sm text-center py-8 border-2 border-dashed border-muted rounded-lg">
+                            <p>No tools in this category</p>
+                            <p className="text-xs mt-1">Drag tools here or add new ones</p>
+                          </div>
+                        ) : (
+                          tools.map(tool => (
+                            <div 
+                              key={tool.id} 
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, tool, category)}
+                              className="border rounded-lg p-3 hover:shadow-md transition-shadow bg-card cursor-move hover:bg-muted/50"
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <h3 className="font-semibold text-sm text-card-foreground flex items-center gap-2">
+                                  <GripVertical className="w-3 h-3 text-muted-foreground" />
+                                  {tool.name}
+                                </h3>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleFavorite(category, tool.id)}
+                                    className={`p-1 h-auto ${tool.isFavorite ? 'text-yellow-500' : 'text-muted-foreground'}`}
+                                  >
+                                    <Star className="w-3 h-3" fill={tool.isFavorite ? 'currentColor' : 'none'} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => editTool(tool, category)}
+                                    className="p-1 h-auto text-primary hover:text-primary"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deleteTool(category, tool.id)}
+                                    className="p-1 h-auto text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              <a
+                                href={tool.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:text-primary/80 text-xs flex items-center gap-1 mb-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Visit Tool
+                              </a>
+                              
+                              {tool.note && (
+                                <p className="text-muted-foreground text-xs mb-2">{tool.note}</p>
+                              )}
+                              
+                              {tool.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                  {tool.tags.map(tag => (
+                                    <Badge key={tag} variant="secondary" className="text-xs">
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                              
+                              <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                <span>Added by {tool.addedBy}</span>
+                                {tool.rating > 0 && (
+                                  <div className="flex items-center">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`w-3 h-3 ${i < tool.rating ? 'text-yellow-400 fill-current' : 'text-muted-foreground'}`}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Empty state for no filtered results */}
-          {Object.keys(filteredTools).length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No tools match your current filters.</p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm('');
-                  setShowFavoritesOnly(false);
-                }}
-                className="mt-4"
-              >
-                Clear Filters
-              </Button>
-            </div>
+              {/* Empty state for no filtered results */}
+              {Object.keys(filteredTools).length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No tools match your current filters.</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setShowFavoritesOnly(false);
+                    }}
+                    className="mt-4"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
