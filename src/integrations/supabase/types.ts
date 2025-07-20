@@ -55,34 +55,40 @@ export type Database = {
       }
       calendar_events: {
         Row: {
+          assigned_members: string[] | null
           attendees: string[] | null
           created_at: string | null
           created_by: string
           date: string
           description: string | null
           id: string
+          location: string | null
           time: string | null
           title: string
           type: string | null
         }
         Insert: {
+          assigned_members?: string[] | null
           attendees?: string[] | null
           created_at?: string | null
           created_by: string
           date: string
           description?: string | null
           id?: string
+          location?: string | null
           time?: string | null
           title: string
           type?: string | null
         }
         Update: {
+          assigned_members?: string[] | null
           attendees?: string[] | null
           created_at?: string | null
           created_by?: string
           date?: string
           description?: string | null
           id?: string
+          location?: string | null
           time?: string | null
           title?: string
           type?: string | null
@@ -203,9 +209,12 @@ export type Database = {
           created_at: string | null
           created_by: string
           description: string | null
+          due_date: string | null
+          duration: number | null
           id: string
           priority: string | null
           project_id: string | null
+          start_date: string | null
           status: string | null
           title: string
           updated_at: string | null
@@ -215,9 +224,12 @@ export type Database = {
           created_at?: string | null
           created_by: string
           description?: string | null
+          due_date?: string | null
+          duration?: number | null
           id?: string
           priority?: string | null
           project_id?: string | null
+          start_date?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
@@ -227,9 +239,12 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           description?: string | null
+          due_date?: string | null
+          duration?: number | null
           id?: string
           priority?: string | null
           project_id?: string | null
+          start_date?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null

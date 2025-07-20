@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Board from "./pages/Board";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
+import { ProjectTaskBoard } from "./components/ProjectTaskBoard";
 import Calendar from "./pages/Calendar";
 import Team from "./pages/Team";
 import Analytics from "./pages/Analytics";
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/" element={<AuthGuard><Index /></AuthGuard>} />
           <Route path="/projects" element={<AuthGuard><Projects /></AuthGuard>} />
           <Route path="/projects/:projectId" element={<AuthGuard><ProjectDetail /></AuthGuard>} />
+          <Route path="/projects/:projectId/tasks" element={<AuthGuard><ProjectTaskBoard /></AuthGuard>} />
           <Route path="/board" element={<AuthGuard><Board /></AuthGuard>} />
           <Route path="/calendar" element={<AuthGuard><Calendar /></AuthGuard>} />
           <Route path="/team" element={<AuthGuard><Team /></AuthGuard>} />

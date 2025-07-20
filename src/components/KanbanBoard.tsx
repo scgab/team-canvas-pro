@@ -63,7 +63,7 @@ interface Column {
   color: string;
 }
 
-export function KanbanBoard() {
+export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: string; onTaskStatusUpdate?: (taskId: string, newStatus: string) => Promise<void> }) {
   const { toast } = useToast();
   const { tasks } = useSharedData();
   
@@ -109,15 +109,19 @@ export function KanbanBoard() {
       attachments: 0,
     });
 
+    const filteredTasks = projectId 
+      ? tasks.filter(task => task.project_id === projectId)
+      : tasks;
+
     setColumns(prevColumns => 
       prevColumns.map(column => ({
         ...column,
-        tasks: tasks
+        tasks: filteredTasks
           .filter(task => task.status === column.id)
           .map(convertTaskToKanbanTask)
       }))
     );
-  }, [tasks]);
+  }, [tasks, projectId]);
 
   const [activeTask, setActiveTask] = useState<KanbanTask | null>(null);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);

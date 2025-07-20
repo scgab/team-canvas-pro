@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { projectsService, tasksService, messagesService, calendarService } from '@/services/database';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Project {
   id: string;
@@ -26,6 +27,10 @@ export interface Task {
   status: 'todo' | 'inProgress' | 'review' | 'done';
   createdBy: string;
   createdAt: string;
+  project_id?: string;
+  start_date?: Date | null;
+  due_date?: Date | null;
+  duration?: number;
 }
 
 export interface Message {
@@ -57,8 +62,9 @@ interface SharedDataContextType {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   events: CalendarEvent[];
   setEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>;
+  loading: boolean;
   createProject: (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'createdBy'>) => Promise<void>;
-  createTask: (taskData: Omit<Task, 'id' | 'createdBy' | 'createdAt'>) => Promise<void>;
+  createTask: (taskData: Omit<Task, 'id' | 'createdBy' | 'createdAt'>) => Promise<Task>;
   sendMessage: (senderId: string, receiverId: string, content: string) => Promise<void>;
   createEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<void>;
 }
@@ -188,7 +194,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const createTask = async (taskData: Omit<Task, 'id' | 'createdBy' | 'createdAt'>) => {
+  const createTask = async (taskData: Omit<Task, 'id' | 'createdBy' | 'createdAt'>): Promise<Task> => {
     try {
       const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
 
@@ -198,6 +204,10 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         priority: taskData.priority,
         status: taskData.status,
         assignee: taskData.assignee,
+        project_id: taskData.project_id,
+        start_date: taskData.start_date?.toISOString().split('T')[0],
+        due_date: taskData.due_date?.toISOString().split('T')[0],
+        duration: taskData.duration,
         created_by: currentUserEmail
       });
 
@@ -209,10 +219,15 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         assignee: newTask.assignee,
         status: newTask.status as 'todo' | 'inProgress' | 'review' | 'done',
         createdBy: newTask.created_by,
-        createdAt: newTask.created_at
+        createdAt: newTask.created_at,
+        project_id: newTask.project_id,
+        start_date: newTask.start_date ? new Date(newTask.start_date) : null,
+        due_date: newTask.due_date ? new Date(newTask.due_date) : null,
+        duration: newTask.duration
       };
 
       setTasks(prev => [...prev, transformedTask]);
+      return transformedTask;
     } catch (error) {
       console.error('Error creating task:', error);
       throw error;
@@ -284,6 +299,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setMessages,
       events,
       setEvents,
+      loading,
       createProject,
       createTask,
       sendMessage,

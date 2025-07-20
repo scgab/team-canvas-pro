@@ -103,6 +103,9 @@ export const tasksService = {
         status: taskData.status || 'todo',
         assignee: taskData.assignee,
         project_id: taskData.projectId || taskData.project_id,
+        start_date: taskData.start_date,
+        due_date: taskData.due_date,
+        duration: taskData.duration || 1,
         created_by: taskData.createdBy || taskData.created_by
       }])
       .select()
