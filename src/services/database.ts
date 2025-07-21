@@ -338,3 +338,70 @@ export const calendarService = {
     }
   }
 };
+
+// AI Tool Categories service
+export const aiToolCategoriesService = {
+  // Get all categories
+  async getAll() {
+    const { data, error } = await supabase
+      .from('ai_tool_categories')
+      .select('*')
+      .order('name', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching AI tool categories:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  // Create new category
+  async create(categoryData: any) {
+    const { data, error } = await supabase
+      .from('ai_tool_categories')
+      .insert([{
+        name: categoryData.name,
+        created_by: categoryData.created_by
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating AI tool category:', error);
+      throw error;
+    }
+    return data;
+  },
+
+  // Update category
+  async update(id: string, updates: any) {
+    const { data, error } = await supabase
+      .from('ai_tool_categories')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating AI tool category:', error);
+      throw error;
+    }
+    return data;
+  },
+
+  // Delete category
+  async delete(id: string) {
+    const { error } = await supabase
+      .from('ai_tool_categories')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting AI tool category:', error);
+      throw error;
+    }
+  }
+};

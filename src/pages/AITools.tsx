@@ -17,7 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { aiToolsService } from "@/services/database";
+import { aiToolsService, aiToolCategoriesService } from "@/services/database";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AITool {
   id: string | number;
@@ -32,20 +33,18 @@ interface AITool {
   isFavorite: boolean;
 }
 
-const defaultCategories = {
-  'Content Creation': [],
-  'Code & Development': [],
-  'Design & Media': [],
-  'Business & Productivity': [],
-  'Data & Analytics': [],
-  'Communication': [],
-  'Research & Learning': [],
-  'Other Tools': []
-};
+interface Category {
+  id: string;
+  name: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
 
 const AITools = () => {
   const { toast } = useToast();
-  const [aiTools, setAiTools] = useState<Record<string, AITool[]>>(defaultCategories);
+  const [aiTools, setAiTools] = useState<Record<string, AITool[]>>({});
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -56,7 +55,7 @@ const AITools = () => {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [draggedTool, setDraggedTool] = useState<{tool: AITool, sourceCategory: string} | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingTool, setEditingTool] = useState<AITool | null>(null);
   const [editingToolCategory, setEditingToolCategory] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -64,7 +63,7 @@ const AITools = () => {
     name: '',
     link: '',
     note: '',
-    category: 'Content Creation',
+    category: '',
     tags: '',
     rating: 0,
     isFavorite: false
@@ -72,13 +71,20 @@ const AITools = () => {
 
   // Load data from Supabase
   useEffect(() => {
-    const loadAiTools = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
-        const data = await aiToolsService.getAll();
+        
+        // Load categories and tools in parallel
+        const [categoriesData, toolsData] = await Promise.all([
+          aiToolCategoriesService.getAll(),
+          aiToolsService.getAll()
+        ]);
+        
+        setCategories(categoriesData);
         
         // Group tools by category
-        const grouped = data.reduce((acc: any, tool: any) => {
+        const grouped = toolsData.reduce((acc: any, tool: any) => {
           if (!acc[tool.category]) {
             acc[tool.category] = [];
           }
@@ -95,26 +101,168 @@ const AITools = () => {
             addedAt: tool.created_at
           });
           return acc;
-        }, {
-          'Content Creation': [],
-          'Code & Development': [],
-          'Design & Media': [],
-          'Business & Productivity': [],
-          'Data & Analytics': [],
-          'Communication': [],
-          'Research & Learning': [],
-          'Other Tools': []
+        }, {});
+
+        // Ensure all categories exist in grouped data
+        categoriesData.forEach(category => {
+          if (!grouped[category.name]) {
+            grouped[category.name] = [];
+          }
         });
 
         setAiTools(grouped);
+        
+        // Set default category for new tools
+        if (categoriesData.length > 0 && !newTool.category) {
+          setNewTool(prev => ({ ...prev, category: categoriesData[0].name }));
+        }
       } catch (error) {
-        console.error('Error loading AI tools:', error);
+        console.error('Error loading data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load AI tools data",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    loadAiTools();
+    loadData();
+  }, []);
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    const toolsChannel = supabase
+      .channel('ai_tools_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'ai_tools' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newTool = payload.new as any;
+            const tool: AITool = {
+              id: newTool.id,
+              name: newTool.name,
+              link: newTool.link,
+              note: newTool.note,
+              category: newTool.category,
+              addedBy: newTool.added_by,
+              addedAt: newTool.created_at,
+              tags: newTool.tags || [],
+              rating: newTool.rating,
+              isFavorite: newTool.is_favorite
+            };
+            
+            setAiTools(prev => ({
+              ...prev,
+              [newTool.category]: [...(prev[newTool.category] || []), tool]
+            }));
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedTool = payload.new as any;
+            setAiTools(prev => {
+              const newTools = { ...prev };
+              Object.keys(newTools).forEach(category => {
+                newTools[category] = newTools[category].map(tool =>
+                  tool.id === updatedTool.id ? {
+                    ...tool,
+                    name: updatedTool.name,
+                    link: updatedTool.link,
+                    note: updatedTool.note,
+                    category: updatedTool.category,
+                    tags: updatedTool.tags || [],
+                    rating: updatedTool.rating,
+                    isFavorite: updatedTool.is_favorite
+                  } : tool
+                ).filter(tool => tool.category === category);
+              });
+              
+              // Move tool to new category if changed
+              if (updatedTool.category) {
+                const tool = Object.values(newTools).flat().find(t => t.id === updatedTool.id);
+                if (tool && tool.category !== updatedTool.category) {
+                  // Remove from old category
+                  Object.keys(newTools).forEach(category => {
+                    newTools[category] = newTools[category].filter(t => t.id !== updatedTool.id);
+                  });
+                  
+                  // Add to new category
+                  if (!newTools[updatedTool.category]) {
+                    newTools[updatedTool.category] = [];
+                  }
+                  newTools[updatedTool.category].push({
+                    ...tool,
+                    category: updatedTool.category
+                  });
+                }
+              }
+              
+              return newTools;
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const deletedTool = payload.old as any;
+            setAiTools(prev => {
+              const newTools = { ...prev };
+              Object.keys(newTools).forEach(category => {
+                newTools[category] = newTools[category].filter(tool => tool.id !== deletedTool.id);
+              });
+              return newTools;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    const categoriesChannel = supabase
+      .channel('ai_tool_categories_changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'ai_tool_categories' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newCategory = payload.new as Category;
+            setCategories(prev => [...prev, newCategory]);
+            setAiTools(prev => ({ ...prev, [newCategory.name]: [] }));
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedCategory = payload.new as Category;
+            const oldCategory = payload.old as Category;
+            
+            setCategories(prev => prev.map(cat => 
+              cat.id === updatedCategory.id ? updatedCategory : cat
+            ));
+            
+            // Update category name in tools if changed
+            if (oldCategory.name !== updatedCategory.name) {
+              setAiTools(prev => {
+                const newTools = { ...prev };
+                
+                // Move tools to new category name
+                if (newTools[oldCategory.name]) {
+                  newTools[updatedCategory.name] = newTools[oldCategory.name].map(tool => ({
+                    ...tool,
+                    category: updatedCategory.name
+                  }));
+                  delete newTools[oldCategory.name];
+                }
+                
+                return newTools;
+              });
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const deletedCategory = payload.old as Category;
+            setCategories(prev => prev.filter(cat => cat.id !== deletedCategory.id));
+            setAiTools(prev => {
+              const newTools = { ...prev };
+              delete newTools[deletedCategory.name];
+              return newTools;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(toolsChannel);
+      supabase.removeChannel(categoriesChannel);
+    };
   }, []);
 
   // Add new AI tool
@@ -132,7 +280,7 @@ const AITools = () => {
 
     try {
       const currentUser = (window as any).currentUserEmail || 'unknown';
-      const newToolData = await aiToolsService.create({
+      await aiToolsService.create({
         name: newTool.name,
         link: newTool.link,
         note: newTool.note,
@@ -143,30 +291,12 @@ const AITools = () => {
         added_by: currentUser
       });
 
-      const tool: AITool = {
-        id: newToolData.id,
-        name: newToolData.name,
-        link: newToolData.link,
-        note: newToolData.note,
-        category: newToolData.category,
-        addedBy: newToolData.added_by,
-        addedAt: newToolData.created_at,
-        tags: newToolData.tags || [],
-        rating: newToolData.rating,
-        isFavorite: newToolData.is_favorite
-      };
-
-      setAiTools(prev => ({
-        ...prev,
-        [newTool.category]: [...prev[newTool.category], tool]
-      }));
-
       // Reset form
       setNewTool({
         name: '',
         link: '',
         note: '',
-        category: 'Content Creation',
+        category: categories.length > 0 ? categories[0].name : '',
         tags: '',
         rating: 0,
         isFavorite: false
@@ -191,10 +321,6 @@ const AITools = () => {
   const deleteTool = async (category: string, toolId: string | number) => {
     try {
       await aiToolsService.delete(toolId.toString());
-      setAiTools(prev => ({
-        ...prev,
-        [category]: prev[category].filter(tool => tool.id !== toolId)
-      }));
       
       toast({
         title: "Tool deleted",
@@ -216,12 +342,6 @@ const AITools = () => {
       const tool = aiTools[category].find(t => t.id == toolId);
       if (tool) {
         await aiToolsService.update(toolId.toString(), { is_favorite: !tool.isFavorite });
-        setAiTools(prev => ({
-          ...prev,
-          [category]: prev[category].map(tool =>
-            tool.id == toolId ? { ...tool, isFavorite: !tool.isFavorite } : tool
-          )
-        }));
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
@@ -249,7 +369,7 @@ const AITools = () => {
     setDragOverCategory(null);
   };
 
-  const handleDrop = (e: React.DragEvent, targetCategory: string) => {
+  const handleDrop = async (e: React.DragEvent, targetCategory: string) => {
     e.preventDefault();
     setDragOverCategory(null);
     
@@ -258,31 +378,27 @@ const AITools = () => {
       return;
     }
     
-    // Move tool from source category to target category
-    setAiTools(prev => {
-      const newTools = { ...prev };
+    try {
+      // Update tool category in database
+      await aiToolsService.update(draggedTool.tool.id.toString(), { category: targetCategory });
       
-      // Remove from source category
-      newTools[draggedTool.sourceCategory] = newTools[draggedTool.sourceCategory].filter(
-        tool => tool.id !== draggedTool.tool.id
-      );
-      
-      // Add to target category with updated category
-      const updatedTool = { ...draggedTool.tool, category: targetCategory };
-      newTools[targetCategory] = [...newTools[targetCategory], updatedTool];
-      
-      return newTools;
-    });
-    
-    setDraggedTool(null);
-    toast({
-      title: "Tool moved",
-      description: `Moved "${draggedTool.tool.name}" to ${targetCategory}`
-    });
+      setDraggedTool(null);
+      toast({
+        title: "Tool moved",
+        description: `Moved "${draggedTool.tool.name}" to ${targetCategory}`
+      });
+    } catch (error) {
+      console.error('Error moving tool:', error);
+      toast({
+        title: "Error",
+        description: "Failed to move tool",
+        variant: "destructive"
+      });
+    }
   };
 
   // Category management functions
-  const addCategory = (e: React.FormEvent) => {
+  const addCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newCategoryName.trim()) {
@@ -294,7 +410,7 @@ const AITools = () => {
       return;
     }
     
-    if (aiTools[newCategoryName]) {
+    if (categories.some(cat => cat.name === newCategoryName)) {
       toast({
         title: "Error",
         description: "Category already exists",
@@ -303,29 +419,39 @@ const AITools = () => {
       return;
     }
     
-    setAiTools(prev => ({
-      ...prev,
-      [newCategoryName]: []
-    }));
-    
-    setNewCategoryName('');
-    setShowAddCategoryModal(false);
-    toast({
-      title: "Success",
-      description: "Category added successfully!"
-    });
+    try {
+      const currentUser = (window as any).currentUserEmail || 'unknown';
+      await aiToolCategoriesService.create({
+        name: newCategoryName,
+        created_by: currentUser
+      });
+      
+      setNewCategoryName('');
+      setShowAddCategoryModal(false);
+      toast({
+        title: "Success",
+        description: "Category added successfully!"
+      });
+    } catch (error) {
+      console.error('Error adding category:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add category",
+        variant: "destructive"
+      });
+    }
   };
 
-  const editCategory = (oldCategoryName: string) => {
-    setEditingCategory(oldCategoryName);
-    setNewCategoryName(oldCategoryName);
+  const editCategory = (category: Category) => {
+    setEditingCategory(category);
+    setNewCategoryName(category.name);
     setShowEditCategoryModal(true);
   };
 
-  const updateCategoryName = (e: React.FormEvent) => {
+  const updateCategoryName = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newCategoryName.trim()) {
+    if (!newCategoryName.trim() || !editingCategory) {
       toast({
         title: "Error",
         description: "Category name is required",
@@ -334,12 +460,12 @@ const AITools = () => {
       return;
     }
     
-    if (newCategoryName === editingCategory) {
+    if (newCategoryName === editingCategory.name) {
       setShowEditCategoryModal(false);
       return;
     }
     
-    if (aiTools[newCategoryName]) {
+    if (categories.some(cat => cat.name === newCategoryName && cat.id !== editingCategory.id)) {
       toast({
         title: "Error",
         description: "Category already exists",
@@ -348,47 +474,71 @@ const AITools = () => {
       return;
     }
     
-    setAiTools(prev => {
-      const newTools = { ...prev };
+    try {
+      await aiToolCategoriesService.update(editingCategory.id, { name: newCategoryName });
       
-      // Create new category with tools from old category
-      newTools[newCategoryName] = newTools[editingCategory!].map(tool => ({
-        ...tool,
-        category: newCategoryName
-      }));
+      // Update tools to use new category name
+      const toolsToUpdate = aiTools[editingCategory.name] || [];
+      for (const tool of toolsToUpdate) {
+        await aiToolsService.update(tool.id.toString(), { category: newCategoryName });
+      }
       
-      // Delete old category
-      delete newTools[editingCategory!];
-      
-      return newTools;
-    });
-    
-    setEditingCategory(null);
-    setNewCategoryName('');
-    setShowEditCategoryModal(false);
-    toast({
-      title: "Success",
-      description: "Category updated successfully!"
-    });
+      setEditingCategory(null);
+      setNewCategoryName('');
+      setShowEditCategoryModal(false);
+      toast({
+        title: "Success",
+        description: "Category updated successfully!"
+      });
+    } catch (error) {
+      console.error('Error updating category:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update category",
+        variant: "destructive"
+      });
+    }
   };
 
-  const deleteCategory = (categoryName: string) => {
-    if (aiTools[categoryName].length > 0) {
-      if (!confirm(`Are you sure you want to delete "${categoryName}"? This will also delete all tools in this category.`)) {
+  const deleteCategory = async (category: Category) => {
+    const toolsInCategory = aiTools[category.name] || [];
+    
+    if (toolsInCategory.length > 0) {
+      if (!confirm(`Are you sure you want to delete "${category.name}"? This will also delete all tools in this category.`)) {
+        return;
+      }
+      
+      // Delete all tools in category first
+      try {
+        for (const tool of toolsInCategory) {
+          await aiToolsService.delete(tool.id.toString());
+        }
+      } catch (error) {
+        console.error('Error deleting tools:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete tools in category",
+          variant: "destructive"
+        });
         return;
       }
     }
     
-    setAiTools(prev => {
-      const newTools = { ...prev };
-      delete newTools[categoryName];
-      return newTools;
-    });
-    
-    toast({
-      title: "Category deleted",
-      description: `"${categoryName}" has been removed`
-    });
+    try {
+      await aiToolCategoriesService.delete(category.id);
+      
+      toast({
+        title: "Category deleted",
+        description: `"${category.name}" has been removed`
+      });
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete category",
+        variant: "destructive"
+      });
+    }
   };
 
   // Tool editing functions
@@ -398,7 +548,7 @@ const AITools = () => {
     setShowEditToolModal(true);
   };
 
-  const updateTool = (e: React.FormEvent) => {
+  const updateTool = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!editingTool?.name.trim() || !editingTool?.link.trim()) {
@@ -410,20 +560,32 @@ const AITools = () => {
       return;
     }
     
-    setAiTools(prev => ({
-      ...prev,
-      [editingToolCategory!]: prev[editingToolCategory!].map(tool =>
-        tool.id === editingTool!.id ? editingTool! : tool
-      )
-    }));
-    
-    setShowEditToolModal(false);
-    setEditingTool(null);
-    setEditingToolCategory(null);
-    toast({
-      title: "Success",
-      description: "Tool updated successfully!"
-    });
+    try {
+      await aiToolsService.update(editingTool.id.toString(), {
+        name: editingTool.name,
+        link: editingTool.link,
+        note: editingTool.note,
+        category: editingTool.category,
+        tags: editingTool.tags,
+        rating: editingTool.rating,
+        is_favorite: editingTool.isFavorite
+      });
+      
+      setShowEditToolModal(false);
+      setEditingTool(null);
+      setEditingToolCategory(null);
+      toast({
+        title: "Success",
+        description: "Tool updated successfully!"
+      });
+    } catch (error) {
+      console.error('Error updating tool:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update tool",
+        variant: "destructive"
+      });
+    }
   };
 
   // Filter tools based on search and favorites
@@ -498,273 +660,195 @@ const AITools = () => {
           {/* Loading State */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="text-lg text-muted-foreground">Loading AI tools...</div>
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading AI tools...</p>
+              </div>
             </div>
           ) : (
-            <>
-              {/* AI Tools Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {Object.entries(filteredTools).map(([category, tools]) => (
-                  <div 
-                    key={category} 
-                    className={`transition-all ${
-                      dragOverCategory === category ? 'ring-2 ring-primary ring-offset-2' : ''
-                    }`}
-                    onDragOver={(e) => handleDragOver(e, category)}
+            /* Tools Grid */
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {Object.entries(filteredTools).map(([categoryName, tools]) => {
+                const category = categories.find(c => c.name === categoryName);
+                return (
+                  <Card
+                    key={categoryName}
+                    className={`${dragOverCategory === categoryName ? 'ring-2 ring-primary' : ''}`}
+                    onDragOver={(e) => handleDragOver(e, categoryName)}
                     onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, category)}
+                    onDrop={(e) => handleDrop(e, categoryName)}
                   >
-                    <Card className="h-fit">
-                      <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-t-lg">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <CardTitle className="text-lg">{category}</CardTitle>
-                            <p className="text-sm opacity-90">{tools.length} tools</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => editCategory(category)}
-                              className="text-primary-foreground hover:bg-primary-foreground/20 p-1"
-                              title="Edit category name"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteCategory(category)}
-                              className="text-primary-foreground hover:bg-destructive p-1"
-                              title="Delete category"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      
-                      <CardContent className="p-4 space-y-3 min-h-[200px]">
-                        {tools.length === 0 ? (
-                          <div className="text-muted-foreground text-sm text-center py-8 border-2 border-dashed border-muted rounded-lg">
-                            <p>No tools in this category</p>
-                            <p className="text-xs mt-1">Drag tools here or add new ones</p>
-                          </div>
-                        ) : (
-                          tools.map(tool => (
-                            <div 
-                              key={tool.id} 
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, tool, category)}
-                              className="border rounded-lg p-3 hover:shadow-md transition-shadow bg-card cursor-move hover:bg-muted/50"
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <h3 className="font-semibold text-sm text-card-foreground flex items-center gap-2">
-                                  <GripVertical className="w-3 h-3 text-muted-foreground" />
-                                  {tool.name}
-                                </h3>
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => toggleFavorite(category, tool.id)}
-                                    className={`p-1 h-auto ${tool.isFavorite ? 'text-yellow-500' : 'text-muted-foreground'}`}
-                                  >
-                                    <Star className="w-3 h-3" fill={tool.isFavorite ? 'currentColor' : 'none'} />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => editTool(tool, category)}
-                                    className="p-1 h-auto text-primary hover:text-primary"
-                                  >
-                                    <Edit2 className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => deleteTool(category, tool.id)}
-                                    className="p-1 h-auto text-destructive hover:text-destructive"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                </div>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg font-semibold">{categoryName}</CardTitle>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => category && editCategory(category)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => category && deleteCategory(category)}
+                          className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {tools.map((tool) => (
+                        <div
+                          key={tool.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, tool, categoryName)}
+                          className="group p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-move"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <h4 className="font-medium text-sm truncate">{tool.name}</h4>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleFavorite(categoryName, tool.id)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Star className={`h-3 w-3 ${tool.isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
+                                </Button>
                               </div>
-                              
-                              <a
-                                href={tool.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:text-primary/80 text-xs flex items-center gap-1 mb-2"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                Visit Tool
-                              </a>
-                              
                               {tool.note && (
-                                <p className="text-muted-foreground text-xs mb-2">{tool.note}</p>
+                                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{tool.note}</p>
                               )}
-                              
                               {tool.tags.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mb-2">
-                                  {tool.tags.map(tag => (
-                                    <Badge key={tag} variant="secondary" className="text-xs">
+                                  {tool.tags.slice(0, 2).map((tag, index) => (
+                                    <Badge key={index} variant="secondary" className="text-xs px-1 py-0">
                                       {tag}
                                     </Badge>
                                   ))}
+                                  {tool.tags.length > 2 && (
+                                    <Badge variant="secondary" className="text-xs px-1 py-0">
+                                      +{tool.tags.length - 2}
+                                    </Badge>
+                                  )}
                                 </div>
                               )}
-                              
-                              <div className="flex justify-between items-center text-xs text-muted-foreground">
-                                <span>Added by {tool.addedBy}</span>
-                                {tool.rating > 0 && (
-                                  <div className="flex items-center">
-                                    {[...Array(5)].map((_, i) => (
-                                      <Star
-                                        key={i}
-                                        className={`w-3 h-3 ${i < tool.rating ? 'text-yellow-400 fill-current' : 'text-muted-foreground'}`}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  asChild
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  <a href={tool.link} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                    Visit
+                                  </a>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => editTool(tool, categoryName)}
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  <Edit2 className="h-3 w-3 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteTool(categoryName, tool.id)}
+                                  className="h-6 px-2 text-xs hover:bg-destructive hover:text-destructive-foreground"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
                               </div>
                             </div>
-                          ))
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                ))}
-              </div>
-
-              {/* Empty state for no filtered results */}
-              {Object.keys(filteredTools).length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">No tools match your current filters.</p>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setShowFavoritesOnly(false);
-                    }}
-                    className="mt-4"
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              )}
-            </>
+                          </div>
+                        </div>
+                      ))}
+                      {tools.length === 0 && (
+                        <p className="text-muted-foreground text-sm text-center py-4">
+                          No tools in this category
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Add Tool Modal */}
+      {/* Add AI Tool Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add New AI Tool</DialogTitle>
           </DialogHeader>
           <form onSubmit={addAiTool} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Tool Name *</label>
+              <label className="text-sm font-medium">Name *</label>
               <Input
-                type="text"
                 value={newTool.name}
-                onChange={(e) => setNewTool({...newTool, name: e.target.value})}
-                placeholder="e.g., ChatGPT, Midjourney"
+                onChange={(e) => setNewTool({ ...newTool, name: e.target.value })}
+                placeholder="Tool name"
                 required
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium mb-2">Link *</label>
+              <label className="text-sm font-medium">Link *</label>
               <Input
-                type="url"
                 value={newTool.link}
-                onChange={(e) => setNewTool({...newTool, link: e.target.value})}
+                onChange={(e) => setNewTool({ ...newTool, link: e.target.value })}
                 placeholder="https://..."
+                type="url"
                 required
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium mb-2">Category</label>
-              <Select
-                value={newTool.category}
-                onValueChange={(value) => setNewTool({...newTool, category: value})}
-              >
+              <label className="text-sm font-medium">Category *</label>
+              <Select value={newTool.category} onValueChange={(value) => setNewTool({ ...newTool, category: value })}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.keys(aiTools).map(category => (
-                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.name}>
+                      {category.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            
             <div>
-              <label className="block text-sm font-medium mb-2">Note</label>
+              <label className="text-sm font-medium">Description</label>
               <Textarea
                 value={newTool.note}
-                onChange={(e) => setNewTool({...newTool, note: e.target.value})}
-                placeholder="Brief description or personal note"
+                onChange={(e) => setNewTool({ ...newTool, note: e.target.value })}
+                placeholder="Brief description..."
                 rows={3}
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium mb-2">Tags (comma-separated)</label>
+              <label className="text-sm font-medium">Tags</label>
               <Input
-                type="text"
                 value={newTool.tags}
-                onChange={(e) => setNewTool({...newTool, tags: e.target.value})}
-                placeholder="writing, automation, free"
+                onChange={(e) => setNewTool({ ...newTool, tags: e.target.value })}
+                placeholder="tag1, tag2, tag3"
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">Rating (optional)</label>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map(rating => (
-                  <Button
-                    key={rating}
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setNewTool({...newTool, rating})}
-                    className={`p-1 ${newTool.rating >= rating ? 'text-yellow-400' : 'text-muted-foreground'}`}
-                  >
-                    <Star className="w-5 h-5" fill={newTool.rating >= rating ? 'currentColor' : 'none'} />
-                  </Button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <input
-                id="favorite"
-                type="checkbox"
-                checked={newTool.isFavorite}
-                onChange={(e) => setNewTool({...newTool, isFavorite: e.target.checked})}
-                className="rounded"
-              />
-              <label htmlFor="favorite" className="text-sm">Mark as favorite</label>
-            </div>
-            
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowAddModal(false)}
-              >
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
                 Cancel
               </Button>
-              <Button type="submit">
-                Add Tool
-              </Button>
+              <Button type="submit">Add Tool</Button>
             </div>
           </form>
         </DialogContent>
@@ -772,32 +856,25 @@ const AITools = () => {
 
       {/* Add Category Modal */}
       <Dialog open={showAddCategoryModal} onOpenChange={setShowAddCategoryModal}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Category</DialogTitle>
           </DialogHeader>
           <form onSubmit={addCategory} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Category Name</label>
+              <label className="text-sm font-medium">Category Name *</label>
               <Input
-                type="text"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="e.g., Video Editing, Marketing Tools"
+                placeholder="Category name"
                 required
               />
             </div>
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowAddCategoryModal(false)}
-              >
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setShowAddCategoryModal(false)}>
                 Cancel
               </Button>
-              <Button type="submit">
-                Add Category
-              </Button>
+              <Button type="submit">Add Category</Button>
             </div>
           </form>
         </DialogContent>
@@ -805,31 +882,25 @@ const AITools = () => {
 
       {/* Edit Category Modal */}
       <Dialog open={showEditCategoryModal} onOpenChange={setShowEditCategoryModal}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Category Name</DialogTitle>
+            <DialogTitle>Edit Category</DialogTitle>
           </DialogHeader>
           <form onSubmit={updateCategoryName} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Category Name</label>
+              <label className="text-sm font-medium">Category Name *</label>
               <Input
-                type="text"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Category name"
                 required
               />
             </div>
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowEditCategoryModal(false)}
-              >
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setShowEditCategoryModal(false)}>
                 Cancel
               </Button>
-              <Button type="submit">
-                Update Category
-              </Button>
+              <Button type="submit">Update Category</Button>
             </div>
           </form>
         </DialogContent>
@@ -837,93 +908,73 @@ const AITools = () => {
 
       {/* Edit Tool Modal */}
       <Dialog open={showEditToolModal} onOpenChange={setShowEditToolModal}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit AI Tool</DialogTitle>
+            <DialogTitle>Edit Tool</DialogTitle>
           </DialogHeader>
           <form onSubmit={updateTool} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Tool Name *</label>
+              <label className="text-sm font-medium">Name *</label>
               <Input
-                type="text"
                 value={editingTool?.name || ''}
-                onChange={(e) => setEditingTool(prev => prev ? {...prev, name: e.target.value} : null)}
-                placeholder="e.g., ChatGPT, Midjourney"
+                onChange={(e) => setEditingTool(prev => prev ? { ...prev, name: e.target.value } : null)}
+                placeholder="Tool name"
                 required
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium mb-2">Link *</label>
+              <label className="text-sm font-medium">Link *</label>
               <Input
-                type="url"
                 value={editingTool?.link || ''}
-                onChange={(e) => setEditingTool(prev => prev ? {...prev, link: e.target.value} : null)}
+                onChange={(e) => setEditingTool(prev => prev ? { ...prev, link: e.target.value } : null)}
                 placeholder="https://..."
+                type="url"
                 required
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium mb-2">Note</label>
+              <label className="text-sm font-medium">Category *</label>
+              <Select 
+                value={editingTool?.category || ''} 
+                onValueChange={(value) => setEditingTool(prev => prev ? { ...prev, category: value } : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.name}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Description</label>
               <Textarea
                 value={editingTool?.note || ''}
-                onChange={(e) => setEditingTool(prev => prev ? {...prev, note: e.target.value} : null)}
-                placeholder="Brief description or personal note"
+                onChange={(e) => setEditingTool(prev => prev ? { ...prev, note: e.target.value } : null)}
+                placeholder="Brief description..."
                 rows={3}
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium mb-2">Tags (comma-separated)</label>
+              <label className="text-sm font-medium">Tags</label>
               <Input
-                type="text"
                 value={editingTool?.tags.join(', ') || ''}
-                onChange={(e) => setEditingTool(prev => prev ? {...prev, tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag)} : null)}
-                placeholder="writing, automation, free"
+                onChange={(e) => setEditingTool(prev => prev ? { 
+                  ...prev, 
+                  tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag)
+                } : null)}
+                placeholder="tag1, tag2, tag3"
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">Rating (optional)</label>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map(rating => (
-                  <Button
-                    key={rating}
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingTool(prev => prev ? {...prev, rating} : null)}
-                    className={`p-1 ${(editingTool?.rating || 0) >= rating ? 'text-yellow-400' : 'text-muted-foreground'}`}
-                  >
-                    <Star className="w-5 h-5" fill={(editingTool?.rating || 0) >= rating ? 'currentColor' : 'none'} />
-                  </Button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <input
-                id="edit-favorite"
-                type="checkbox"
-                checked={editingTool?.isFavorite || false}
-                onChange={(e) => setEditingTool(prev => prev ? {...prev, isFavorite: e.target.checked} : null)}
-                className="rounded"
-              />
-              <label htmlFor="edit-favorite" className="text-sm">Mark as favorite</label>
-            </div>
-            
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowEditToolModal(false)}
-              >
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setShowEditToolModal(false)}>
                 Cancel
               </Button>
-              <Button type="submit">
-                Update Tool
-              </Button>
+              <Button type="submit">Update Tool</Button>
             </div>
           </form>
         </DialogContent>
