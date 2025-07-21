@@ -124,7 +124,11 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           assignee: t.assignee,
           status: t.status as 'todo' | 'inProgress' | 'review' | 'done',
           createdBy: t.created_by,
-          createdAt: t.created_at
+          createdAt: t.created_at,
+          project_id: t.project_id,
+          start_date: t.start_date ? new Date(t.start_date) : null,
+          due_date: t.due_date ? new Date(t.due_date) : null,
+          duration: t.duration
         }));
 
         const transformedMessages = messagesData.map((m: any) => ({
@@ -140,11 +144,14 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           id: e.id,
           title: e.title,
           date: e.date,
-          time: e.time,
-          description: e.description,
+          time: e.time || '',
+          description: e.description || '',
           type: e.type,
           createdBy: e.created_by,
-          createdAt: e.created_at
+          createdAt: e.created_at,
+          location: e.location || '',
+          assigned_members: e.assigned_members || [],
+          attendees: e.attendees || []
         }));
 
         setProjects(transformedProjects);
@@ -275,6 +282,9 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         date: eventData.date,
         time: eventData.time,
         type: eventData.type,
+        location: eventData.location,
+        assigned_members: eventData.assigned_members,
+        attendees: eventData.attendees,
         created_by: currentUserEmail
       });
 
@@ -282,11 +292,14 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         id: newEvent.id,
         title: newEvent.title,
         date: newEvent.date,
-        time: newEvent.time,
-        description: newEvent.description,
+        time: newEvent.time || '',
+        description: newEvent.description || '',
         type: newEvent.type,
         createdBy: newEvent.created_by,
-        createdAt: newEvent.created_at
+        createdAt: newEvent.created_at,
+        location: newEvent.location || '',
+        assigned_members: newEvent.assigned_members || [],
+        attendees: newEvent.attendees || []
       };
 
       setEvents(prev => [...prev, transformedEvent]);

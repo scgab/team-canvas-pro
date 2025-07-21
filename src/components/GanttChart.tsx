@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "lucide-react";
+import { Calendar, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSharedData } from "@/contexts/SharedDataContext";
+import { TaskFormDialog } from "@/components/TaskFormDialog";
 
 interface GanttItem {
   id: string;
@@ -22,7 +23,8 @@ interface GanttItem {
 
 export function GanttChart() {
   const { toast } = useToast();
-  const { projects, tasks } = useSharedData();
+  const { projects, tasks, createTask } = useSharedData();
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
 
   // Set timeline to start from today with bidirectional scrolling
   const today = new Date();
@@ -135,6 +137,38 @@ export function GanttChart() {
     }));
   };
 
+  const handleCreateTask = async (taskData: any) => {
+    try {
+      console.log('Creating task from Gantt chart:', taskData);
+      
+      const taskPayload = {
+        title: taskData.title,
+        description: taskData.description || '',
+        priority: taskData.priority,
+        assignee: taskData.assignee || '',
+        status: 'todo' as 'todo' | 'inProgress' | 'review' | 'done',
+        project_id: projects[0]?.id || null, // Default to first project if available
+        start_date: taskData.dueDate ? new Date(taskData.dueDate) : null,
+        due_date: taskData.dueDate ? new Date(taskData.dueDate) : null,
+        duration: 1
+      };
+      
+      await createTask(taskPayload);
+      setTaskDialogOpen(false);
+      
+      toast({
+        title: "Task Created",
+        description: `"${taskData.title}" has been added to the Gantt chart.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create task. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -143,6 +177,13 @@ export function GanttChart() {
           <h2 className="text-2xl font-bold text-foreground">Project Timeline</h2>
           <p className="text-muted-foreground">View all projects and tasks on timeline</p>
         </div>
+        <Button 
+          onClick={() => setTaskDialogOpen(true)}
+          className="bg-gradient-primary hover:bg-primary-dark"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Task
+        </Button>
       </div>
 
       {/* Gantt Chart */}
@@ -334,6 +375,15 @@ export function GanttChart() {
           </CardContent>
         </Card>
       </div>
+      
+      <TaskFormDialog
+        open={taskDialogOpen}
+        onOpenChange={setTaskDialogOpen}
+        onSubmit={handleCreateTask}
+        mode="create"
+        defaultStatus="todo"
+        task={null}
+      />
     </div>
   );
 }

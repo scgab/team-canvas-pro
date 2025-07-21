@@ -61,17 +61,24 @@ export function ProjectTaskBoard() {
 
   const handleCreateTask = async (taskData: any) => {
     try {
-      await createTask({
+      console.log('Creating task with data:', taskData);
+      
+      // Transform the data to match backend expectations
+      const taskPayload = {
         title: taskData.title,
         description: taskData.description || '',
         priority: taskData.priority,
         assignee: taskData.assignee || '',
-        status: taskData.status,
+        status: 'todo' as 'todo' | 'inProgress' | 'review' | 'done', // Always start with todo
         project_id: projectId,
-        start_date: taskData.start_date,
-        due_date: taskData.due_date,
-        duration: taskData.duration || 1
-      });
+        start_date: taskData.dueDate ? new Date(taskData.dueDate) : null,
+        due_date: taskData.dueDate ? new Date(taskData.dueDate) : null,
+        duration: 1
+      };
+      
+      console.log('Task payload:', taskPayload);
+      
+      await createTask(taskPayload);
       
       setTaskDialogOpen(false);
       
@@ -285,13 +292,14 @@ export function ProjectTaskBoard() {
         </Card>
 
         {/* Task Creation Dialog */}
-        <TaskFormDialog
-          open={taskDialogOpen}
-          onOpenChange={setTaskDialogOpen}
-          onSubmit={handleCreateTask}
-          mode="create"
-          defaultStatus="todo"
-        />
+            <TaskFormDialog
+              open={taskDialogOpen}
+              onOpenChange={setTaskDialogOpen}
+              onSubmit={handleCreateTask}
+              mode="create"
+              defaultStatus="todo"
+              task={null}
+            />
       </div>
     </Layout>
   );

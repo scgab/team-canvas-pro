@@ -129,11 +129,13 @@ const Calendar = () => {
     }
 
     try {
+      console.log('Creating calendar event:', newEvent);
+      
       await createCalendarEvent({
         title: newEvent.title,
         description: newEvent.description,
         date: newEvent.date.toISOString().split('T')[0],
-        time: newEvent.time || null,
+        time: newEvent.time || '',
         type: newEvent.type,
         attendees: newEvent.attendees ? newEvent.attendees.split(",").map(a => a.trim()) : [],
         location: newEvent.location,
@@ -198,10 +200,16 @@ const Calendar = () => {
 
   // Get events for a specific date (including project deadlines)
   const getEventsForDate = (date: Date) => {
+    console.log('Getting events for date:', date, 'Calendar events:', calendarEvents);
+    
     const userEvents = calendarEvents.filter(event => {
       const eventDate = new Date(event.date);
       return eventDate.toDateString() === date.toDateString();
-    });
+    }).map(event => ({
+      ...event,
+      date: new Date(event.date),
+      color: "#3B82F6"
+    }));
 
     // Add project deadlines as events
     const projectDeadlines = projects
@@ -452,8 +460,8 @@ const Calendar = () => {
         <CalendarEventEditDialog
           open={!!editingEvent}
           onOpenChange={(open) => !open && setEditingEvent(null)}
-          event={editingEvent}
           onClose={() => setEditingEvent(null)}
+          event={editingEvent}
           onSubmit={async (eventData) => {
             try {
               await updateCalendarEvent(editingEvent.id, eventData);
@@ -570,8 +578,13 @@ const Calendar = () => {
                         {dayEvents.slice(0, hasHoliday ? 1 : 2).map(event => (
                           <div
                             key={event.id}
-                            className="text-xs p-1 rounded text-white truncate"
+                            className="text-xs p-1 rounded text-white truncate cursor-pointer hover:opacity-80"
                             style={{ backgroundColor: (event as any).color || '#3B82F6' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log('Editing event:', event);
+                              setEditingEvent(event);
+                            }}
                           >
                             {event.title}
                           </div>
