@@ -265,7 +265,7 @@ const Calendar = () => {
       }));
 
     return [...upcomingUserEvents, ...upcomingProjectDeadlines]
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 
   const getEventTypeColor = (type: string) => {
@@ -451,6 +451,7 @@ const Calendar = () => {
         {/* Calendar Event Edit Dialog */}
         <CalendarEventEditDialog
           open={!!editingEvent}
+          onOpenChange={(open) => !open && setEditingEvent(null)}
           event={editingEvent}
           onClose={() => setEditingEvent(null)}
           onSubmit={async (eventData) => {
@@ -570,7 +571,7 @@ const Calendar = () => {
                           <div
                             key={event.id}
                             className="text-xs p-1 rounded text-white truncate"
-                            style={{ backgroundColor: event.color }}
+                            style={{ backgroundColor: (event as any).color || '#3B82F6' }}
                           >
                             {event.title}
                           </div>
@@ -632,7 +633,7 @@ const Calendar = () => {
                   <div className="space-y-1 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {event.time} ({event.duration})
+                      {event.time} {(event as any).duration ? `(${(event as any).duration})` : ''}
                     </div>
                     
                     {event.location && (

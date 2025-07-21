@@ -25,8 +25,11 @@ interface CalendarEvent {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onClose: () => void;
   event: CalendarEvent | null;
-  onEventUpdated: () => void;
+  onSubmit: (eventData: any) => Promise<void>;
+  onDelete: () => Promise<void>;
+  teamMembers: { email: string; name: string; }[];
 }
 
 const teamMembers = [
@@ -34,7 +37,7 @@ const teamMembers = [
   { email: 'myh@scandac.com', name: 'MYH User' }
 ];
 
-export function CalendarEventEditDialog({ open, onOpenChange, event, onEventUpdated }: Props) {
+export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, onSubmit, onDelete, teamMembers }: Props) {
   const { toast } = useToast();
   const [formData, setFormData] = useState<{
     title: string;
@@ -99,8 +102,8 @@ export function CalendarEventEditDialog({ open, onOpenChange, event, onEventUpda
         description: `"${formData.title}" has been updated.`,
       });
 
-      onEventUpdated();
-      onOpenChange(false);
+      await onSubmit(formData);
+      onClose();
     } catch (error) {
       toast({
         title: "Error",
@@ -122,8 +125,8 @@ export function CalendarEventEditDialog({ open, onOpenChange, event, onEventUpda
           description: "The event has been removed from the calendar.",
         });
 
-        onEventUpdated();
-        onOpenChange(false);
+        await onDelete();
+        onClose();
       } catch (error) {
         toast({
           title: "Error",

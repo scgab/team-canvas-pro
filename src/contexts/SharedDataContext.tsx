@@ -51,6 +51,9 @@ export interface CalendarEvent {
   type: string;
   createdBy: string;
   createdAt: string;
+  location?: string;
+  assigned_members?: string[];
+  attendees?: string[];
 }
 
 interface SharedDataContextType {
@@ -62,11 +65,15 @@ interface SharedDataContextType {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   events: CalendarEvent[];
   setEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>;
+  calendarEvents: CalendarEvent[];
   loading: boolean;
   createProject: (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'createdBy'>) => Promise<void>;
   createTask: (taskData: Omit<Task, 'id' | 'createdBy' | 'createdAt'>) => Promise<Task>;
   sendMessage: (senderId: string, receiverId: string, content: string) => Promise<void>;
   createEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<void>;
+  createCalendarEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<void>;
+  updateCalendarEvent: (id: string, eventData: Partial<CalendarEvent>) => Promise<void>;
+  deleteCalendarEvent: (id: string) => Promise<void>;
 }
 
 const SharedDataContext = createContext<SharedDataContextType | undefined>(undefined);
@@ -289,6 +296,30 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const createCalendarEvent = createEvent;
+  
+  const updateCalendarEvent = async (id: string, eventData: Partial<CalendarEvent>) => {
+    try {
+      await calendarService.update(id, eventData);
+      setEvents(prev => prev.map(event => 
+        event.id === id ? { ...event, ...eventData } : event
+      ));
+    } catch (error) {
+      console.error('Error updating calendar event:', error);
+      throw error;
+    }
+  };
+
+  const deleteCalendarEvent = async (id: string) => {
+    try {
+      await calendarService.delete(id);
+      setEvents(prev => prev.filter(event => event.id !== id));
+    } catch (error) {
+      console.error('Error deleting calendar event:', error);
+      throw error;
+    }
+  };
+
   return (
     <SharedDataContext.Provider value={{
       projects,
@@ -299,11 +330,15 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setMessages,
       events,
       setEvents,
+      calendarEvents: events,
       loading,
       createProject,
       createTask,
       sendMessage,
       createEvent,
+      createCalendarEvent,
+      updateCalendarEvent,
+      deleteCalendarEvent,
     }}>
       {children}
     </SharedDataContext.Provider>
