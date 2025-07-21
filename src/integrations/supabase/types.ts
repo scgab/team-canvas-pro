@@ -218,6 +218,7 @@ export type Database = {
           priority: string | null
           progress: number | null
           shared_with: string[] | null
+          start_date: string | null
           status: string | null
           team_size: number | null
           title: string
@@ -234,6 +235,7 @@ export type Database = {
           priority?: string | null
           progress?: number | null
           shared_with?: string[] | null
+          start_date?: string | null
           status?: string | null
           team_size?: number | null
           title: string
@@ -250,6 +252,7 @@ export type Database = {
           priority?: string | null
           progress?: number | null
           shared_with?: string[] | null
+          start_date?: string | null
           status?: string | null
           team_size?: number | null
           title?: string

@@ -49,7 +49,7 @@ export function GanttChart() {
     id: project.id,
     name: project.title,
     description: project.description || '',
-    startDate: project.deadline ? new Date(project.deadline) : new Date(),
+    startDate: project.start_date ? new Date(project.start_date) : new Date(),
     endDate: project.deadline ? new Date(project.deadline) : new Date(),
     progress: project.progress || 0,
     priority: project.priority as "low" | "medium" | "high" | "urgent",
@@ -125,19 +125,28 @@ export function GanttChart() {
 
   // Calculate item bar position and width for weeks
   const getItemBarStyle = (item: GanttItem) => {
+    if (timelineHeaders.length === 0) return { left: '0px', width: '0px', backgroundColor: item.color };
+    
     // Get the start of the first week in our timeline
     const firstWeekStart = timelineHeaders[0];
     
-    // Calculate which week the item starts and ends
-    const itemStartTime = item.startDate.getTime();
-    const itemEndTime = item.endDate.getTime();
+    // Ensure dates are at start of day for consistent calculation
+    const itemStart = new Date(item.startDate);
+    itemStart.setHours(0, 0, 0, 0);
     
-    // Find the position relative to the first week
-    const startWeekDiff = Math.floor((itemStartTime - firstWeekStart.getTime()) / (1000 * 60 * 60 * 24 * 7));
-    const endWeekDiff = Math.ceil((itemEndTime - firstWeekStart.getTime()) / (1000 * 60 * 60 * 24 * 7));
+    const itemEnd = new Date(item.endDate);
+    itemEnd.setHours(0, 0, 0, 0);
     
-    const startPosition = Math.max(0, startWeekDiff);
-    const duration = Math.max(0.2, endWeekDiff - startWeekDiff); // Minimum 0.2 week for visibility
+    // Calculate days from first week start
+    const startDaysDiff = (itemStart.getTime() - firstWeekStart.getTime()) / (1000 * 60 * 60 * 24);
+    const endDaysDiff = (itemEnd.getTime() - firstWeekStart.getTime()) / (1000 * 60 * 60 * 24);
+    
+    // Convert to weeks and calculate position
+    const startWeekPos = startDaysDiff / 7;
+    const endWeekPos = endDaysDiff / 7;
+    const duration = Math.max(0.1, endWeekPos - startWeekPos); // Minimum 0.1 week for visibility
+    
+    const startPosition = Math.max(0, startWeekPos);
     
     return {
       left: `${startPosition * weekWidth}px`,
@@ -233,11 +242,17 @@ export function GanttChart() {
     try {
       if (type === "project") {
         await projectsService.update(id, {
+          start_date: startDate.toISOString().split('T')[0],
           deadline: endDate.toISOString().split('T')[0]
         });
         
         setProjects(prev => prev.map(p => 
-          p.id === id ? { ...p, deadline: endDate, updated_at: new Date() } : p
+          p.id === id ? { 
+            ...p, 
+            start_date: startDate, 
+            deadline: endDate, 
+            updated_at: new Date() 
+          } : p
         ));
       } else {
         await tasksService.update(id, {

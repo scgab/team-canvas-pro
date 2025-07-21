@@ -8,6 +8,7 @@ export interface Project {
   description: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'planning' | 'in-progress' | 'review' | 'completed';
+  start_date?: Date | null;
   deadline: Date;
   created_at: Date;
   updated_at: Date;
@@ -123,6 +124,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           description: p.description,
           priority: p.priority as 'low' | 'medium' | 'high' | 'urgent',
           status: p.status as 'planning' | 'in-progress' | 'review' | 'completed',
+          start_date: p.start_date ? new Date(p.start_date) : null,
           deadline: new Date(p.deadline),
           created_at: new Date(p.created_at),
           updated_at: new Date(p.updated_at),
@@ -309,6 +311,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         description: newProject.description,
         priority: newProject.priority as 'low' | 'medium' | 'high' | 'urgent',
         status: newProject.status as 'planning' | 'in-progress' | 'review' | 'completed',
+        start_date: newProject.start_date ? new Date(newProject.start_date) : null,
         deadline: new Date(newProject.deadline),
         created_at: new Date(newProject.created_at),
         updated_at: new Date(newProject.updated_at),
