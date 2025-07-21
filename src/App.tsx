@@ -14,6 +14,7 @@ import Analytics from "./pages/Analytics";
 import AITools from "./pages/AITools";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Settings from "./pages/Settings";
 import { AuthGuard } from "./components/AuthGuard";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/team" element={<AuthGuard><Team /></AuthGuard>} />
           <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
           <Route path="/ai-tools" element={<AuthGuard><AITools /></AuthGuard>} />
+          <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
