@@ -85,16 +85,21 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load data from Supabase on mount
+  // Load data from localStorage and Supabase on mount
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         
-        // Load all data in parallel
-        const [projectsData, tasksData, messagesData, eventsData] = await Promise.all([
+        // Load tasks from localStorage
+        const storedTasks = localStorage.getItem('tasks');
+        if (storedTasks) {
+          setTasks(JSON.parse(storedTasks));
+        }
+        
+        // Load other data from Supabase in parallel
+        const [projectsData, messagesData, eventsData] = await Promise.all([
           projectsService.getAll(),
-          tasksService.getAll(),
           messagesService.getAll(),
           calendarService.getAll()
         ]);
@@ -114,21 +119,6 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           color: p.color,
           team_size: p.team_size,
           assignedMembers: p.assigned_members || []
-        }));
-
-        const transformedTasks: Task[] = tasksData.map((t: any) => ({
-          id: t.id,
-          title: t.title,
-          description: t.description,
-          priority: t.priority as 'low' | 'medium' | 'high' | 'urgent',
-          assignee: t.assignee,
-          status: t.status as 'todo' | 'inProgress' | 'review' | 'done',
-          createdBy: t.created_by,
-          createdAt: t.created_at,
-          project_id: t.project_id,
-          start_date: t.start_date ? new Date(t.start_date) : null,
-          due_date: t.due_date ? new Date(t.due_date) : null,
-          duration: t.duration
         }));
 
         const transformedMessages = messagesData.map((m: any) => ({
@@ -155,11 +145,10 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }));
 
         setProjects(transformedProjects);
-        setTasks(transformedTasks);
         setMessages(transformedMessages);
         setEvents(transformedEvents);
       } catch (error) {
-        console.error('Error loading data from Supabase:', error);
+        console.error('Error loading data:', error);
       } finally {
         setLoading(false);
       }
@@ -212,56 +201,36 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
       
-      console.log('Creating task with data:', {
+      // Create task with localStorage
+      const newTask: Task = {
+        id: Date.now().toString(),
         title: taskData.title,
         description: taskData.description,
         priority: taskData.priority,
         status: taskData.status,
         assignee: taskData.assignee,
         project_id: taskData.project_id,
-        start_date: taskData.start_date ? taskData.start_date.toISOString().split('T')[0] : null,
-        due_date: taskData.due_date ? taskData.due_date.toISOString().split('T')[0] : null,
-        duration: taskData.duration,
-        created_by: currentUserEmail
-      });
+        start_date: taskData.start_date,
+        due_date: taskData.due_date,
+        duration: taskData.duration || 1,
+        createdBy: currentUserEmail,
+        createdAt: new Date().toISOString()
+      };
 
-      const newTask = await tasksService.create({
-        title: taskData.title,
-        description: taskData.description,
-        priority: taskData.priority,
-        status: taskData.status,
-        assignee: taskData.assignee,
-        project_id: taskData.project_id,
-        start_date: taskData.start_date ? taskData.start_date.toISOString().split('T')[0] : null,
-        due_date: taskData.due_date ? taskData.due_date.toISOString().split('T')[0] : null,
-        duration: taskData.duration,
-        created_by: currentUserEmail
+      console.log('Creating task with localStorage:', newTask);
+
+      // Update state
+      setTasks(prev => {
+        const updatedTasks = [...prev, newTask];
+        // Save to localStorage
+        localStorage.setItem('tasks', JSON.stringify(updatedTasks));
+        return updatedTasks;
       });
 
       console.log('Task created successfully:', newTask);
-
-      const transformedTask: Task = {
-        id: newTask.id,
-        title: newTask.title,
-        description: newTask.description,
-        priority: newTask.priority as 'low' | 'medium' | 'high' | 'urgent',
-        assignee: newTask.assignee,
-        status: newTask.status as 'todo' | 'inProgress' | 'review' | 'done',
-        createdBy: newTask.created_by,
-        createdAt: newTask.created_at,
-        project_id: newTask.project_id,
-        start_date: newTask.start_date ? new Date(newTask.start_date) : null,
-        due_date: newTask.due_date ? new Date(newTask.due_date) : null,
-        duration: newTask.duration
-      };
-
-      setTasks(prev => [...prev, transformedTask]);
-      return transformedTask;
+      return newTask;
     } catch (error) {
-      console.error('Detailed error creating task:', error);
-      console.error('Error message:', error.message);
-      console.error('Error details:', error.details);
-      console.error('Error hint:', error.hint);
+      console.error('Error creating task:', error);
       throw error;
     }
   };
