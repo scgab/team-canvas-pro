@@ -38,9 +38,10 @@ export function GanttChart() {
 
   // Set timeline to start from today with bidirectional scrolling
   const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset to start of day
   const [viewRange, setViewRange] = useState({
-    start: new Date(today.getFullYear(), today.getMonth() - 3, 1), // 3 months back
-    end: new Date(today.getFullYear(), today.getMonth() + 12, 0) // 12 months ahead
+    start: new Date(today), // Start from today
+    end: new Date(today.getFullYear(), today.getMonth() + 6, 0) // 6 months ahead
   });
 
   // Transform projects and tasks into Gantt data
@@ -92,21 +93,28 @@ export function GanttChart() {
 
   const ganttRef = useRef<HTMLDivElement>(null);
 
-  // Calculate timeline dimensions
+  // Calculate timeline dimensions for weeks
   const timelineStart = viewRange.start;
   const timelineEnd = viewRange.end;
-  const totalDays = Math.ceil((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-  const dayWidth = 30;
-  const chartWidth = Math.min(totalDays * dayWidth, window.innerWidth - 400);
+  const totalWeeks = Math.ceil((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24 * 7));
+  const weekWidth = 100;
+  const chartWidth = Math.min(totalWeeks * weekWidth, window.innerWidth - 400);
 
-  // Generate timeline headers
+  // Generate timeline headers for weeks
   const generateTimelineHeaders = () => {
     const headers = [];
     const currentDate = new Date(timelineStart);
     
-    while (currentDate <= timelineEnd) {
-      headers.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
+    // Get start of week (Monday)
+    const dayOfWeek = currentDate.getDay();
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(currentDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    
+    let weekStart = new Date(startOfWeek);
+    
+    while (weekStart <= timelineEnd) {
+      headers.push(new Date(weekStart));
+      weekStart.setDate(weekStart.getDate() + 7);
     }
     
     return headers;
@@ -114,15 +122,15 @@ export function GanttChart() {
 
   const timelineHeaders = generateTimelineHeaders();
 
-  // Calculate item bar position and width
+  // Calculate item bar position and width for weeks
   const getItemBarStyle = (item: GanttItem) => {
-    const startDiff = Math.max(0, (item.startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-    const endDiff = Math.min(totalDays, (item.endDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-    const duration = Math.max(1, endDiff - startDiff); // Minimum 1 day
+    const startWeekDiff = Math.max(0, (item.startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24 * 7));
+    const endWeekDiff = Math.min(totalWeeks, (item.endDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24 * 7));
+    const duration = Math.max(0.1, endWeekDiff - startWeekDiff); // Minimum 0.1 week
     
     return {
-      left: `${startDiff * dayWidth}px`,
-      width: `${duration * dayWidth}px`,
+      left: `${startWeekDiff * weekWidth}px`,
+      width: `${duration * weekWidth}px`,
       backgroundColor: item.color
     };
   };
@@ -149,18 +157,22 @@ export function GanttChart() {
   // Timeline navigation functions
   const goToToday = () => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     setViewRange({
-      start: new Date(today.getFullYear(), today.getMonth() - 3, 1),
-      end: new Date(today.getFullYear(), today.getMonth() + 12, 0)
+      start: new Date(today),
+      end: new Date(today.getFullYear(), today.getMonth() + 6, 0)
     });
   };
 
   const scrollTimeline = (direction: 'left' | 'right') => {
-    const monthsToMove = direction === 'left' ? -1 : 1;
-    setViewRange(prev => ({
-      start: new Date(prev.start.getFullYear(), prev.start.getMonth() + monthsToMove, 1),
-      end: new Date(prev.end.getFullYear(), prev.end.getMonth() + monthsToMove, 0)
-    }));
+    const weeksToMove = direction === 'left' ? -4 : 4; // Move by 4 weeks
+    setViewRange(prev => {
+      const newStart = new Date(prev.start);
+      const newEnd = new Date(prev.end);
+      newStart.setDate(newStart.getDate() + (weeksToMove * 7));
+      newEnd.setDate(newEnd.getDate() + (weeksToMove * 7));
+      return { start: newStart, end: newEnd };
+    });
   };
 
   const handleCreateTask = async (taskData: any) => {
@@ -282,23 +294,25 @@ export function GanttChart() {
               {/* Timeline Header */}
               <div className="flex bg-muted/20 border-b border-border">
                 <div className="w-64 p-3 font-medium text-sm border-r border-border">
-                  Item
+                  Week
                 </div>
                 <div className="flex">
-                  {timelineHeaders.map((date, index) => (
-                    <div
-                      key={index}
-                      className={`w-10 p-2 text-xs text-center border-r border-border ${
-                        date.getDay() === 0 || date.getDay() === 6 ? 'bg-muted/40' : ''
-                      }`}
-                      style={{ width: `${dayWidth}px` }}
-                    >
-                      <div className="font-medium">{date.getDate()}</div>
-                      <div className="text-muted-foreground">
-                        {date.toLocaleDateString('en-US', { month: 'short' })}
+                  {timelineHeaders.map((date, index) => {
+                    const weekEnd = new Date(date);
+                    weekEnd.setDate(weekEnd.getDate() + 6);
+                    return (
+                      <div
+                        key={index}
+                        className="p-2 text-xs text-center border-r border-border bg-muted/10"
+                        style={{ width: `${weekWidth}px` }}
+                      >
+                        <div className="font-medium">Week {Math.ceil((date.getTime() - new Date(date.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24 * 7))}</div>
+                        <div className="text-muted-foreground">
+                          {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -357,10 +371,8 @@ export function GanttChart() {
                     {timelineHeaders.map((date, colIndex) => (
                       <div
                         key={colIndex}
-                        className={`absolute top-0 bottom-0 border-r border-border/30 ${
-                          date.getDay() === 0 || date.getDay() === 6 ? 'bg-muted/20' : ''
-                        }`}
-                        style={{ left: `${colIndex * dayWidth}px`, width: '1px' }}
+                        className="absolute top-0 bottom-0 border-r border-border/30 bg-muted/5"
+                        style={{ left: `${colIndex * weekWidth}px`, width: '1px' }}
                       />
                     ))}
 

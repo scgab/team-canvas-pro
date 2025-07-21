@@ -26,8 +26,19 @@ export function DateEditDialog({ open, onOpenChange, item, onSave }: DateEditDia
 
   useEffect(() => {
     if (item) {
-      setStartDate(item.startDate.toISOString().split('T')[0]);
-      setEndDate(item.endDate.toISOString().split('T')[0]);
+      // Default to today's date if no dates have been set
+      const today = new Date().toISOString().split('T')[0];
+      const itemStart = item.startDate.toISOString().split('T')[0];
+      const itemEnd = item.endDate.toISOString().split('T')[0];
+      
+      // Check if dates are the same as creation date (indicating no custom dates set)
+      const isDefaultDate = itemStart === itemEnd && (
+        new Date(itemStart).getTime() === new Date().setHours(0, 0, 0, 0) ||
+        Math.abs(new Date(itemStart).getTime() - new Date().setHours(0, 0, 0, 0)) < 24 * 60 * 60 * 1000
+      );
+      
+      setStartDate(isDefaultDate ? today : itemStart);
+      setEndDate(isDefaultDate ? today : itemEnd);
     }
   }, [item]);
 
