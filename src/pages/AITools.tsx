@@ -59,6 +59,7 @@ const AITools = () => {
   const [editingTool, setEditingTool] = useState<AITool | null>(null);
   const [editingToolCategory, setEditingToolCategory] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [selectedCategoryForAdd, setSelectedCategoryForAdd] = useState<string>('');
   const [newTool, setNewTool] = useState({
     name: '',
     link: '',
@@ -111,11 +112,6 @@ const AITools = () => {
         });
 
         setAiTools(grouped);
-        
-        // Set default category for new tools
-        if (categoriesData.length > 0 && !newTool.category) {
-          setNewTool(prev => ({ ...prev, category: categoriesData[0].name }));
-        }
       } catch (error) {
         console.error('Error loading data:', error);
         toast({
@@ -269,10 +265,21 @@ const AITools = () => {
   const addAiTool = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const effectiveCategory = selectedCategoryForAdd || newTool.category;
+    
     if (!newTool.name.trim() || !newTool.link.trim()) {
       toast({
         title: "Error",
         description: "Name and link are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!effectiveCategory) {
+      toast({
+        title: "Error",
+        description: "Please select a category",
         variant: "destructive"
       });
       return;
@@ -284,7 +291,7 @@ const AITools = () => {
         name: newTool.name,
         link: newTool.link,
         note: newTool.note,
-        category: newTool.category,
+        category: effectiveCategory,
         tags: newTool.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
         rating: newTool.rating,
         is_favorite: newTool.isFavorite,
@@ -296,11 +303,12 @@ const AITools = () => {
         name: '',
         link: '',
         note: '',
-        category: categories.length > 0 ? categories[0].name : '',
+        category: '',
         tags: '',
         rating: 0,
         isFavorite: false
       });
+      setSelectedCategoryForAdd('');
       setShowAddModal(false);
 
       toast({
@@ -315,6 +323,18 @@ const AITools = () => {
         variant: "destructive"
       });
     }
+  };
+
+  // Open add tool modal for specific category
+  const openAddToolModal = (categoryName?: string) => {
+    if (categoryName) {
+      setSelectedCategoryForAdd(categoryName);
+      setNewTool(prev => ({ ...prev, category: categoryName }));
+    } else {
+      setSelectedCategoryForAdd('');
+      setNewTool(prev => ({ ...prev, category: categories.length > 0 ? categories[0].name : '' }));
+    }
+    setShowAddModal(true);
   };
 
   // Delete AI tool
@@ -628,7 +648,7 @@ const AITools = () => {
                 <Plus className="w-4 h-4" />
                 Add Category
               </Button>
-              <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
+              <Button onClick={() => openAddToolModal()} className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
                 Add AI Tool
               </Button>
@@ -678,27 +698,36 @@ const AITools = () => {
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, categoryName)}
                   >
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-lg font-semibold">{categoryName}</CardTitle>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => category && editCategory(category)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => category && deleteCategory(category)}
-                          className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardHeader>
+                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                       <CardTitle className="text-lg font-semibold">{categoryName}</CardTitle>
+                       <div className="flex items-center gap-1">
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => openAddToolModal(categoryName)}
+                           className="h-8 w-8 p-0"
+                           title="Add tool to this category"
+                         >
+                           <Plus className="h-4 w-4" />
+                         </Button>
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => category && editCategory(category)}
+                           className="h-8 w-8 p-0"
+                         >
+                           <Edit2 className="h-4 w-4" />
+                         </Button>
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => category && deleteCategory(category)}
+                           className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                         >
+                           <Trash2 className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     </CardHeader>
                     <CardContent className="space-y-3">
                       {tools.map((tool) => (
                         <div
@@ -772,11 +801,22 @@ const AITools = () => {
                           </div>
                         </div>
                       ))}
-                      {tools.length === 0 && (
-                        <p className="text-muted-foreground text-sm text-center py-4">
-                          No tools in this category
-                        </p>
-                      )}
+                       {tools.length === 0 && (
+                         <div className="text-center py-4">
+                           <p className="text-muted-foreground text-sm mb-3">
+                             No tools in this category
+                           </p>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => openAddToolModal(categoryName)}
+                             className="flex items-center gap-2"
+                           >
+                             <Plus className="h-4 w-4" />
+                             Add First Tool
+                           </Button>
+                         </div>
+                       )}
                     </CardContent>
                   </Card>
                 );
@@ -790,7 +830,9 @@ const AITools = () => {
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Add New AI Tool</DialogTitle>
+            <DialogTitle>
+              {selectedCategoryForAdd ? `Add New AI Tool to ${selectedCategoryForAdd}` : 'Add New AI Tool'}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={addAiTool} className="space-y-4">
             <div>
@@ -814,7 +856,14 @@ const AITools = () => {
             </div>
             <div>
               <label className="text-sm font-medium">Category *</label>
-              <Select value={newTool.category} onValueChange={(value) => setNewTool({ ...newTool, category: value })}>
+              <Select 
+                value={selectedCategoryForAdd || newTool.category} 
+                onValueChange={(value) => {
+                  setSelectedCategoryForAdd(value);
+                  setNewTool({ ...newTool, category: value });
+                }}
+                disabled={!!selectedCategoryForAdd}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
