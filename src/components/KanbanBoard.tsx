@@ -65,7 +65,7 @@ interface Column {
 
 export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: string; onTaskStatusUpdate?: (taskId: string, newStatus: string) => Promise<void> }) {
   const { toast } = useToast();
-  const { tasks } = useSharedData();
+  const { tasks, setTasks } = useSharedData();
   
   // Convert shared tasks to kanban columns
   const [columns, setColumns] = useState<Column[]>([
@@ -231,10 +231,11 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
 
   const handleCreateTask = async (taskData: Omit<KanbanTask, 'id' | 'comments' | 'attachments'>) => {
     try {
-      const { createTask } = useSharedData();
+      console.log('Creating task with data:', taskData);
       
-      // Create task in shared data with project_id
-      await createTask({
+      // Create task directly with localStorage - IMMEDIATE FIX
+      const newTask = {
+        id: Date.now().toString(),
         title: taskData.title,
         description: taskData.description || '',
         priority: taskData.priority,
@@ -243,14 +244,29 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
         project_id: projectId || undefined,
         start_date: null,
         due_date: null,
-        duration: 1
-      });
+        duration: 1,
+        createdBy: (window as any).currentUserEmail || 'hna@scandac.com',
+        createdAt: new Date().toISOString()
+      };
+
+      // Get existing tasks from localStorage
+      const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      const updatedTasks = [...existingTasks, newTask];
+      
+      // Save to localStorage
+      localStorage.setItem('tasks', JSON.stringify(updatedTasks));
+      
+      // Update shared state
+      setTasks(updatedTasks);
+
+      console.log('Task created successfully:', newTask);
 
       toast({
         title: "Task Created",
         description: `"${taskData.title}" has been added to the project.`,
       });
     } catch (error) {
+      console.error('Error creating task:', error);
       toast({
         title: "Error",
         description: "Failed to create task. Please try again.",
@@ -262,7 +278,6 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
   const handleEditTask = (taskData: Omit<KanbanTask, 'id' | 'comments' | 'attachments'>) => {
     if (!editingTask) return;
 
-    const { setTasks } = useSharedData();
     
     // Update task in shared data
     setTasks(prev => prev.map(task => 
@@ -288,10 +303,9 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
 
   const handleDuplicateTask = async (task: KanbanTask) => {
     try {
-      const { createTask } = useSharedData();
-      
-      // Create duplicate task in shared data
-      await createTask({
+      // Create duplicate task directly with localStorage - IMMEDIATE FIX
+      const duplicateTask = {
+        id: Date.now().toString(),
         title: `${task.title} (Copy)`,
         description: task.description || '',
         priority: task.priority,
@@ -300,8 +314,20 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
         project_id: projectId || undefined,
         start_date: null,
         due_date: null,
-        duration: 1
-      });
+        duration: 1,
+        createdBy: (window as any).currentUserEmail || 'hna@scandac.com',
+        createdAt: new Date().toISOString()
+      };
+
+      // Get existing tasks from localStorage
+      const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      const updatedTasks = [...existingTasks, duplicateTask];
+      
+      // Save to localStorage
+      localStorage.setItem('tasks', JSON.stringify(updatedTasks));
+      
+      // Update shared state
+      setTasks(updatedTasks);
 
       toast({
         title: "Task Duplicated",
@@ -319,8 +345,6 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
   const handleDeleteTask = () => {
     if (!deletingTask) return;
 
-    const { setTasks } = useSharedData();
-    
     // Remove task from shared data
     setTasks(prev => prev.filter(task => task.id !== deletingTask.id));
 
