@@ -2,15 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Calendar, Edit, Trash2, GripHorizontal } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSharedData } from "@/contexts/SharedDataContext";
 
-interface GanttProject {
+interface GanttItem {
   id: string;
   name: string;
   description: string;
@@ -20,14 +16,13 @@ interface GanttProject {
   priority: "low" | "medium" | "high" | "urgent";
   assignee: string;
   color: string;
-  dependencies: string[];
+  type: "project" | "task";
+  projectName?: string;
 }
 
 export function GanttChart() {
   const { toast } = useToast();
-  const [projects, setProjects] = useState<GanttProject[]>([
-    // Empty array - no generated data, user creates their own projects
-  ]);
+  const { projects, tasks } = useSharedData();
 
   // Set timeline to start from today with bidirectional scrolling
   const today = new Date();
@@ -36,30 +31,36 @@ export function GanttChart() {
     end: new Date(today.getFullYear(), today.getMonth() + 12, 0) // 12 months ahead
   });
 
-  const [dragState, setDragState] = useState<{
-    isDragging: boolean;
-    projectId: string | null;
-    dragType: 'move' | 'resize-start' | 'resize-end' | null;
-    startX: number;
-  }>({
-    isDragging: false,
-    projectId: null,
-    dragType: null,
-    startX: 0
-  });
+  // Transform projects and tasks into Gantt data
+  const ganttProjects: GanttItem[] = projects.map(project => ({
+    id: project.id,
+    name: project.title,
+    description: project.description || '',
+    startDate: project.deadline ? new Date(project.deadline) : new Date(),
+    endDate: project.deadline ? new Date(project.deadline) : new Date(),
+    progress: project.progress || 0,
+    priority: project.priority as "low" | "medium" | "high" | "urgent",
+    assignee: project.assignedMembers?.[0] || '',
+    color: project.color || '#3B82F6',
+    type: "project"
+  }));
 
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<GanttProject | null>(null);
-  const [newProject, setNewProject] = useState<Partial<GanttProject>>({
-    name: "",
-    description: "",
-    startDate: new Date(),
-    endDate: new Date(),
-    progress: 0,
-    priority: "medium",
-    assignee: "",
-    color: "#3B82F6"
-  });
+  const ganttTasks: GanttItem[] = tasks.map(task => ({
+    id: task.id,
+    name: task.title,
+    description: task.description || '',
+    startDate: task.start_date ? new Date(task.start_date) : new Date(),
+    endDate: task.due_date ? new Date(task.due_date) : new Date(),
+    progress: task.status === 'done' ? 100 : task.status === 'inProgress' ? 50 : 0,
+    priority: task.priority as "low" | "medium" | "high" | "urgent",
+    assignee: task.assignee || '',
+    color: projects.find(p => p.id === task.project_id)?.color || '#6B7280',
+    type: "task",
+    projectName: projects.find(p => p.id === task.project_id)?.title || 'Unknown Project'
+  }));
+
+  // Combine projects and tasks for display
+  const allItems = [...ganttProjects, ...ganttTasks];
 
   const ganttRef = useRef<HTMLDivElement>(null);
 
@@ -85,149 +86,17 @@ export function GanttChart() {
 
   const timelineHeaders = generateTimelineHeaders();
 
-  // Calculate project bar position and width
-  const getProjectBarStyle = (project: GanttProject) => {
-    const startDiff = Math.max(0, (project.startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-    const endDiff = Math.min(totalDays, (project.endDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-    const duration = endDiff - startDiff;
+  // Calculate item bar position and width
+  const getItemBarStyle = (item: GanttItem) => {
+    const startDiff = Math.max(0, (item.startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+    const endDiff = Math.min(totalDays, (item.endDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+    const duration = Math.max(1, endDiff - startDiff); // Minimum 1 day
     
     return {
       left: `${startDiff * dayWidth}px`,
-      width: `${Math.max(duration * dayWidth, dayWidth)}px`,
-      backgroundColor: project.color
+      width: `${duration * dayWidth}px`,
+      backgroundColor: item.color
     };
-  };
-
-  // Handle mouse events for dragging
-  const handleMouseDown = (e: React.MouseEvent, projectId: string, dragType: 'move' | 'resize-start' | 'resize-end') => {
-    e.preventDefault();
-    setDragState({
-      isDragging: true,
-      projectId,
-      dragType,
-      startX: e.clientX
-    });
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!dragState.isDragging || !dragState.projectId) return;
-
-    const deltaX = e.clientX - dragState.startX;
-    const daysDelta = Math.round(deltaX / dayWidth);
-
-    if (Math.abs(daysDelta) < 1) return;
-
-    setProjects(prev => prev.map(project => {
-      if (project.id !== dragState.projectId) return project;
-
-      const newProject = { ...project };
-      
-      switch (dragState.dragType) {
-        case 'move':
-          const moveDays = daysDelta * (1000 * 60 * 60 * 24);
-          newProject.startDate = new Date(project.startDate.getTime() + moveDays);
-          newProject.endDate = new Date(project.endDate.getTime() + moveDays);
-          break;
-          
-        case 'resize-start':
-          const newStartDate = new Date(project.startDate.getTime() + daysDelta * (1000 * 60 * 60 * 24));
-          if (newStartDate < project.endDate) {
-            newProject.startDate = newStartDate;
-          }
-          break;
-          
-        case 'resize-end':
-          const newEndDate = new Date(project.endDate.getTime() + daysDelta * (1000 * 60 * 60 * 24));
-          if (newEndDate > project.startDate) {
-            newProject.endDate = newEndDate;
-          }
-          break;
-      }
-
-      return newProject;
-    }));
-
-    setDragState(prev => ({ ...prev, startX: e.clientX }));
-  };
-
-  const handleMouseUp = () => {
-    if (dragState.isDragging) {
-      toast({
-        title: "Project Updated",
-        description: "Timeline has been adjusted successfully.",
-      });
-    }
-    setDragState({
-      isDragging: false,
-      projectId: null,
-      dragType: null,
-      startX: 0
-    });
-  };
-
-  // Add event listeners
-  useEffect(() => {
-    if (dragState.isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [dragState]);
-
-  // Add new project
-  const handleAddProject = () => {
-    if (!newProject.name || !newProject.startDate || !newProject.endDate) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const project: GanttProject = {
-      id: Date.now().toString(),
-      name: newProject.name,
-      description: newProject.description || "",
-      startDate: new Date(newProject.startDate),
-      endDate: new Date(newProject.endDate),
-      progress: newProject.progress || 0,
-      priority: newProject.priority || "medium",
-      assignee: newProject.assignee || "",
-      color: newProject.color || "#3B82F6",
-      dependencies: []
-    };
-
-    setProjects(prev => [...prev, project]);
-    setNewProject({
-      name: "",
-      description: "",
-      startDate: new Date(),
-      endDate: new Date(),
-      progress: 0,
-      priority: "medium",
-      assignee: "",
-      color: "#3B82F6"
-    });
-    setIsAddDialogOpen(false);
-
-    toast({
-      title: "Project Added",
-      description: `${project.name} has been added to the timeline.`,
-    });
-  };
-
-  // Delete project
-  const handleDeleteProject = (projectId: string) => {
-    setProjects(prev => prev.filter(p => p.id !== projectId));
-    toast({
-      title: "Project Deleted",
-      description: "Project has been removed from the timeline.",
-    });
   };
 
   // Format date for display
@@ -241,10 +110,10 @@ export function GanttChart() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "urgent": return "bg-priority-urgent text-white";
-      case "high": return "bg-priority-high text-white";
-      case "medium": return "bg-priority-medium text-white";
-      case "low": return "bg-priority-low text-white";
+      case "urgent": return "bg-destructive text-white";
+      case "high": return "bg-orange-500 text-white";
+      case "medium": return "bg-warning text-white";
+      case "low": return "bg-muted text-muted-foreground";
       default: return "bg-muted text-muted-foreground";
     }
   };
@@ -272,104 +141,8 @@ export function GanttChart() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Project Timeline</h2>
-          <p className="text-muted-foreground">Manage project schedules and dependencies</p>
+          <p className="text-muted-foreground">View all projects and tasks on timeline</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-primary hover:bg-primary-dark">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Project
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add New Project</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="project-name">Project Name *</Label>
-                <Input
-                  id="project-name"
-                  value={newProject.name || ""}
-                  onChange={(e) => setNewProject(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter project name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="project-description">Description</Label>
-                <Textarea
-                  id="project-description"
-                  value={newProject.description || ""}
-                  onChange={(e) => setNewProject(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Project description"
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="start-date">Start Date *</Label>
-                  <Input
-                    id="start-date"
-                    type="date"
-                    value={newProject.startDate?.toISOString().split('T')[0] || ""}
-                    onChange={(e) => setNewProject(prev => ({ ...prev, startDate: new Date(e.target.value) }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="end-date">End Date *</Label>
-                  <Input
-                    id="end-date"
-                    type="date"
-                    value={newProject.endDate?.toISOString().split('T')[0] || ""}
-                    onChange={(e) => setNewProject(prev => ({ ...prev, endDate: new Date(e.target.value) }))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="priority">Priority</Label>
-                  <Select value={newProject.priority} onValueChange={(value: any) => setNewProject(prev => ({ ...prev, priority: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="assignee">Assignee</Label>
-                  <Input
-                    id="assignee"
-                    value={newProject.assignee || ""}
-                    onChange={(e) => setNewProject(prev => ({ ...prev, assignee: e.target.value }))}
-                    placeholder="Assign to"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="color">Color</Label>
-                <Input
-                  id="color"
-                  type="color"
-                  value={newProject.color || "#3B82F6"}
-                  onChange={(e) => setNewProject(prev => ({ ...prev, color: e.target.value }))}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddProject}>
-                  Add Project
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Gantt Chart */}
@@ -401,7 +174,7 @@ export function GanttChart() {
               {/* Timeline Header */}
               <div className="flex bg-muted/20 border-b border-border">
                 <div className="w-64 p-3 font-medium text-sm border-r border-border">
-                  Project
+                  Item
                 </div>
                 <div className="flex">
                   {timelineHeaders.map((date, index) => (
@@ -421,41 +194,33 @@ export function GanttChart() {
                 </div>
               </div>
 
-              {/* Project Rows */}
-              {projects.map((project, index) => (
-                <div key={project.id} className="flex border-b border-border hover:bg-muted/10">
-                  {/* Project Info */}
+              {/* Item Rows */}
+              {allItems.map((item, index) => (
+                <div key={item.id} className="flex border-b border-border hover:bg-muted/10">
+                  {/* Item Info */}
                   <div className="w-64 p-3 border-r border-border">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{project.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">{project.assignee}</div>
+                        <div className="font-medium text-sm truncate">{item.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {item.assignee || 'Unassigned'}
+                        </div>
+                        {item.type === "task" && item.projectName && (
+                          <div className="text-xs text-muted-foreground truncate">
+                            Project: {item.projectName}
+                          </div>
+                        )}
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge className={`text-xs ${getPriorityColor(project.priority)}`}>
-                            {project.priority}
+                          <Badge className={`text-xs ${getPriorityColor(item.priority)}`}>
+                            {item.priority}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            {project.progress}%
+                            {item.progress}%
                           </span>
+                          <Badge variant="outline" className="text-xs">
+                            {item.type}
+                          </Badge>
                         </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-6 h-6 p-0"
-                          onClick={() => setEditingProject(project)}
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-6 h-6 p-0 text-destructive"
-                          onClick={() => handleDeleteProject(project.id)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -473,112 +238,98 @@ export function GanttChart() {
                       />
                     ))}
 
-                    {/* Project Bar */}
+                    {/* Item Bar */}
                     <div
-                      className="absolute top-4 h-8 rounded cursor-move flex items-center justify-between px-2 text-white text-xs font-medium shadow-sm hover:shadow-md transition-shadow"
-                      style={getProjectBarStyle(project)}
-                      onMouseDown={(e) => handleMouseDown(e, project.id, 'move')}
+                      className="absolute top-1/2 -translate-y-1/2 h-6 rounded-lg transition-all flex items-center px-3 text-white text-xs font-medium shadow-sm"
+                      style={getItemBarStyle(item)}
+                      title={`${item.name}: ${formatDate(item.startDate)} - ${formatDate(item.endDate)}`}
                     >
-                      {/* Resize handle - start */}
-                      <div
-                        className="w-2 h-full bg-black/20 rounded-l cursor-w-resize"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          handleMouseDown(e, project.id, 'resize-start');
-                        }}
-                      />
-                      
-                      {/* Project name */}
-                      <div className="flex-1 text-center truncate px-2">
-                        {project.name}
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="truncate">{item.name}</span>
+                        <div className="ml-auto text-xs opacity-80">
+                          {item.progress}%
+                        </div>
                       </div>
                       
-                      {/* Resize handle - end */}
-                      <div
-                        className="w-2 h-full bg-black/20 rounded-r cursor-e-resize"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          handleMouseDown(e, project.id, 'resize-end');
-                        }}
+                      {/* Progress overlay */}
+                      <div 
+                        className="absolute top-0 left-0 h-full bg-black/20 rounded-lg transition-all"
+                        style={{ width: `${item.progress}%` }}
                       />
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div
-                      className="absolute top-4 h-8 bg-white/30 rounded"
-                      style={{
-                        ...getProjectBarStyle(project),
-                        width: `${parseInt(getProjectBarStyle(project).width) * (project.progress / 100)}px`
-                      }}
-                    />
-
-                    {/* Date Labels */}
-                    <div className="absolute bottom-1 left-0 text-xs text-muted-foreground">
-                      {formatDate(project.startDate)}
-                    </div>
-                    <div 
-                      className="absolute bottom-1 text-xs text-muted-foreground"
-                      style={{ 
-                        left: `${parseInt(getProjectBarStyle(project).width) - 60}px`
-                      }}
-                    >
-                      {formatDate(project.endDate)}
                     </div>
                   </div>
                 </div>
               ))}
+
+              {allItems.length === 0 && (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium text-muted-foreground mb-2">No Items to Display</h3>
+                    <p className="text-sm text-muted-foreground">Create projects and tasks to see them on the timeline</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Project Details */}
+      {/* Timeline Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 bg-gradient-card shadow-custom-card">
-          <CardHeader>
-            <CardTitle>Critical Path Analysis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {projects
-                .filter(p => p.dependencies.length > 0 || projects.some(dep => dep.dependencies.includes(p.id)))
-                .map(project => (
-                  <div key={project.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                    <div>
-                      <div className="font-medium">{project.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Duration: {Math.ceil((project.endDate.getTime() - project.startDate.getTime()) / (1000 * 60 * 60 * 24))} days
-                      </div>
-                    </div>
-                    <Badge variant="outline">
-                      Critical
-                    </Badge>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-
         <Card className="bg-gradient-card shadow-custom-card">
           <CardHeader>
             <CardTitle>Timeline Summary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center p-4 bg-muted/20 rounded-lg">
-              <div className="text-2xl font-bold text-foreground">{projects.length}</div>
-              <div className="text-sm text-muted-foreground">Total Projects</div>
+              <div className="text-2xl font-bold text-foreground">{allItems.length}</div>
+              <div className="text-sm text-muted-foreground">Total Items</div>
             </div>
             <div className="text-center p-4 bg-muted/20 rounded-lg">
               <div className="text-2xl font-bold text-success">
-                {projects.filter(p => p.progress === 100).length}
+                {allItems.filter(p => p.progress === 100).length}
               </div>
               <div className="text-sm text-muted-foreground">Completed</div>
             </div>
             <div className="text-center p-4 bg-muted/20 rounded-lg">
               <div className="text-2xl font-bold text-warning">
-                {projects.filter(p => p.progress > 0 && p.progress < 100).length}
+                {allItems.filter(p => p.progress > 0 && p.progress < 100).length}
               </div>
               <div className="text-sm text-muted-foreground">In Progress</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2 bg-gradient-card shadow-custom-card">
+          <CardHeader>
+            <CardTitle>Project Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {ganttProjects.map(project => (
+                <div key={project.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                  <div>
+                    <div className="font-medium">{project.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Tasks: {ganttTasks.filter(t => t.projectName === project.name).length}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={`text-xs ${getPriorityColor(project.priority)}`}>
+                      {project.priority}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {project.progress}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {ganttProjects.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  No projects created yet
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -73,6 +73,8 @@ export function ProjectTaskBoard() {
         duration: taskData.duration || 1
       });
       
+      setTaskDialogOpen(false);
+      
       toast({
         title: "Task Created",
         description: `"${taskData.title}" has been added to the project.`,

@@ -12,8 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { usePersistedState } from "@/hooks/useDataPersistence";
-import { useProjects } from "@/hooks/useProjects";
+import { useSharedData } from "@/contexts/SharedDataContext";
+import { CalendarEventEditDialog } from "@/components/CalendarEventEditDialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { 
@@ -52,11 +52,11 @@ interface PublicHoliday {
 
 const Calendar = () => {
   const { toast } = useToast();
-  const { projects } = useProjects();
+  const { projects, calendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } = useSharedData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [events, setEvents] = usePersistedState<CalendarEvent[]>('calendar_events', []);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -65,8 +65,14 @@ const Calendar = () => {
     duration: "",
     type: "meeting" as const,
     attendees: "",
-    location: ""
+    location: "",
+    assignedMembers: [] as string[]
   });
+
+  const teamMembers = [
+    { email: 'hna@scandac.com', name: 'HNA User' },
+    { email: 'myh@scandac.com', name: 'MYH User' }
+  ];
 
   // Public holidays for Denmark, Sweden, UK, and USA (2024-2025)
   const publicHolidays: PublicHoliday[] = [
@@ -112,7 +118,7 @@ const Calendar = () => {
   };
 
   // Add new event
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     if (!newEvent.title.trim()) {
       toast({
         title: "Error",
@@ -122,39 +128,42 @@ const Calendar = () => {
       return;
     }
 
-    const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    try {
+      await createCalendarEvent({
+        title: newEvent.title,
+        description: newEvent.description,
+        date: newEvent.date.toISOString().split('T')[0],
+        time: newEvent.time || null,
+        type: newEvent.type,
+        attendees: newEvent.attendees ? newEvent.attendees.split(",").map(a => a.trim()) : [],
+        location: newEvent.location,
+        assigned_members: newEvent.assignedMembers
+      });
 
-    const event: CalendarEvent = {
-      id: Date.now().toString(),
-      title: newEvent.title,
-      description: newEvent.description,
-      date: newEvent.date,
-      time: newEvent.time || "All day",
-      duration: newEvent.duration || "1 hour",
-      type: newEvent.type,
-      attendees: newEvent.attendees ? newEvent.attendees.split(",").map(a => a.trim()) : [],
-      location: newEvent.location,
-      color: randomColor
-    };
+      setNewEvent({
+        title: "",
+        description: "",
+        date: new Date(),
+        time: "",
+        duration: "",
+        type: "meeting",
+        attendees: "",
+        location: "",
+        assignedMembers: []
+      });
+      setIsAddEventOpen(false);
 
-    setEvents(prev => [...prev, event]);
-    setNewEvent({
-      title: "",
-      description: "",
-      date: new Date(),
-      time: "",
-      duration: "",
-      type: "meeting",
-      attendees: "",
-      location: ""
-    });
-    setIsAddEventOpen(false);
-
-    toast({
-      title: "Event Created",
-      description: `${event.title} has been added to your calendar.`,
-    });
+      toast({
+        title: "Event Created",
+        description: `${newEvent.title} has been added to your calendar.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create event. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Get calendar grid with Monday start
@@ -189,18 +198,19 @@ const Calendar = () => {
 
   // Get events for a specific date (including project deadlines)
   const getEventsForDate = (date: Date) => {
-    const userEvents = events.filter(event => 
-      event.date.toDateString() === date.toDateString()
-    );
+    const userEvents = calendarEvents.filter(event => {
+      const eventDate = new Date(event.date);
+      return eventDate.toDateString() === date.toDateString();
+    });
 
     // Add project deadlines as events
     const projectDeadlines = projects
-      .filter(project => project.deadline.toDateString() === date.toDateString())
+      .filter(project => project.deadline && new Date(project.deadline).toDateString() === date.toDateString())
       .map(project => ({
         id: `project-${project.id}`,
         title: `${project.title} Deadline`,
         description: `Project deadline: ${project.title}`,
-        date: project.deadline,
+        date: new Date(project.deadline),
         time: "All day",
         duration: "All day",
         type: "deadline" as const,
@@ -232,17 +242,18 @@ const Calendar = () => {
     const today = new Date();
     const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
     
-    const upcomingUserEvents = events.filter(event => 
-      event.date >= today && event.date <= in30Days
-    );
+    const upcomingUserEvents = calendarEvents.filter(event => {
+      const eventDate = new Date(event.date);
+      return eventDate >= today && eventDate <= in30Days;
+    });
 
     const upcomingProjectDeadlines = projects
-      .filter(project => project.deadline >= today && project.deadline <= in30Days)
+      .filter(project => project.deadline && new Date(project.deadline) >= today && new Date(project.deadline) <= in30Days)
       .map(project => ({
         id: `project-${project.id}`,
         title: `${project.title} Deadline`,
         description: `Project deadline: ${project.title}`,
-        date: project.deadline,
+        date: new Date(project.deadline),
         time: "All day",
         duration: "All day",
         type: "deadline" as const,
@@ -395,6 +406,34 @@ const Calendar = () => {
                     placeholder="Comma separated names"
                   />
                 </div>
+                <div>
+                  <Label>Assign to Team Members</Label>
+                  <div className="space-y-2 mt-2">
+                    {teamMembers.map(member => (
+                      <label key={member.email} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={newEvent.assignedMembers.includes(member.email)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNewEvent(prev => ({
+                                ...prev,
+                                assignedMembers: [...prev.assignedMembers, member.email]
+                              }));
+                            } else {
+                              setNewEvent(prev => ({
+                                ...prev,
+                                assignedMembers: prev.assignedMembers.filter(email => email !== member.email)
+                              }));
+                            }
+                          }}
+                          className="rounded border-input"
+                        />
+                        <span className="text-sm">{member.name} ({member.email})</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsAddEventOpen(false)}>
                     Cancel
@@ -408,6 +447,46 @@ const Calendar = () => {
           </Dialog>
           </div>
         </div>
+
+        {/* Calendar Event Edit Dialog */}
+        <CalendarEventEditDialog
+          open={!!editingEvent}
+          event={editingEvent}
+          onClose={() => setEditingEvent(null)}
+          onSubmit={async (eventData) => {
+            try {
+              await updateCalendarEvent(editingEvent.id, eventData);
+              setEditingEvent(null);
+              toast({
+                title: "Event Updated",
+                description: "Event has been updated successfully.",
+              });
+            } catch (error) {
+              toast({
+                title: "Error",
+                description: "Failed to update event.",
+                variant: "destructive"
+              });
+            }
+          }}
+          onDelete={async () => {
+            try {
+              await deleteCalendarEvent(editingEvent.id);
+              setEditingEvent(null);
+              toast({
+                title: "Event Deleted",
+                description: "Event has been deleted successfully.",
+              });
+            } catch (error) {
+              toast({
+                title: "Error",
+                description: "Failed to delete event.",
+                variant: "destructive"
+              });
+            }
+          }}
+          teamMembers={teamMembers}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Calendar */}
@@ -635,25 +714,25 @@ const Calendar = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-gradient-card shadow-custom-card">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary">{events.filter(e => e.type === 'meeting').length}</div>
+              <div className="text-2xl font-bold text-primary">{calendarEvents.filter(e => e.type === 'meeting').length}</div>
               <div className="text-sm text-muted-foreground">Meetings</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-card shadow-custom-card">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-destructive">{events.filter(e => e.type === 'deadline').length}</div>
+              <div className="text-2xl font-bold text-destructive">{calendarEvents.filter(e => e.type === 'deadline').length}</div>
               <div className="text-sm text-muted-foreground">Deadlines</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-card shadow-custom-card">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-warning">{events.filter(e => e.type === 'milestone').length}</div>
+              <div className="text-2xl font-bold text-warning">{calendarEvents.filter(e => e.type === 'milestone').length}</div>
               <div className="text-sm text-muted-foreground">Milestones</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-card shadow-custom-card">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-success">{events.length}</div>
+              <div className="text-2xl font-bold text-success">{calendarEvents.length}</div>
               <div className="text-sm text-muted-foreground">Total Events</div>
             </CardContent>
           </Card>
