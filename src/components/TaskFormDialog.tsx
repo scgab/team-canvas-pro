@@ -87,7 +87,7 @@ export function TaskFormDialog({
       description: formData.description,
       priority: formData.priority,
       assignee: formData.assignee,
-      dueDate: formData.dueDate ? format(formData.dueDate, 'MMM dd') : undefined,
+      dueDate: formData.dueDate ? formData.dueDate.toISOString() : undefined,
       tags: formData.tags,
       status: formData.status
     });

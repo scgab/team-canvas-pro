@@ -131,10 +131,16 @@ const Calendar = () => {
     try {
       console.log('Creating calendar event:', newEvent);
       
+      // Format date properly to avoid timezone issues
+      const year = newEvent.date.getFullYear();
+      const month = String(newEvent.date.getMonth() + 1).padStart(2, '0');
+      const day = String(newEvent.date.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+      
       await createCalendarEvent({
         title: newEvent.title,
         description: newEvent.description,
-        date: newEvent.date.toISOString().split('T')[0],
+        date: formattedDate,
         time: newEvent.time || '',
         type: newEvent.type,
         attendees: newEvent.attendees ? newEvent.attendees.split(",").map(a => a.trim()) : [],
@@ -203,11 +209,16 @@ const Calendar = () => {
     console.log('Getting events for date:', date, 'Calendar events:', calendarEvents);
     
     const userEvents = calendarEvents.filter(event => {
-      const eventDate = new Date(event.date);
+      // Create date from string without timezone issues
+      const eventDateParts = event.date.split('-');
+      const eventDate = new Date(parseInt(eventDateParts[0]), parseInt(eventDateParts[1]) - 1, parseInt(eventDateParts[2]));
       return eventDate.toDateString() === date.toDateString();
     }).map(event => ({
       ...event,
-      date: new Date(event.date),
+      date: (() => {
+        const dateParts = event.date.split('-');
+        return new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+      })(),
       color: "#3B82F6"
     }));
 
