@@ -109,6 +109,7 @@ export function GanttChart() {
     const dayOfWeek = currentDate.getDay();
     const startOfWeek = new Date(currentDate);
     startOfWeek.setDate(currentDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    startOfWeek.setHours(0, 0, 0, 0);
     
     let weekStart = new Date(startOfWeek);
     
@@ -124,12 +125,22 @@ export function GanttChart() {
 
   // Calculate item bar position and width for weeks
   const getItemBarStyle = (item: GanttItem) => {
-    const startWeekDiff = Math.max(0, (item.startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24 * 7));
-    const endWeekDiff = Math.min(totalWeeks, (item.endDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24 * 7));
-    const duration = Math.max(0.1, endWeekDiff - startWeekDiff); // Minimum 0.1 week
+    // Get the start of the first week in our timeline
+    const firstWeekStart = timelineHeaders[0];
+    
+    // Calculate which week the item starts and ends
+    const itemStartTime = item.startDate.getTime();
+    const itemEndTime = item.endDate.getTime();
+    
+    // Find the position relative to the first week
+    const startWeekDiff = Math.floor((itemStartTime - firstWeekStart.getTime()) / (1000 * 60 * 60 * 24 * 7));
+    const endWeekDiff = Math.ceil((itemEndTime - firstWeekStart.getTime()) / (1000 * 60 * 60 * 24 * 7));
+    
+    const startPosition = Math.max(0, startWeekDiff);
+    const duration = Math.max(0.2, endWeekDiff - startWeekDiff); // Minimum 0.2 week for visibility
     
     return {
-      left: `${startWeekDiff * weekWidth}px`,
+      left: `${startPosition * weekWidth}px`,
       width: `${duration * weekWidth}px`,
       backgroundColor: item.color
     };
@@ -137,9 +148,9 @@ export function GanttChart() {
 
   // Format date for display
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
+    return date.toLocaleDateString('en-GB', { 
+      day: '2-digit',
+      month: '2-digit',
       year: 'numeric'
     });
   };

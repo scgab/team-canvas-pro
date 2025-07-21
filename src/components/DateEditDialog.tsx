@@ -24,21 +24,33 @@ export function DateEditDialog({ open, onOpenChange, item, onSave }: DateEditDia
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Helper function to format date to dd/mm/yyyy for input[type="date"]
+  const formatDateForInput = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   useEffect(() => {
     if (item) {
       // Default to today's date if no dates have been set
-      const today = new Date().toISOString().split('T')[0];
-      const itemStart = item.startDate.toISOString().split('T')[0];
-      const itemEnd = item.endDate.toISOString().split('T')[0];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const itemStart = new Date(item.startDate);
+      const itemEnd = new Date(item.endDate);
+      itemStart.setHours(0, 0, 0, 0);
+      itemEnd.setHours(0, 0, 0, 0);
       
       // Check if dates are the same as creation date (indicating no custom dates set)
-      const isDefaultDate = itemStart === itemEnd && (
-        new Date(itemStart).getTime() === new Date().setHours(0, 0, 0, 0) ||
-        Math.abs(new Date(itemStart).getTime() - new Date().setHours(0, 0, 0, 0)) < 24 * 60 * 60 * 1000
+      const isDefaultDate = itemStart.getTime() === itemEnd.getTime() && (
+        itemStart.getTime() === today.getTime() ||
+        Math.abs(itemStart.getTime() - today.getTime()) < 24 * 60 * 60 * 1000
       );
       
-      setStartDate(isDefaultDate ? today : itemStart);
-      setEndDate(isDefaultDate ? today : itemEnd);
+      setStartDate(isDefaultDate ? formatDateForInput(today) : formatDateForInput(itemStart));
+      setEndDate(isDefaultDate ? formatDateForInput(today) : formatDateForInput(itemEnd));
     }
   }, [item]);
 
