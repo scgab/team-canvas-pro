@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUsers } from "@/utils/userDatabase";
 import { useToast } from "@/hooks/use-toast";
 import { tasksService } from "@/services/database";
+import { ProjectNotes } from "@/components/ProjectNotes";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -246,10 +247,11 @@ const ProjectDetail = () => {
 
         {/* Tabs for different sections */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
+            <TabsTrigger value="notes">Notes</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
 
@@ -369,6 +371,10 @@ const ProjectDetail = () => {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="notes" className="space-y-6">
+            <ProjectNotes projectId={projectId!} />
           </TabsContent>
 
           <TabsContent value="files" className="space-y-6">

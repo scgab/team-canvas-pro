@@ -233,7 +233,7 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
     try {
       console.log('Creating task with data:', taskData);
       
-      // Create task directly with localStorage - IMMEDIATE FIX
+      // Create task with shared project storage - IMMEDIATE FIX
       const newTask = {
         id: Date.now().toString(),
         title: taskData.title,
@@ -249,15 +249,16 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
         createdAt: new Date().toISOString()
       };
 
-      // Get existing tasks from localStorage
-      const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-      const updatedTasks = [...existingTasks, newTask];
-      
-      // Save to localStorage
-      localStorage.setItem('tasks', JSON.stringify(updatedTasks));
+      // Save to shared project-specific localStorage
+      if (projectId) {
+        const tasksKey = `shared_project_${projectId}_tasks`;
+        const existingTasks = JSON.parse(localStorage.getItem(tasksKey) || '[]');
+        const updatedTasks = [...existingTasks, newTask];
+        localStorage.setItem(tasksKey, JSON.stringify(updatedTasks));
+      }
       
       // Update shared state
-      setTasks(updatedTasks);
+      setTasks(prev => [...prev, newTask]);
 
       console.log('Task created successfully:', newTask);
 
@@ -303,7 +304,7 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
 
   const handleDuplicateTask = async (task: KanbanTask) => {
     try {
-      // Create duplicate task directly with localStorage - IMMEDIATE FIX
+      // Create duplicate task with shared project storage - IMMEDIATE FIX
       const duplicateTask = {
         id: Date.now().toString(),
         title: `${task.title} (Copy)`,
@@ -319,15 +320,16 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
         createdAt: new Date().toISOString()
       };
 
-      // Get existing tasks from localStorage
-      const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-      const updatedTasks = [...existingTasks, duplicateTask];
-      
-      // Save to localStorage
-      localStorage.setItem('tasks', JSON.stringify(updatedTasks));
+      // Save to shared project-specific localStorage
+      if (projectId) {
+        const tasksKey = `shared_project_${projectId}_tasks`;
+        const existingTasks = JSON.parse(localStorage.getItem(tasksKey) || '[]');
+        const updatedTasks = [...existingTasks, duplicateTask];
+        localStorage.setItem(tasksKey, JSON.stringify(updatedTasks));
+      }
       
       // Update shared state
-      setTasks(updatedTasks);
+      setTasks(prev => [...prev, duplicateTask]);
 
       toast({
         title: "Task Duplicated",

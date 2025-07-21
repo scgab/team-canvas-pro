@@ -91,11 +91,20 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       try {
         setLoading(true);
         
-        // Load tasks from localStorage
-        const storedTasks = localStorage.getItem('tasks');
-        if (storedTasks) {
-          setTasks(JSON.parse(storedTasks));
+        // Load tasks from shared localStorage - collect from all projects
+        const allTasks: Task[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('shared_project_') && key.endsWith('_tasks')) {
+            try {
+              const projectTasks = JSON.parse(localStorage.getItem(key) || '[]');
+              allTasks.push(...projectTasks);
+            } catch (e) {
+              console.warn('Failed to parse tasks from key:', key);
+            }
+          }
         }
+        setTasks(allTasks);
         
         // Load other data from Supabase in parallel
         const [projectsData, messagesData, eventsData] = await Promise.all([
@@ -201,7 +210,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
       
-      // Create task with localStorage
+      // Create task with shared localStorage
       const newTask: Task = {
         id: Date.now().toString(),
         title: taskData.title,
@@ -217,15 +226,18 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         createdAt: new Date().toISOString()
       };
 
-      console.log('Creating task with localStorage:', newTask);
+      console.log('Creating task with shared localStorage:', newTask);
 
-      // Update state
-      setTasks(prev => {
-        const updatedTasks = [...prev, newTask];
-        // Save to localStorage
-        localStorage.setItem('tasks', JSON.stringify(updatedTasks));
-        return updatedTasks;
-      });
+      // Save to project-specific shared storage
+      if (taskData.project_id) {
+        const tasksKey = `shared_project_${taskData.project_id}_tasks`;
+        const existingTasks = JSON.parse(localStorage.getItem(tasksKey) || '[]');
+        const updatedTasks = [...existingTasks, newTask];
+        localStorage.setItem(tasksKey, JSON.stringify(updatedTasks));
+      }
+
+      // Update global state
+      setTasks(prev => [...prev, newTask]);
 
       console.log('Task created successfully:', newTask);
       return newTask;
