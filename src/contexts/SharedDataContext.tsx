@@ -219,8 +219,8 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         status: taskData.status,
         assignee: taskData.assignee,
         project_id: taskData.project_id,
-        start_date: taskData.start_date?.toISOString().split('T')[0],
-        due_date: taskData.due_date?.toISOString().split('T')[0],
+        start_date: taskData.start_date ? taskData.start_date.toISOString().split('T')[0] : null,
+        due_date: taskData.due_date ? taskData.due_date.toISOString().split('T')[0] : null,
         duration: taskData.duration,
         created_by: currentUserEmail
       });
