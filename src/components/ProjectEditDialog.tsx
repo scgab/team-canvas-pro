@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useSharedData } from "@/contexts/SharedDataContext";
+import { projectsService } from "@/services/database";
 
 import { Project } from "@/contexts/SharedDataContext";
 
@@ -44,7 +45,7 @@ export function ProjectEditDialog({ project, open, onOpenChange, onProjectUpdate
     }
   }, [project]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!project) return;
 
@@ -57,26 +58,46 @@ export function ProjectEditDialog({ project, open, onOpenChange, onProjectUpdate
       return;
     }
 
-    const updatedProject = {
-      ...project,
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      status: formData.status as "planning" | "in-progress" | "review" | "completed",
-      priority: formData.priority as "low" | "medium" | "high" | "urgent",
-      deadline: new Date(formData.deadline),
-      progress: formData.progress,
-      team_size: formData.team_size,
-      updated_at: new Date()
-    };
+    try {
+      const updates = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        status: formData.status,
+        priority: formData.priority,
+        deadline: formData.deadline,
+        progress: formData.progress,
+        team_size: formData.team_size
+      };
 
-    setProjects(prev => prev.map(p => p.id === project.id ? updatedProject : p));
-    onProjectUpdated();
-    onOpenChange(false);
+      await projectsService.update(project.id, updates);
+      
+      const updatedProject = {
+        ...project,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        status: formData.status as "planning" | "in-progress" | "review" | "completed",
+        priority: formData.priority as "low" | "medium" | "high" | "urgent",
+        deadline: new Date(formData.deadline),
+        progress: formData.progress,
+        team_size: formData.team_size,
+        updated_at: new Date()
+      };
 
-    toast({
-      title: "Project Updated",
-      description: `${updatedProject.title} has been updated successfully.`
-    });
+      setProjects(prev => prev.map(p => p.id === project.id ? updatedProject : p));
+      onProjectUpdated();
+      onOpenChange(false);
+
+      toast({
+        title: "Project Updated",
+        description: `${updatedProject.title} has been updated successfully.`
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update project. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

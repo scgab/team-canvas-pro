@@ -2,10 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus } from "lucide-react";
+import { Calendar, Plus, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSharedData } from "@/contexts/SharedDataContext";
 import { TaskFormDialog } from "@/components/TaskFormDialog";
+import { DateEditDialog } from "@/components/DateEditDialog";
+import { projectsService, tasksService } from "@/services/database";
 
 interface GanttItem {
   id: string;
@@ -23,8 +25,16 @@ interface GanttItem {
 
 export function GanttChart() {
   const { toast } = useToast();
-  const { projects, tasks, createTask } = useSharedData();
+  const { projects, tasks, createTask, setProjects, setTasks } = useSharedData();
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [dateEditDialogOpen, setDateEditDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<{
+    id: string;
+    name: string;
+    startDate: Date;
+    endDate: Date;
+    type: "project" | "task";
+  } | null>(null);
 
   // Set timeline to start from today with bidirectional scrolling
   const today = new Date();
@@ -61,8 +71,24 @@ export function GanttChart() {
     projectName: projects.find(p => p.id === task.project_id)?.title || 'Unknown Project'
   }));
 
-  // Combine projects and tasks for display
-  const allItems = [...ganttProjects, ...ganttTasks];
+  // Group tasks under their projects
+  const organizedItems: GanttItem[] = [];
+  
+  ganttProjects.forEach(project => {
+    organizedItems.push(project);
+    const projectTasks = ganttTasks.filter(task => 
+      task.projectName === project.name
+    );
+    organizedItems.push(...projectTasks);
+  });
+  
+  // Add orphaned tasks (tasks without matching projects)
+  const orphanedTasks = ganttTasks.filter(task => 
+    !ganttProjects.some(project => project.name === task.projectName)
+  );
+  organizedItems.push(...orphanedTasks);
+
+  const allItems = organizedItems;
 
   const ganttRef = useRef<HTMLDivElement>(null);
 
@@ -169,6 +195,47 @@ export function GanttChart() {
     }
   };
 
+  const handleEditDates = (item: GanttItem) => {
+    setSelectedItem({
+      id: item.id,
+      name: item.name,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      type: item.type
+    });
+    setDateEditDialogOpen(true);
+  };
+
+  const handleSaveDates = async (id: string, startDate: Date, endDate: Date, type: "project" | "task") => {
+    try {
+      if (type === "project") {
+        await projectsService.update(id, {
+          deadline: endDate.toISOString().split('T')[0]
+        });
+        
+        setProjects(prev => prev.map(p => 
+          p.id === id ? { ...p, deadline: endDate, updated_at: new Date() } : p
+        ));
+      } else {
+        await tasksService.update(id, {
+          start_date: startDate.toISOString().split('T')[0],
+          due_date: endDate.toISOString().split('T')[0]
+        });
+        
+        setTasks(prev => prev.map(t => 
+          t.id === id ? { 
+            ...t, 
+            start_date: startDate,
+            due_date: endDate,
+            updated_at: new Date()
+          } : t
+        ));
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -237,21 +304,31 @@ export function GanttChart() {
 
               {/* Item Rows */}
               {allItems.map((item, index) => (
-                <div key={item.id} className="flex border-b border-border hover:bg-muted/10">
+                <div key={item.id} className={`flex border-b border-border hover:bg-muted/10 ${
+                  item.type === "task" ? "bg-muted/5" : ""
+                }`}>
                   {/* Item Info */}
                   <div className="w-64 p-3 border-r border-border">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{item.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">
+                        <div className={`font-medium text-sm truncate ${
+                          item.type === "task" ? "ml-4" : ""
+                        }`}>
+                          {item.name}
+                        </div>
+                        <div className={`text-xs text-muted-foreground truncate ${
+                          item.type === "task" ? "ml-4" : ""
+                        }`}>
                           {item.assignee || 'Unassigned'}
                         </div>
                         {item.type === "task" && item.projectName && (
-                          <div className="text-xs text-muted-foreground truncate">
+                          <div className="text-xs text-muted-foreground truncate ml-4">
                             Project: {item.projectName}
                           </div>
                         )}
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className={`flex items-center gap-2 mt-1 ${
+                          item.type === "task" ? "ml-4" : ""
+                        }`}>
                           <Badge className={`text-xs ${getPriorityColor(item.priority)}`}>
                             {item.priority}
                           </Badge>
@@ -263,6 +340,14 @@ export function GanttChart() {
                           </Badge>
                         </div>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleEditDates(item)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
                     </div>
                   </div>
 
@@ -383,6 +468,13 @@ export function GanttChart() {
         mode="create"
         defaultStatus="todo"
         task={null}
+      />
+      
+      <DateEditDialog
+        open={dateEditDialogOpen}
+        onOpenChange={setDateEditDialogOpen}
+        item={selectedItem}
+        onSave={handleSaveDates}
       />
     </div>
   );

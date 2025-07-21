@@ -14,7 +14,8 @@ export const createTestProject = (): Project => {
     deadline: futureDate,
     created_at: now,
     updated_at: now,
-    user_id: '1', // HNA user
+    created_by: '1', // HNA user
+    assigned_members: [],
     progress: 0,
     color: "#3B82F6",
     team_size: 1,
