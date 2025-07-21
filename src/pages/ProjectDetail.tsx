@@ -16,6 +16,7 @@ import { useSharedData } from "@/contexts/SharedDataContext";
 import { useAuth } from "@/hooks/useAuth";
 import { getUsers } from "@/utils/userDatabase";
 import { useToast } from "@/hooks/use-toast";
+import { tasksService } from "@/services/database";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -115,6 +116,22 @@ const ProjectDetail = () => {
       title: "Project Archived",
       description: `${project.title} has been archived successfully.`
     });
+  };
+
+  const handleTaskStatusUpdate = async (taskId: string, newStatus: string) => {
+    try {
+      await tasksService.update(taskId, { status: newStatus });
+      toast({
+        title: "Task Updated",
+        description: "Task status has been updated.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update task status.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -312,7 +329,10 @@ const ProjectDetail = () => {
           </TabsContent>
 
           <TabsContent value="tasks" className="space-y-6">
-            <KanbanBoard />
+            <KanbanBoard 
+              projectId={projectId}
+              onTaskStatusUpdate={handleTaskStatusUpdate}
+            />
           </TabsContent>
 
           <TabsContent value="team" className="space-y-6">
