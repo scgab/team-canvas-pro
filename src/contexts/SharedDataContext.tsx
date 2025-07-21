@@ -211,6 +211,19 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const createTask = async (taskData: Omit<Task, 'id' | 'createdBy' | 'createdAt'>): Promise<Task> => {
     try {
       const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
+      
+      console.log('Creating task with data:', {
+        title: taskData.title,
+        description: taskData.description,
+        priority: taskData.priority,
+        status: taskData.status,
+        assignee: taskData.assignee,
+        project_id: taskData.project_id,
+        start_date: taskData.start_date ? taskData.start_date.toISOString().split('T')[0] : null,
+        due_date: taskData.due_date ? taskData.due_date.toISOString().split('T')[0] : null,
+        duration: taskData.duration,
+        created_by: currentUserEmail
+      });
 
       const newTask = await tasksService.create({
         title: taskData.title,
@@ -224,6 +237,8 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         duration: taskData.duration,
         created_by: currentUserEmail
       });
+
+      console.log('Task created successfully:', newTask);
 
       const transformedTask: Task = {
         id: newTask.id,
@@ -243,7 +258,10 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setTasks(prev => [...prev, transformedTask]);
       return transformedTask;
     } catch (error) {
-      console.error('Error creating task:', error);
+      console.error('Detailed error creating task:', error);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
+      console.error('Error hint:', error.hint);
       throw error;
     }
   };
