@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, FileText } from "lucide-react";
+import { useSharedData } from "@/contexts/SharedDataContext";
 
 interface Note {
   id: string;
@@ -23,48 +24,20 @@ interface ProjectNotesProps {
 }
 
 export function ProjectNotes({ projectId }: ProjectNotesProps) {
-  const [notes, setNotes] = useState<Note[]>([]);
+  const { notes, createNote, updateNote, deleteNote } = useSharedData();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [deletingNote, setDeletingNote] = useState<Note | null>(null);
+  const [editingNote, setEditingNote] = useState<any>(null);
+  const [deletingNote, setDeletingNote] = useState<any>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const { toast } = useToast();
 
-  const notesKey = `shared_project_${projectId}_notes`;
+  // Filter notes for current project
+  const projectNotes = notes.filter(note => note.project_id === projectId);
 
-  // Load notes from shared localStorage
-  useEffect(() => {
-    const loadNotes = () => {
-      try {
-        const storedNotes = localStorage.getItem(notesKey);
-        if (storedNotes) {
-          setNotes(JSON.parse(storedNotes));
-        }
-      } catch (error) {
-        console.error('Error loading notes:', error);
-      }
-    };
-    loadNotes();
-  }, [notesKey]);
-
-  const saveNotes = (updatedNotes: Note[]) => {
-    try {
-      localStorage.setItem(notesKey, JSON.stringify(updatedNotes));
-      setNotes(updatedNotes);
-    } catch (error) {
-      console.error('Error saving notes:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save notes. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleCreateNote = () => {
+  const handleCreateNote = async () => {
     if (!title.trim() || !content.trim()) {
       toast({
         title: "Error",
@@ -74,30 +47,32 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
       return;
     }
 
-    const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
-    const newNote: Note = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      content: content.trim(),
-      createdBy: currentUserEmail,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    try {
+      await createNote({
+        title: title.trim(),
+        content: content.trim(),
+        project_id: projectId
+      });
 
-    const updatedNotes = [...notes, newNote];
-    saveNotes(updatedNotes);
+      setTitle("");
+      setContent("");
+      setCreateDialogOpen(false);
 
-    setTitle("");
-    setContent("");
-    setCreateDialogOpen(false);
-
-    toast({
-      title: "Note Created",
-      description: `"${newNote.title}" has been added to the project.`,
-    });
+      toast({
+        title: "Note Created",
+        description: `"${title}" has been added to the project.`,
+      });
+    } catch (error) {
+      console.error('Error creating note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create note. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleEditNote = () => {
+  const handleEditNote = async () => {
     if (!editingNote || !title.trim() || !content.trim()) {
       toast({
         title: "Error",
@@ -107,52 +82,62 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
       return;
     }
 
-    const updatedNote: Note = {
-      ...editingNote,
-      title: title.trim(),
-      content: content.trim(),
-      updatedAt: new Date().toISOString()
-    };
+    try {
+      await updateNote(editingNote.id, {
+        title: title.trim(),
+        content: content.trim()
+      });
 
-    const updatedNotes = notes.map(note => 
-      note.id === editingNote.id ? updatedNote : note
-    );
-    saveNotes(updatedNotes);
+      setTitle("");
+      setContent("");
+      setEditingNote(null);
+      setEditDialogOpen(false);
 
-    setTitle("");
-    setContent("");
-    setEditingNote(null);
-    setEditDialogOpen(false);
-
-    toast({
-      title: "Note Updated",
-      description: `"${updatedNote.title}" has been updated.`,
-    });
+      toast({
+        title: "Note Updated",
+        description: `"${title}" has been updated.`,
+      });
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update note. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDeleteNote = () => {
+  const handleDeleteNote = async () => {
     if (!deletingNote) return;
 
-    const updatedNotes = notes.filter(note => note.id !== deletingNote.id);
-    saveNotes(updatedNotes);
+    try {
+      await deleteNote(deletingNote.id);
 
-    toast({
-      title: "Note Deleted",
-      description: `"${deletingNote.title}" has been removed.`,
-    });
+      toast({
+        title: "Note Deleted",
+        description: `"${deletingNote.title}" has been removed.`,
+      });
 
-    setDeletingNote(null);
-    setDeleteDialogOpen(false);
+      setDeletingNote(null);
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete note. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const openEditDialog = (note: Note) => {
+  const openEditDialog = (note: any) => {
     setEditingNote(note);
     setTitle(note.title);
     setContent(note.content);
     setEditDialogOpen(true);
   };
 
-  const openDeleteDialog = (note: Note) => {
+  const openDeleteDialog = (note: any) => {
     setDeletingNote(note);
     setDeleteDialogOpen(true);
   };
@@ -226,7 +211,7 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
       </div>
 
       {/* Notes List */}
-      {notes.length === 0 ? (
+      {projectNotes.length === 0 ? (
         <Card className="bg-gradient-card shadow-custom-card">
           <CardContent className="py-12 text-center">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -242,7 +227,7 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {notes.map((note) => (
+          {projectNotes.map((note) => (
             <Card key={note.id} className="bg-gradient-card shadow-custom-card">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -267,16 +252,16 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Avatar className="w-6 h-6">
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {getInitials(note.createdBy)}
+                      {getInitials(note.created_by)}
                     </AvatarFallback>
                   </Avatar>
-                  <span>{note.createdBy}</span>
+                  <span>{note.created_by}</span>
                   <span>•</span>
-                  <span>{formatDate(note.createdAt)}</span>
-                  {note.updatedAt !== note.createdAt && (
+                  <span>{formatDate(note.created_at)}</span>
+                  {note.updated_at !== note.created_at && (
                     <>
                       <span>•</span>
-                      <span>Updated {formatDate(note.updatedAt)}</span>
+                      <span>Updated {formatDate(note.updated_at)}</span>
                     </>
                   )}
                 </div>

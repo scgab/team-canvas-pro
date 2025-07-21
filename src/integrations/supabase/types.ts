@@ -152,6 +152,36 @@ export type Database = {
         }
         Relationships: []
       }
+      project_notes: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string
+          id: string
+          project_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          project_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          project_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           assigned_members: string[] | null

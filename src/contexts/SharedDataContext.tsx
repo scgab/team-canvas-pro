@@ -33,6 +33,16 @@ export interface Task {
   duration?: number;
 }
 
+export interface ProjectNote {
+  id: string;
+  title: string;
+  content: string;
+  project_id: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Message {
   id: string;
   senderId: string;
@@ -61,6 +71,8 @@ interface SharedDataContextType {
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  notes: ProjectNote[];
+  setNotes: React.Dispatch<React.SetStateAction<ProjectNote[]>>;
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   events: CalendarEvent[];
@@ -69,6 +81,9 @@ interface SharedDataContextType {
   loading: boolean;
   createProject: (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'createdBy'>) => Promise<void>;
   createTask: (taskData: Omit<Task, 'id' | 'createdBy' | 'createdAt'>) => Promise<Task>;
+  createNote: (noteData: Omit<ProjectNote, 'id' | 'created_by' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateNote: (noteId: string, updates: Partial<ProjectNote>) => Promise<void>;
+  deleteNote: (noteId: string) => Promise<void>;
   sendMessage: (senderId: string, receiverId: string, content: string) => Promise<void>;
   createEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<void>;
   createCalendarEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<void>;
@@ -81,39 +96,27 @@ const SharedDataContext = createContext<SharedDataContextType | undefined>(undef
 export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load data from localStorage and Supabase on mount
+  // Load data from Supabase on mount and set up real-time subscriptions
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         
-        // Load tasks from shared localStorage - collect from all projects
-        const allTasks: Task[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('shared_project_') && key.endsWith('_tasks')) {
-            try {
-              const projectTasks = JSON.parse(localStorage.getItem(key) || '[]');
-              allTasks.push(...projectTasks);
-            } catch (e) {
-              console.warn('Failed to parse tasks from key:', key);
-            }
-          }
-        }
-        setTasks(allTasks);
-        
-        // Load other data from Supabase in parallel
-        const [projectsData, messagesData, eventsData] = await Promise.all([
+        // Load all data from Supabase in parallel
+        const [projectsData, tasksData, notesData, messagesData, eventsData] = await Promise.all([
           projectsService.getAll(),
+          tasksService.getAll(),
+          supabase.from('project_notes').select('*').order('created_at', { ascending: false }),
           messagesService.getAll(),
           calendarService.getAll()
         ]);
 
-        // Transform data to match interface
+        // Transform projects data
         const transformedProjects: Project[] = projectsData.map((p: any) => ({
           id: p.id,
           title: p.title,
@@ -130,6 +133,36 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           assignedMembers: p.assigned_members || []
         }));
 
+        // Transform tasks data
+        const transformedTasks: Task[] = tasksData.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description || '',
+          priority: t.priority as 'low' | 'medium' | 'high' | 'urgent',
+          status: t.status === 'todo' ? 'todo' : 
+                  t.status === 'in_progress' ? 'inProgress' : 
+                  t.status === 'review' ? 'review' : 'done',
+          assignee: t.assignee || '',
+          project_id: t.project_id,
+          start_date: t.start_date ? new Date(t.start_date) : null,
+          due_date: t.due_date ? new Date(t.due_date) : null,
+          duration: t.duration || 1,
+          createdBy: t.created_by,
+          createdAt: t.created_at
+        }));
+
+        // Transform notes data
+        const transformedNotes: ProjectNote[] = notesData.data?.map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          content: n.content,
+          project_id: n.project_id,
+          created_by: n.created_by,
+          created_at: n.created_at,
+          updated_at: n.updated_at
+        })) || [];
+
+        // Transform messages data
         const transformedMessages = messagesData.map((m: any) => ({
           id: m.id,
           senderId: m.sender_id,
@@ -139,6 +172,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           read: m.read
         }));
 
+        // Transform events data
         const transformedEvents = eventsData.map((e: any) => ({
           id: e.id,
           title: e.title,
@@ -154,6 +188,8 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }));
 
         setProjects(transformedProjects);
+        setTasks(transformedTasks);
+        setNotes(transformedNotes);
         setMessages(transformedMessages);
         setEvents(transformedEvents);
       } catch (error) {
@@ -164,6 +200,90 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     loadData();
+
+    // Set up real-time subscriptions
+    const tasksChannel = supabase
+      .channel('tasks-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'tasks' },
+        (payload) => {
+          console.log('Task change received:', payload);
+          if (payload.eventType === 'INSERT') {
+            const newTask: Task = {
+              id: payload.new.id,
+              title: payload.new.title,
+              description: payload.new.description || '',
+              priority: payload.new.priority,
+              status: payload.new.status === 'todo' ? 'todo' : 
+                      payload.new.status === 'in_progress' ? 'inProgress' : 
+                      payload.new.status === 'review' ? 'review' : 'done',
+              assignee: payload.new.assignee || '',
+              project_id: payload.new.project_id,
+              start_date: payload.new.start_date ? new Date(payload.new.start_date) : null,
+              due_date: payload.new.due_date ? new Date(payload.new.due_date) : null,
+              duration: payload.new.duration || 1,
+              createdBy: payload.new.created_by,
+              createdAt: payload.new.created_at
+            };
+            setTasks(prev => [newTask, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setTasks(prev => prev.map(task => 
+              task.id === payload.new.id ? {
+                ...task,
+                title: payload.new.title,
+                description: payload.new.description || '',
+                priority: payload.new.priority,
+                status: payload.new.status === 'todo' ? 'todo' : 
+                        payload.new.status === 'in_progress' ? 'inProgress' : 
+                        payload.new.status === 'review' ? 'review' : 'done',
+                assignee: payload.new.assignee || '',
+              } : task
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            setTasks(prev => prev.filter(task => task.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    const notesChannel = supabase
+      .channel('notes-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'project_notes' },
+        (payload) => {
+          console.log('Note change received:', payload);
+          if (payload.eventType === 'INSERT') {
+            const newNote: ProjectNote = {
+              id: payload.new.id,
+              title: payload.new.title,
+              content: payload.new.content,
+              project_id: payload.new.project_id,
+              created_by: payload.new.created_by,
+              created_at: payload.new.created_at,
+              updated_at: payload.new.updated_at
+            };
+            setNotes(prev => [newNote, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setNotes(prev => prev.map(note => 
+              note.id === payload.new.id ? {
+                ...note,
+                title: payload.new.title,
+                content: payload.new.content,
+                updated_at: payload.new.updated_at
+              } : note
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            setNotes(prev => prev.filter(note => note.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscriptions
+    return () => {
+      supabase.removeChannel(tasksChannel);
+      supabase.removeChannel(notesChannel);
+    };
   }, []);
 
   const createProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'createdBy'>) => {
@@ -210,39 +330,115 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
       
-      // Create task with shared localStorage
-      const newTask: Task = {
-        id: Date.now().toString(),
-        title: taskData.title,
-        description: taskData.description,
-        priority: taskData.priority,
-        status: taskData.status,
-        assignee: taskData.assignee,
-        project_id: taskData.project_id,
-        start_date: taskData.start_date,
-        due_date: taskData.due_date,
-        duration: taskData.duration || 1,
-        createdBy: currentUserEmail,
-        createdAt: new Date().toISOString()
-      };
+      // Convert status to database format
+      const dbStatus = taskData.status === 'inProgress' ? 'in_progress' : taskData.status;
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert({
+          title: taskData.title,
+          description: taskData.description,
+          priority: taskData.priority,
+          status: dbStatus,
+          project_id: taskData.project_id,
+          assignee: taskData.assignee,
+          due_date: taskData.due_date?.toISOString().split('T')[0] || null,
+          start_date: taskData.start_date?.toISOString().split('T')[0] || null,
+          duration: taskData.duration || 1,
+          created_by: currentUserEmail
+        })
+        .select()
+        .single();
 
-      console.log('Creating task with shared localStorage:', newTask);
-
-      // Save to project-specific shared storage
-      if (taskData.project_id) {
-        const tasksKey = `shared_project_${taskData.project_id}_tasks`;
-        const existingTasks = JSON.parse(localStorage.getItem(tasksKey) || '[]');
-        const updatedTasks = [...existingTasks, newTask];
-        localStorage.setItem(tasksKey, JSON.stringify(updatedTasks));
+      if (error) {
+        console.error('Error creating task:', error);
+        throw error;
       }
 
-      // Update global state
-      setTasks(prev => [...prev, newTask]);
+      const newTask: Task = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        priority: data.priority as 'low' | 'medium' | 'high' | 'urgent',
+        status: data.status === 'in_progress' ? 'inProgress' : data.status as 'todo' | 'inProgress' | 'review' | 'done',
+        assignee: data.assignee || '',
+        project_id: data.project_id,
+        start_date: data.start_date ? new Date(data.start_date) : null,
+        due_date: data.due_date ? new Date(data.due_date) : null,
+        duration: data.duration || 1,
+        createdBy: data.created_by,
+        createdAt: data.created_at
+      };
 
       console.log('Task created successfully:', newTask);
       return newTask;
     } catch (error) {
       console.error('Error creating task:', error);
+      throw error;
+    }
+  };
+
+  const createNote = async (noteData: Omit<ProjectNote, 'id' | 'created_by' | 'created_at' | 'updated_at'>) => {
+    try {
+      const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
+      
+      const { data, error } = await supabase
+        .from('project_notes')
+        .insert([{
+          title: noteData.title,
+          content: noteData.content,
+          project_id: noteData.project_id,
+          created_by: currentUserEmail
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating note:', error);
+        throw error;
+      }
+
+      console.log('Note created successfully:', data);
+    } catch (error) {
+      console.error('Error creating note:', error);
+      throw error;
+    }
+  };
+
+  const updateNote = async (noteId: string, updates: Partial<ProjectNote>) => {
+    try {
+      const { error } = await supabase
+        .from('project_notes')
+        .update({
+          title: updates.title,
+          content: updates.content,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', noteId);
+
+      if (error) {
+        console.error('Error updating note:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error updating note:', error);
+      throw error;
+    }
+  };
+
+  const deleteNote = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('project_notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) {
+        console.error('Error deleting note:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error deleting note:', error);
       throw error;
     }
   };
@@ -338,6 +534,8 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setProjects,
       tasks,
       setTasks,
+      notes,
+      setNotes,
       messages,
       setMessages,
       events,
@@ -346,6 +544,9 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       loading,
       createProject,
       createTask,
+      createNote,
+      updateNote,
+      deleteNote,
       sendMessage,
       createEvent,
       createCalendarEvent,
