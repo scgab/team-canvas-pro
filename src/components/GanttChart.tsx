@@ -123,61 +123,39 @@ export function GanttChart() {
   const totalWeeks = timelineHeaders.length;
   const timelineWidth = totalWeeks * weekWidth;
 
-  // Calculate item bar position and width with precise alignment
-  const getItemBarStyle = (item: GanttItem) => {
+  // Calculate item bar position and width with precise positioning
+  const getItemBarPositionStyle = (item: GanttItem) => {
     if (timelineHeaders.length === 0) return { 
-      gridColumn: '1', 
-      backgroundColor: item.color, 
-      width: '0px' 
+      left: '0px', 
+      width: '0px', 
+      backgroundColor: item.color 
     };
     
-    // Ensure dates are at start of day
+    // Ensure dates are at start of day for consistent calculation
     const itemStart = new Date(item.startDate);
     itemStart.setHours(0, 0, 0, 0);
     
     const itemEnd = new Date(item.endDate);
     itemEnd.setHours(0, 0, 0, 0);
     
-    // Find which week columns this item spans
-    let startColumn = 1;
-    let endColumn = 1;
+    // Get the start of the first week in our timeline
+    const firstWeekStart = timelineHeaders[0];
     
-    for (let i = 0; i < timelineHeaders.length; i++) {
-      const weekStart = timelineHeaders[i];
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      weekEnd.setHours(23, 59, 59, 999);
-      
-      // Check if item starts in this week
-      if (itemStart >= weekStart && itemStart <= weekEnd) {
-        startColumn = i + 2; // +2 because grid starts at 1 and first column is project names
-      }
-      
-      // Check if item ends in this week
-      if (itemEnd >= weekStart && itemEnd <= weekEnd) {
-        endColumn = i + 2;
-      }
-    }
+    // Calculate days from first week start
+    const startDaysDiff = (itemStart.getTime() - firstWeekStart.getTime()) / (1000 * 60 * 60 * 24);
+    const endDaysDiff = (itemEnd.getTime() - firstWeekStart.getTime()) / (1000 * 60 * 60 * 24);
     
-    // If item starts before timeline, start at first column
-    if (itemStart < timelineHeaders[0]) {
-      startColumn = 2;
-    }
+    // Convert to weeks and calculate position
+    const startWeekPos = startDaysDiff / 7;
+    const endWeekPos = endDaysDiff / 7;
+    const duration = Math.max(0.1, endWeekPos - startWeekPos); // Minimum 0.1 week for visibility
     
-    // If item ends after timeline, end at last column
-    if (itemEnd > timelineHeaders[timelineHeaders.length - 1]) {
-      endColumn = timelineHeaders.length + 1;
-    }
-    
-    // Ensure we have at least one column width
-    if (endColumn < startColumn) {
-      endColumn = startColumn;
-    }
+    const startPosition = Math.max(0, startWeekPos);
     
     return {
-      gridColumn: `${startColumn} / ${endColumn + 1}`,
-      backgroundColor: item.color,
-      width: '100%'
+      left: `${startPosition * weekWidth}px`,
+      width: `${duration * weekWidth}px`,
+      backgroundColor: item.color
     };
   };
 
@@ -342,48 +320,42 @@ export function GanttChart() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto" ref={ganttRef}>
-            {/* CSS Grid Container for perfect alignment */}
-            <div 
-              className="gantt-container"
-              style={{ 
-                display: 'grid',
-                gridTemplateColumns: `250px repeat(${totalWeeks}, ${weekWidth}px)`,
-                minWidth: `${250 + timelineWidth}px`
-              }}
-            >
-              {/* Timeline Header Row */}
-              <div className="gantt-header bg-muted/20 border-b border-border p-3 font-medium text-sm border-r border-border">
-                Project / Task
+            <div style={{ minWidth: `${250 + timelineWidth}px` }}>
+              {/* Timeline Header */}
+              <div className="flex bg-muted/20 border-b border-border">
+                <div className="w-64 p-3 font-medium text-sm border-r border-border">
+                  Project / Task
+                </div>
+                <div className="flex">
+                  {timelineHeaders.map((date, index) => {
+                    const weekEnd = new Date(date);
+                    weekEnd.setDate(weekEnd.getDate() + 6);
+                    return (
+                      <div
+                        key={index}
+                        className="p-2 text-xs text-center border-r border-border bg-muted/10"
+                        style={{ width: `${weekWidth}px` }}
+                      >
+                        <div className="font-medium">
+                          Week {Math.ceil((date.getTime() - new Date(date.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24 * 7))}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - {weekEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              {timelineHeaders.map((date, index) => {
-                const weekEnd = new Date(date);
-                weekEnd.setDate(weekEnd.getDate() + 6);
-                return (
-                  <div
-                    key={index}
-                    className="gantt-header-cell p-2 text-xs text-center border-r border-border bg-muted/10 border-b border-border"
-                  >
-                    <div className="font-medium">
-                      Week {Math.ceil((date.getTime() - new Date(date.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24 * 7))}
-                    </div>
-                    <div className="text-muted-foreground">
-                      {date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - {weekEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                    </div>
-                  </div>
-                );
-              })}
 
               {/* Project/Task Rows */}
               {allItems.map((item, index) => (
-                <div 
-                  key={`row-${item.id}`}
-                  className="gantt-row contents"
-                >
-                  {/* Item Info Column */}
-                  <div className={`gantt-info-cell p-3 border-r border-border border-b border-border hover:bg-muted/10 ${
-                    item.type === "task" ? "bg-muted/5" : ""
-                  }`}>
-                    <div className="flex items-center justify-between h-full">
+                <div key={item.id} className={`flex border-b border-border hover:bg-muted/10 ${
+                  item.type === "task" ? "bg-muted/5" : ""
+                }`}>
+                  {/* Item Info */}
+                  <div className="w-64 p-3 border-r border-border">
+                    <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <div className={`font-medium text-sm truncate ${
                           item.type === "task" ? "ml-4" : ""
@@ -425,19 +397,21 @@ export function GanttChart() {
                     </div>
                   </div>
 
-                  {/* Timeline Bar spanning appropriate columns */}
-                  <div
-                    className="gantt-timeline-bar relative border-b border-border"
-                    style={{
-                      ...getItemBarStyle(item),
-                      height: '80px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                  >
+                  {/* Timeline */}
+                  <div className="relative flex-1" style={{ height: '80px' }}>
+                    {/* Grid lines */}
+                    {timelineHeaders.map((date, colIndex) => (
+                      <div
+                        key={colIndex}
+                        className="absolute top-0 bottom-0 border-r border-border/30"
+                        style={{ left: `${colIndex * weekWidth}px`, width: '1px' }}
+                      />
+                    ))}
+
+                    {/* Item Bar */}
                     <div
-                      className="h-6 rounded-lg flex items-center px-3 text-white text-xs font-medium shadow-sm mx-1"
-                      style={{ backgroundColor: item.color, width: 'calc(100% - 8px)' }}
+                      className="absolute top-1/2 -translate-y-1/2 h-6 rounded-lg flex items-center px-3 text-white text-xs font-medium shadow-sm"
+                      style={getItemBarPositionStyle(item)}
                       title={`${item.name}: ${formatDate(item.startDate)} - ${formatDate(item.endDate)}`}
                     >
                       <div className="flex items-center gap-2 truncate">
@@ -454,26 +428,6 @@ export function GanttChart() {
                       />
                     </div>
                   </div>
-
-                  {/* Empty cells for weeks where item doesn't span */}
-                  {timelineHeaders.map((_, weekIndex) => {
-                    const barStyle = getItemBarStyle(item);
-                    const gridColumnRange = barStyle.gridColumn?.toString() || '';
-                    const [start, end] = gridColumnRange.split(' / ').map(n => parseInt(n) || 0);
-                    const currentColumn = weekIndex + 2; // +2 for grid column numbering
-                    
-                    // Only render empty cell if this week is not covered by the bar
-                    if (currentColumn < start || currentColumn > end) {
-                      return (
-                        <div
-                          key={`empty-${item.id}-${weekIndex}`}
-                          className="gantt-empty-cell border-b border-border border-r border-border/30"
-                          style={{ height: '80px' }}
-                        />
-                      );
-                    }
-                    return null;
-                  })}
                 </div>
               ))}
 
