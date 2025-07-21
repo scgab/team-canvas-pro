@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TaskFormDialog } from "./TaskFormDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useSharedData } from "@/contexts/SharedDataContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DndContext,
   DragEndEvent,
@@ -65,7 +66,7 @@ interface Column {
 
 export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: string; onTaskStatusUpdate?: (taskId: string, newStatus: string) => Promise<void> }) {
   const { toast } = useToast();
-  const { tasks, setTasks } = useSharedData();
+  const { tasks, setTasks, createTask } = useSharedData();
   
   // Convert shared tasks to kanban columns
   const [columns, setColumns] = useState<Column[]>([
@@ -200,31 +201,35 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
       return;
     }
 
-    // Move task to new column
-    setColumns(prevColumns => {
-      return prevColumns.map(column => {
-        if (column.id === sourceColumn.id) {
-          // Remove task from source column
-          return {
-            ...column,
-            tasks: column.tasks.filter(t => t.id !== activeTaskId)
-          };
-        } else if (column.id === targetColumn.id) {
-          // Add task to target column with updated status
-          const updatedTask = { ...task, status: targetColumn.id };
-          return {
-            ...column,
-            tasks: [...column.tasks, updatedTask]
-          };
-        }
-        return column;
-      });
-    });
+    // Update task status in Supabase
+    const updateTaskStatus = async () => {
+      try {
+        const dbStatus = targetColumn.id === 'inProgress' ? 'in_progress' : targetColumn.id;
+        const { error } = await supabase
+          .from('tasks')
+          .update({ status: dbStatus })
+          .eq('id', activeTaskId);
 
-    toast({
-      title: "Task Moved",
-      description: `"${task.title}" moved to ${targetColumn.title}`,
-    });
+        if (error) {
+          console.error('Error updating task status:', error);
+          throw error;
+        }
+
+        toast({
+          title: "Task Moved",
+          description: `"${task.title}" moved to ${targetColumn.title}`,
+        });
+      } catch (error) {
+        console.error('Error updating task status:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update task status. Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    updateTaskStatus();
 
     setActiveTask(null);
   };
@@ -233,34 +238,20 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
     try {
       console.log('Creating task with data:', taskData);
       
-      // Create task with shared project storage - IMMEDIATE FIX
-      const newTask = {
-        id: Date.now().toString(),
+      // Use SharedDataContext's createTask function for Supabase integration
+      await createTask({
         title: taskData.title,
         description: taskData.description || '',
         priority: taskData.priority,
         assignee: taskData.assignee || '',
         status: taskData.status as 'todo' | 'inProgress' | 'review' | 'done',
-        project_id: projectId || undefined,
+        project_id: projectId,
         start_date: null,
         due_date: null,
         duration: 1,
-        createdBy: (window as any).currentUserEmail || 'hna@scandac.com',
-        createdAt: new Date().toISOString()
-      };
+      });
 
-      // Save to shared project-specific localStorage
-      if (projectId) {
-        const tasksKey = `shared_project_${projectId}_tasks`;
-        const existingTasks = JSON.parse(localStorage.getItem(tasksKey) || '[]');
-        const updatedTasks = [...existingTasks, newTask];
-        localStorage.setItem(tasksKey, JSON.stringify(updatedTasks));
-      }
-      
-      // Update shared state
-      setTasks(prev => [...prev, newTask]);
-
-      console.log('Task created successfully:', newTask);
+      console.log('Task created successfully via Supabase');
 
       toast({
         title: "Task Created",
@@ -276,60 +267,60 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
     }
   };
 
-  const handleEditTask = (taskData: Omit<KanbanTask, 'id' | 'comments' | 'attachments'>) => {
+  const handleEditTask = async (taskData: Omit<KanbanTask, 'id' | 'comments' | 'attachments'>) => {
     if (!editingTask) return;
 
-    
-    // Update task in shared data
-    setTasks(prev => prev.map(task => 
-      task.id === editingTask.id 
-        ? {
-            ...task,
-            title: taskData.title,
-            description: taskData.description || '',
-            priority: taskData.priority,
-            assignee: taskData.assignee || '',
-            status: taskData.status as 'todo' | 'inProgress' | 'review' | 'done'
-          }
-        : task
-    ));
+    try {
+      // Convert status to database format
+      const dbStatus = taskData.status === 'inProgress' ? 'in_progress' : taskData.status;
+      
+      // Update task in Supabase
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          title: taskData.title,
+          description: taskData.description || '',
+          priority: taskData.priority,
+          assignee: taskData.assignee || '',
+          status: dbStatus
+        })
+        .eq('id', editingTask.id);
 
-    toast({
-      title: "Task Updated",
-      description: `"${taskData.title}" has been updated`,
-    });
+      if (error) {
+        console.error('Error updating task:', error);
+        throw error;
+      }
 
-    setEditingTask(null);
+      toast({
+        title: "Task Updated",
+        description: `"${taskData.title}" has been updated`,
+      });
+
+      setEditingTask(null);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update task. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDuplicateTask = async (task: KanbanTask) => {
     try {
-      // Create duplicate task with shared project storage - IMMEDIATE FIX
-      const duplicateTask = {
-        id: Date.now().toString(),
+      // Use SharedDataContext's createTask function for Supabase integration
+      await createTask({
         title: `${task.title} (Copy)`,
         description: task.description || '',
         priority: task.priority,
         assignee: task.assignee || '',
         status: task.status as 'todo' | 'inProgress' | 'review' | 'done',
-        project_id: projectId || undefined,
+        project_id: projectId,
         start_date: null,
         due_date: null,
         duration: 1,
-        createdBy: (window as any).currentUserEmail || 'hna@scandac.com',
-        createdAt: new Date().toISOString()
-      };
-
-      // Save to shared project-specific localStorage
-      if (projectId) {
-        const tasksKey = `shared_project_${projectId}_tasks`;
-        const existingTasks = JSON.parse(localStorage.getItem(tasksKey) || '[]');
-        const updatedTasks = [...existingTasks, duplicateTask];
-        localStorage.setItem(tasksKey, JSON.stringify(updatedTasks));
-      }
-      
-      // Update shared state
-      setTasks(prev => [...prev, duplicateTask]);
+      });
 
       toast({
         title: "Task Duplicated",
@@ -344,19 +335,36 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
     }
   };
 
-  const handleDeleteTask = () => {
+  const handleDeleteTask = async () => {
     if (!deletingTask) return;
 
-    // Remove task from shared data
-    setTasks(prev => prev.filter(task => task.id !== deletingTask.id));
+    try {
+      // Delete task from Supabase
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', deletingTask.id);
 
-    toast({
-      title: "Task Deleted",
-      description: `"${deletingTask.title}" has been deleted`,
-    });
+      if (error) {
+        console.error('Error deleting task:', error);
+        throw error;
+      }
 
-    setDeletingTask(null);
-    setConfirmDialogOpen(false);
+      toast({
+        title: "Task Deleted",
+        description: `"${deletingTask.title}" has been deleted`,
+      });
+
+      setDeletingTask(null);
+      setConfirmDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete task. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const openEditDialog = (task: KanbanTask) => {
