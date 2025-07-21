@@ -229,22 +229,34 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
     setActiveTask(null);
   };
 
-  const handleCreateTask = (taskData: Omit<KanbanTask, 'id' | 'comments' | 'attachments'>) => {
-    const { createTask } = useSharedData();
-    
-    // Create task in shared data
-    createTask({
-      title: taskData.title,
-      description: taskData.description || '',
-      priority: taskData.priority,
-      assignee: taskData.assignee || '',
-      status: taskData.status as 'todo' | 'inProgress' | 'review' | 'done'
-    });
+  const handleCreateTask = async (taskData: Omit<KanbanTask, 'id' | 'comments' | 'attachments'>) => {
+    try {
+      const { createTask } = useSharedData();
+      
+      // Create task in shared data with project_id
+      await createTask({
+        title: taskData.title,
+        description: taskData.description || '',
+        priority: taskData.priority,
+        assignee: taskData.assignee || '',
+        status: taskData.status as 'todo' | 'inProgress' | 'review' | 'done',
+        project_id: projectId || undefined,
+        start_date: null,
+        due_date: null,
+        duration: 1
+      });
 
-    toast({
-      title: "Task Created",
-      description: `"${taskData.title}" has been added to ${columns.find(c => c.id === taskData.status)?.title}`,
-    });
+      toast({
+        title: "Task Created",
+        description: `"${taskData.title}" has been added to the project.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create task. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleEditTask = (taskData: Omit<KanbanTask, 'id' | 'comments' | 'attachments'>) => {
@@ -274,22 +286,34 @@ export function KanbanBoard({ projectId, onTaskStatusUpdate }: { projectId?: str
     setEditingTask(null);
   };
 
-  const handleDuplicateTask = (task: KanbanTask) => {
-    const { createTask } = useSharedData();
-    
-    // Create duplicate task in shared data
-    createTask({
-      title: `${task.title} (Copy)`,
-      description: task.description || '',
-      priority: task.priority,
-      assignee: task.assignee || '',
-      status: task.status as 'todo' | 'inProgress' | 'review' | 'done'
-    });
+  const handleDuplicateTask = async (task: KanbanTask) => {
+    try {
+      const { createTask } = useSharedData();
+      
+      // Create duplicate task in shared data
+      await createTask({
+        title: `${task.title} (Copy)`,
+        description: task.description || '',
+        priority: task.priority,
+        assignee: task.assignee || '',
+        status: task.status as 'todo' | 'inProgress' | 'review' | 'done',
+        project_id: projectId || undefined,
+        start_date: null,
+        due_date: null,
+        duration: 1
+      });
 
-    toast({
-      title: "Task Duplicated",
-      description: `"${task.title} (Copy)" has been created`,
-    });
+      toast({
+        title: "Task Duplicated",
+        description: `"${task.title} (Copy)" has been created`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to duplicate task. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDeleteTask = () => {
