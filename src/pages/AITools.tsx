@@ -633,7 +633,7 @@ const AITools = () => {
   };
 
   // Filter tools based on search and favorites
-  const filteredTools = categories.reduce((acc, category) => {
+  const filteredTools = (Array.isArray(categories) ? categories : []).reduce((acc, category) => {
     const tools = aiTools[category.name] || [];
     const filtered = tools.filter(tool => {
       const matchesSearch = tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
