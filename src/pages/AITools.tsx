@@ -692,25 +692,39 @@ const AITools = () => {
               </div>
             </div>
           ) : (
-            /* Tools Grid */
+            /* Tools Grid - FORCE SHOW ALL CATEGORIES */
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {Object.entries(filteredTools).map(([categoryName, tools]) => {
-                const category = categories.find(c => c.name === categoryName);
+              {/* First show categories from database */}
+              {categories.map((category) => {
+                const tools = aiTools[category.name] || [];
+                const filteredTools = tools.filter(tool => {
+                  const matchesSearch = tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                       tool.note.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                       tool.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                  const matchesFavorites = !showFavoritesOnly || tool.isFavorite;
+                  return matchesSearch && matchesFavorites;
+                });
+                
+                // Show category if no filters OR if it has matching tools
+                const shouldShow = (!searchTerm && !showFavoritesOnly) || filteredTools.length > 0;
+                
+                if (!shouldShow) return null;
+                
                 return (
                   <Card
-                    key={categoryName}
-                    className={`${dragOverCategory === categoryName ? 'ring-2 ring-primary' : ''}`}
-                    onDragOver={(e) => handleDragOver(e, categoryName)}
+                    key={category.id}
+                    className={`${dragOverCategory === category.name ? 'ring-2 ring-primary' : ''}`}
+                    onDragOver={(e) => handleDragOver(e, category.name)}
                     onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, categoryName)}
+                    onDrop={(e) => handleDrop(e, category.name)}
                   >
                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                       <CardTitle className="text-lg font-semibold">{categoryName}</CardTitle>
+                       <CardTitle className="text-lg font-semibold">{category.name}</CardTitle>
                        <div className="flex items-center gap-1">
                          <Button
                            variant="ghost"
                            size="sm"
-                           onClick={() => openAddToolModal(categoryName)}
+                           onClick={() => openAddToolModal(category.name)}
                            className="h-8 w-8 p-0"
                            title="Add tool to this category"
                          >
@@ -719,7 +733,7 @@ const AITools = () => {
                          <Button
                            variant="ghost"
                            size="sm"
-                           onClick={() => category && editCategory(category)}
+                           onClick={() => editCategory(category)}
                            className="h-8 w-8 p-0"
                          >
                            <Edit2 className="h-4 w-4" />
@@ -727,7 +741,7 @@ const AITools = () => {
                          <Button
                            variant="ghost"
                            size="sm"
-                           onClick={() => category && deleteCategory(category)}
+                           onClick={() => deleteCategory(category)}
                            className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
                          >
                            <Trash2 className="h-4 w-4" />
@@ -735,11 +749,11 @@ const AITools = () => {
                        </div>
                      </CardHeader>
                     <CardContent className="space-y-3">
-                      {tools.map((tool) => (
+                      {filteredTools.map((tool) => (
                         <div
                           key={tool.id}
                           draggable
-                          onDragStart={(e) => handleDragStart(e, tool, categoryName)}
+                          onDragStart={(e) => handleDragStart(e, tool, category.name)}
                           className="group p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-move"
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -750,7 +764,7 @@ const AITools = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => toggleFavorite(categoryName, tool.id)}
+                                  onClick={() => toggleFavorite(category.name, tool.id)}
                                   className="h-6 w-6 p-0"
                                 >
                                   <Star className={`h-3 w-3 ${tool.isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
@@ -788,7 +802,7 @@ const AITools = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => editTool(tool, categoryName)}
+                                  onClick={() => editTool(tool, category.name)}
                                   className="h-6 px-2 text-xs"
                                 >
                                   <Edit2 className="h-3 w-3 mr-1" />
@@ -797,7 +811,7 @@ const AITools = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => deleteTool(categoryName, tool.id)}
+                                  onClick={() => deleteTool(category.name, tool.id)}
                                   className="h-6 px-2 text-xs hover:bg-destructive hover:text-destructive-foreground"
                                 >
                                   <Trash2 className="h-3 w-3" />
@@ -807,7 +821,7 @@ const AITools = () => {
                           </div>
                         </div>
                       ))}
-                       {tools.length === 0 && (
+                       {filteredTools.length === 0 && (
                          <div className="text-center py-4">
                            <p className="text-muted-foreground text-sm mb-3">
                              No tools in this category
@@ -815,7 +829,7 @@ const AITools = () => {
                            <Button
                              variant="outline"
                              size="sm"
-                             onClick={() => openAddToolModal(categoryName)}
+                             onClick={() => openAddToolModal(category.name)}
                              className="flex items-center gap-2"
                            >
                              <Plus className="h-4 w-4" />
