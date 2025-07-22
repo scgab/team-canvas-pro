@@ -82,6 +82,14 @@ const AITools = () => {
           aiToolsService.getAll()
         ]);
         
+        // ===== DEBUG OUTPUT =====
+        console.log('=== AI TOOLS DEBUG ===');
+        console.log('Categories from Supabase:', categoriesData);
+        console.log('Categories count:', categoriesData?.length);
+        console.log('Tools from Supabase:', toolsData);
+        console.log('Tools count:', toolsData?.length);
+        
+        console.log('Setting categories state:', categoriesData);
         setCategories(categoriesData);
         
         // Group tools by category
@@ -126,6 +134,16 @@ const AITools = () => {
 
     loadData();
   }, []);
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('=== RENDERING DEBUG ===');
+    console.log('Categories state:', categories);
+    console.log('Categories length:', categories.length);
+    console.log('AiTools state:', aiTools);
+    console.log('Search term:', searchTerm);
+    console.log('Show favorites:', showFavoritesOnly);
+  }, [categories, aiTools, searchTerm, showFavoritesOnly]);
 
   // Set up real-time subscriptions
   useEffect(() => {
