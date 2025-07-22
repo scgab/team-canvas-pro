@@ -76,24 +76,30 @@ const AITools = () => {
       try {
         setLoading(true);
         
-        // Load categories and tools in parallel
+         // Load categories and tools in parallel with direct Supabase calls to bypass cache
         const [categoriesData, toolsData] = await Promise.all([
-          aiToolCategoriesService.getAll(),
-          aiToolsService.getAll()
+          supabase.from('ai_tool_categories').select('*').order('name', { ascending: true }),
+          supabase.from('ai_tools').select('*').order('created_at', { ascending: false })
         ]);
         
-        // ===== DEBUG OUTPUT =====
-        console.log('=== AI TOOLS DEBUG ===');
-        console.log('Categories from Supabase:', categoriesData);
-        console.log('Categories count:', categoriesData?.length);
-        console.log('Tools from Supabase:', toolsData);
-        console.log('Tools count:', toolsData?.length);
+        if (categoriesData.error) throw categoriesData.error;
+        if (toolsData.error) throw toolsData.error;
         
-        console.log('Setting categories state:', categoriesData);
-        setCategories(categoriesData);
+        const categories = categoriesData.data || [];
+        const tools = toolsData.data || [];
+        
+         // ===== DEBUG OUTPUT =====
+        console.log('=== AI TOOLS DEBUG ===');
+        console.log('Categories from Supabase:', categories);
+        console.log('Categories count:', categories.length);
+        console.log('Tools from Supabase:', tools);
+        console.log('Tools count:', tools.length);
+        
+        console.log('Setting categories state:', categories);
+        setCategories(categories);
         
         // Group tools by category
-        const grouped = toolsData.reduce((acc: any, tool: any) => {
+        const grouped = tools.reduce((acc: any, tool: any) => {
           if (!acc[tool.category]) {
             acc[tool.category] = [];
           }
@@ -113,7 +119,7 @@ const AITools = () => {
         }, {});
 
         // Ensure all categories exist in grouped data
-        categoriesData.forEach(category => {
+        categories.forEach(category => {
           if (!grouped[category.name]) {
             grouped[category.name] = [];
           }
