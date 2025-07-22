@@ -83,7 +83,6 @@ const AITools = () => {
         ]);
         
         setCategories(categoriesData);
-        console.log('Loaded categories:', categoriesData);
         
         // Group tools by category
         const grouped = toolsData.reduce((acc: any, tool: any) => {
@@ -216,7 +215,6 @@ const AITools = () => {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newCategory = payload.new as Category;
-            console.log('New category via realtime:', newCategory);
             setCategories(prev => [...prev, newCategory]);
             setAiTools(prev => ({ ...prev, [newCategory.name]: [] }));
           } else if (payload.eventType === 'UPDATE') {
@@ -631,10 +629,6 @@ const AITools = () => {
     
     return acc;
   }, {} as Record<string, AITool[]>);
-
-  console.log('Categories:', categories);
-  console.log('AI Tools:', aiTools);
-  console.log('Filtered Tools:', filteredTools);
 
   const totalTools = Object.values(aiTools).flat().length;
   const favoriteTools = Object.values(aiTools).flat().filter(tool => tool.isFavorite).length;
