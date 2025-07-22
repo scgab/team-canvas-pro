@@ -74,7 +74,6 @@ const AITools = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        console.log('AITools: Starting to load data...');
         setLoading(true);
         
         // Load categories and tools in parallel
@@ -82,9 +81,6 @@ const AITools = () => {
           aiToolCategoriesService.getAll(),
           aiToolsService.getAll()
         ]);
-        
-        console.log('AITools: Loaded categories from DB:', categoriesData);
-        console.log('AITools: Loaded tools from DB:', toolsData);
         
         setCategories(categoriesData);
         
@@ -115,7 +111,6 @@ const AITools = () => {
           }
         });
 
-        console.log('AITools: Grouped tools by category:', grouped);
         setAiTools(grouped);
       } catch (error) {
         console.error('AITools: Error loading data:', error);
@@ -218,22 +213,10 @@ const AITools = () => {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'ai_tool_categories' },
         (payload) => {
-          console.log('AITools: Category realtime event:', payload.eventType, payload);
           if (payload.eventType === 'INSERT') {
             const newCategory = payload.new as Category;
-            console.log('AITools: Adding new category to state:', newCategory);
-            setCategories(prev => {
-              console.log('AITools: Previous categories:', prev);
-              const updated = [...prev, newCategory];
-              console.log('AITools: Updated categories:', updated);
-              return updated;
-            });
-            setAiTools(prev => {
-              console.log('AITools: Adding empty array for category:', newCategory.name);
-              const updated = { ...prev, [newCategory.name]: [] };
-              console.log('AITools: Updated aiTools:', updated);
-              return updated;
-            });
+            setCategories(prev => [...prev, newCategory]);
+            setAiTools(prev => ({ ...prev, [newCategory.name]: [] }));
           } else if (payload.eventType === 'UPDATE') {
             const updatedCategory = payload.new as Category;
             const oldCategory = payload.old as Category;
@@ -646,11 +629,6 @@ const AITools = () => {
     
     return acc;
   }, {} as Record<string, AITool[]>);
-
-  console.log('AITools: Search term:', searchTerm);
-  console.log('AITools: Show favorites only:', showFavoritesOnly);
-  console.log('AITools: Categories available:', categories.map(c => c.name));
-  console.log('AITools: Filtered tools result:', filteredTools);
 
   const totalTools = Object.values(aiTools).flat().length;
   const favoriteTools = Object.values(aiTools).flat().filter(tool => tool.isFavorite).length;
