@@ -609,7 +609,8 @@ const AITools = () => {
   };
 
   // Filter tools based on search and favorites
-  const filteredTools = Object.entries(aiTools).reduce((acc, [category, tools]) => {
+  const filteredTools = categories.reduce((acc, category) => {
+    const tools = aiTools[category.name] || [];
     const filtered = tools.filter(tool => {
       const matchesSearch = tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            tool.note.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -618,9 +619,14 @@ const AITools = () => {
       return matchesSearch && matchesFavorites;
     });
     
-    if (filtered.length > 0) {
-      acc[category] = filtered;
+    // Always show categories, even if they have no tools (or no filtered tools)
+    // But if we're searching or filtering favorites, only show categories with matching tools
+    if (!searchTerm && !showFavoritesOnly) {
+      acc[category.name] = filtered;
+    } else if (filtered.length > 0) {
+      acc[category.name] = filtered;
     }
+    
     return acc;
   }, {} as Record<string, AITool[]>);
 
