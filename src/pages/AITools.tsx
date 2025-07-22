@@ -705,10 +705,11 @@ const AITools = () => {
                   return matchesSearch && matchesFavorites;
                 });
                 
-                // Show category if no filters OR if it has matching tools
+                // Always show categories when no filters are active, or when they have matching tools
                 const shouldShow = (!searchTerm && !showFavoritesOnly) || filteredTools.length > 0;
                 
-                if (!shouldShow) return null;
+                // For empty categories, always show them when no filters are active
+                if (!shouldShow && (searchTerm || showFavoritesOnly)) return null;
                 
                 return (
                   <Card
