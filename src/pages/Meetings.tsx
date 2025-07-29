@@ -142,26 +142,39 @@ const Meetings: React.FC = () => {
     }
 
     try {
+      console.log('Creating meeting with data:', newMeeting);
+      
+      const meetingData = {
+        title: newMeeting.title.trim(),
+        description: newMeeting.description?.trim() || '',
+        date: newMeeting.date,
+        time: newMeeting.time,
+        end_time: newMeeting.end_time || null, // Include end_time
+        type: 'meeting',
+        location: newMeeting.location?.trim() || '',
+        attendees: Array.isArray(newMeeting.attendees) ? newMeeting.attendees : [],
+        assigned_members: Array.isArray(newMeeting.attendees) ? newMeeting.attendees : [],
+        agenda: Array.isArray(newMeeting.agenda) ? newMeeting.agenda.filter(item => item.trim() !== '') : [],
+        meeting_status: 'planned',
+        created_by: user.id
+      };
+
+      console.log('Prepared meeting data:', meetingData);
+
       const { data, error } = await supabase
         .from('calendar_events')
-        .insert([{
-          title: newMeeting.title,
-          description: newMeeting.description,
-          date: newMeeting.date,
-          time: newMeeting.time,
-          type: 'meeting',
-          location: newMeeting.location,
-          attendees: newMeeting.attendees,
-          assigned_members: newMeeting.attendees, // Sync attendees with assigned_members
-          agenda: newMeeting.agenda.filter(item => item.trim() !== ''),
-          meeting_status: 'planned',
-          created_by: user.id
-        }])
+        .insert([meetingData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Create meeting error:', error);
+        console.error('Error details:', error.details);
+        console.error('Error hint:', error.hint);
+        throw error;
+      }
 
+      console.log('Meeting created successfully:', data);
       toast.success('Meeting created successfully');
       setShowCreateDialog(false);
       setNewMeeting({
@@ -177,7 +190,7 @@ const Meetings: React.FC = () => {
       fetchMeetings();
     } catch (error) {
       console.error('Error creating meeting:', error);
-      toast.error('Failed to create meeting');
+      toast.error('Failed to create meeting: ' + (error as any).message);
     }
   };
 
@@ -203,23 +216,39 @@ const Meetings: React.FC = () => {
     }
 
     try {
-      const { error } = await supabase
+      console.log('Updating meeting ID:', selectedMeeting.id);
+      console.log('Update data:', editMeeting);
+
+      const updateData = {
+        title: editMeeting.title.trim(),
+        description: editMeeting.description?.trim() || '',
+        date: editMeeting.date,
+        time: editMeeting.time,
+        end_time: editMeeting.end_time || null, // Include end_time
+        location: editMeeting.location?.trim() || '',
+        attendees: Array.isArray(editMeeting.attendees) ? editMeeting.attendees : [],
+        assigned_members: Array.isArray(editMeeting.attendees) ? editMeeting.attendees : [],
+        agenda: Array.isArray(editMeeting.agenda) ? editMeeting.agenda.filter(item => item.trim() !== '') : [],
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Prepared update data:', updateData);
+
+      const { data, error } = await supabase
         .from('calendar_events')
-        .update({
-          title: editMeeting.title,
-          description: editMeeting.description,
-          date: editMeeting.date,
-          time: editMeeting.time,
-          location: editMeeting.location,
-          attendees: editMeeting.attendees,
-          assigned_members: editMeeting.attendees,
-          agenda: editMeeting.agenda.filter(item => item.trim() !== ''),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedMeeting.id);
+        .update(updateData)
+        .eq('id', selectedMeeting.id)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update meeting error:', error);
+        console.error('Error details:', error.details);
+        console.error('Error hint:', error.hint);
+        throw error;
+      }
 
+      console.log('Meeting updated successfully:', data);
       toast.success('Meeting updated successfully');
       setShowEditDialog(false);
       setEditMeeting(null);
@@ -227,27 +256,37 @@ const Meetings: React.FC = () => {
       fetchMeetings();
     } catch (error) {
       console.error('Error updating meeting:', error);
-      toast.error('Failed to update meeting');
+      toast.error('Failed to update meeting: ' + (error as any).message);
     }
   };
 
   const updateMeetingStatus = async (meetingId: string, status: 'planned' | 'ongoing' | 'completed') => {
     try {
-      const { error } = await supabase
+      console.log('Updating meeting status:', meetingId, 'to', status);
+      
+      const { data, error } = await supabase
         .from('calendar_events')
         .update({ 
           meeting_status: status,
           updated_at: new Date().toISOString()
         })
-        .eq('id', meetingId);
+        .eq('id', meetingId)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update meeting status error:', error);
+        console.error('Error details:', error.details);
+        console.error('Error hint:', error.hint);
+        throw error;
+      }
 
+      console.log('Meeting status updated successfully:', data);
       toast.success(`Meeting ${status}`);
       fetchMeetings();
     } catch (error) {
       console.error('Error updating meeting status:', error);
-      toast.error('Failed to update meeting status');
+      toast.error('Failed to update meeting status: ' + (error as any).message);
     }
   };
 
