@@ -15,7 +15,9 @@ import {
   UserCog,
   ClipboardList,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  RotateCcw,
+  Bell
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -24,6 +26,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AvailabilityDialog } from "@/components/AvailabilityDialog";
+import { ShiftReports } from "@/components/ShiftReports";
+import { BulkShiftDialog } from "@/components/BulkShiftDialog";
 
 interface TeamMember {
   id: string;
@@ -66,6 +71,8 @@ const ShiftPlanning = () => {
   const [availableShifts, setAvailableShifts] = useState<AvailableShift[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
+  const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
+  const [bulkShiftDialogOpen, setBulkShiftDialogOpen] = useState(false);
   
   // Form states
   const [newShift, setNewShift] = useState({
@@ -91,7 +98,43 @@ const ShiftPlanning = () => {
     fetchTeamMembers();
     fetchShifts();
     fetchAvailableShifts();
+    setupRealTimeUpdates();
   }, []);
+
+  const setupRealTimeUpdates = () => {
+    // Listen for shifts changes
+    const shiftsChannel = supabase
+      .channel('shifts-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'shifts' },
+        () => fetchShifts()
+      )
+      .subscribe();
+
+    // Listen for available shifts changes
+    const availableShiftsChannel = supabase
+      .channel('available-shifts-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'available_shifts' },
+        () => fetchAvailableShifts()
+      )
+      .subscribe();
+
+    // Listen for team member changes
+    const teamChannel = supabase
+      .channel('team-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'team_members' },
+        () => fetchTeamMembers()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(shiftsChannel);
+      supabase.removeChannel(availableShiftsChannel);
+      supabase.removeChannel(teamChannel);
+    };
+  };
 
   const checkUserRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -324,6 +367,14 @@ const ShiftPlanning = () => {
             </DialogContent>
           </Dialog>
           
+          <Button 
+            variant="outline" 
+            onClick={() => setBulkShiftDialogOpen(true)}
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Bulk Create
+          </Button>
+          
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="outline"><ClipboardList className="w-4 h-4 mr-2" />Post Available Shift</Button>
@@ -508,39 +559,17 @@ const ShiftPlanning = () => {
         </TabsContent>
         
         <TabsContent value="reports" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Team Members</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{teamMembers.length}</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Scheduled Shifts</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{shifts.length}</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Available Shifts</CardTitle>
-                <ClipboardList className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{getUnclaimedAvailableShifts().length}</div>
-              </CardContent>
-            </Card>
-          </div>
+          <ShiftReports teamMembers={teamMembers} shifts={shifts} />
         </TabsContent>
       </Tabs>
+      
+      <BulkShiftDialog
+        open={bulkShiftDialogOpen}
+        onOpenChange={setBulkShiftDialogOpen}
+        teamMembers={teamMembers}
+        onShiftsCreated={fetchShifts}
+        userEmail={currentUser?.email || ''}
+      />
     </div>
   );
 
@@ -554,10 +583,11 @@ const ShiftPlanning = () => {
       </div>
 
       <Tabs defaultValue="my-shifts" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="my-shifts">My Shifts</TabsTrigger>
           <TabsTrigger value="available">Available Shifts</TabsTrigger>
           <TabsTrigger value="availability">My Availability</TabsTrigger>
+          <TabsTrigger value="reports">My Reports</TabsTrigger>
         </TabsList>
         
         <TabsContent value="my-shifts" className="space-y-4">
@@ -633,19 +663,39 @@ const ShiftPlanning = () => {
               <CardTitle>Mark Your Availability</CardTitle>
             </CardHeader>
             <CardContent>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-                className="rounded-md border"
-              />
-              <p className="text-sm text-muted-foreground mt-4">
-                Click on dates to mark your availability. This feature will be enhanced in future updates.
-              </p>
+              <div className="space-y-4">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  className="rounded-md border"
+                />
+                <Button 
+                  onClick={() => setAvailabilityDialogOpen(true)}
+                  className="w-full"
+                >
+                  <CalendarIcon className="w-4 h-4 mr-2" />
+                  Set Availability for {selectedDate.toDateString()}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
+        
+        <TabsContent value="reports" className="space-y-4">
+          <ShiftReports 
+            teamMembers={teamMembers.filter(m => m.email === currentUser?.email)} 
+            shifts={getMyShifts()} 
+          />
+        </TabsContent>
       </Tabs>
+      
+      <AvailabilityDialog
+        open={availabilityDialogOpen}
+        onOpenChange={setAvailabilityDialogOpen}
+        selectedDate={selectedDate}
+        userEmail={currentUser?.email || ''}
+      />
     </div>
   );
 
