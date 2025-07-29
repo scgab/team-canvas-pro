@@ -22,26 +22,33 @@ interface Meeting {
   title: string;
   description?: string;
   date: string;
-  start_time: string;
+  time?: string;
+  start_time?: string; // For backward compatibility
   end_time?: string;
-  status: 'planned' | 'ongoing' | 'completed';
+  type: string;
+  location?: string;
+  assigned_members: string[];
   attendees: string[];
-  agenda: string[];
-  notes?: string;
-  brainstorm_items: string[];
-  agreements: string[];
-  action_items: string[];
+  // Meeting-specific fields from calendar_events extension
+  agenda?: string[];
+  meeting_notes?: string;
+  brainstorm_items?: string[];
+  agreements?: string[];
+  action_items?: string[];
+  meeting_status: 'planned' | 'ongoing' | 'completed';
+  meeting_summary?: string;
   created_by: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 interface NewMeeting {
   title: string;
   description: string;
   date: string;
-  start_time: string;
-  end_time: string;
+  time: string;
+  end_time?: string;
+  location?: string;
   attendees: string[];
   agenda: string[];
 }
@@ -60,8 +67,9 @@ const Meetings: React.FC = () => {
     title: '',
     description: '',
     date: '',
-    start_time: '',
+    time: '',
     end_time: '',
+    location: '',
     attendees: [],
     agenda: ['']
   });
@@ -82,8 +90,9 @@ const Meetings: React.FC = () => {
   const fetchMeetings = async () => {
     try {
       const { data, error } = await supabase
-        .from('meetings')
+        .from('calendar_events')
         .select('*')
+        .eq('type', 'meeting')
         .order('date', { ascending: true });
 
       if (error) {
@@ -103,16 +112,17 @@ const Meetings: React.FC = () => {
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel('meetings-changes')
+      .channel('calendar-events-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'meetings'
+          table: 'calendar_events',
+          filter: 'type=eq.meeting'
         },
         (payload) => {
-          console.log('Meeting update:', payload);
+          console.log('Calendar event update:', payload);
           fetchMeetings();
         }
       )
@@ -124,24 +134,26 @@ const Meetings: React.FC = () => {
   };
 
   const createMeeting = async () => {
-    if (!user || !newMeeting.title || !newMeeting.date || !newMeeting.start_time) {
+    if (!user || !newMeeting.title || !newMeeting.date || !newMeeting.time) {
       toast.error('Please fill in all required fields');
       return;
     }
 
     try {
       const { data, error } = await supabase
-        .from('meetings')
+        .from('calendar_events')
         .insert([{
           title: newMeeting.title,
           description: newMeeting.description,
           date: newMeeting.date,
-          start_time: newMeeting.start_time,
-          end_time: newMeeting.end_time,
+          time: newMeeting.time,
+          type: 'meeting',
+          location: newMeeting.location,
           attendees: newMeeting.attendees,
+          assigned_members: newMeeting.attendees, // Sync attendees with assigned_members
           agenda: newMeeting.agenda.filter(item => item.trim() !== ''),
-          created_by: user.id,
-          status: 'planned'
+          meeting_status: 'planned',
+          created_by: user.id
         }])
         .select()
         .single();
@@ -154,8 +166,9 @@ const Meetings: React.FC = () => {
         title: '',
         description: '',
         date: '',
-        start_time: '',
+        time: '',
         end_time: '',
+        location: '',
         attendees: [],
         agenda: ['']
       });
@@ -169,9 +182,9 @@ const Meetings: React.FC = () => {
   const updateMeetingStatus = async (meetingId: string, status: 'planned' | 'ongoing' | 'completed') => {
     try {
       const { error } = await supabase
-        .from('meetings')
+        .from('calendar_events')
         .update({ 
-          status,
+          meeting_status: status,
           updated_at: new Date().toISOString()
         })
         .eq('id', meetingId);
@@ -189,7 +202,7 @@ const Meetings: React.FC = () => {
   const updateMeetingData = async (meetingId: string, updates: Partial<Meeting>) => {
     try {
       const { error } = await supabase
-        .from('meetings')
+        .from('calendar_events')
         .update({
           ...updates,
           updated_at: new Date().toISOString()
@@ -209,7 +222,7 @@ const Meetings: React.FC = () => {
   const deleteMeeting = async (meetingId: string) => {
     try {
       const { error } = await supabase
-        .from('meetings')
+        .from('calendar_events')
         .delete()
         .eq('id', meetingId);
 
@@ -271,7 +284,7 @@ const Meetings: React.FC = () => {
   const updateNotes = (notes: string) => {
     setLiveNotes(notes);
     if (selectedMeeting) {
-      updateMeetingData(selectedMeeting.id, { notes });
+      updateMeetingData(selectedMeeting.id, { meeting_notes: notes });
     }
   };
 
@@ -296,7 +309,7 @@ const Meetings: React.FC = () => {
             <CardTitle className="text-lg">{meeting.title}</CardTitle>
             <CardDescription className="mt-1">{meeting.description}</CardDescription>
           </div>
-          {getStatusBadge(meeting.status)}
+          {getStatusBadge(meeting.meeting_status)}
         </div>
       </CardHeader>
       <CardContent>
@@ -307,13 +320,13 @@ const Meetings: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="w-4 h-4" />
-            <span>{meeting.start_time} {meeting.end_time && `- ${meeting.end_time}`}</span>
+            <span>{meeting.time} {meeting.end_time && `- ${meeting.end_time}`}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="w-4 h-4" />
             <span>{meeting.attendees.length} attendees</span>
           </div>
-          {meeting.status === 'planned' && (
+          {meeting.meeting_status === 'planned' && (
             <div className="flex gap-2 mt-3">
               <Button 
                 size="sm" 
@@ -328,7 +341,7 @@ const Meetings: React.FC = () => {
               </Button>
             </div>
           )}
-          {meeting.status === 'ongoing' && (
+          {meeting.meeting_status === 'ongoing' && (
             <div className="flex gap-2 mt-3">
               <Button 
                 size="sm" 
@@ -348,7 +361,7 @@ const Meetings: React.FC = () => {
     </Card>
   );
 
-  const filteredMeetings = meetings.filter(meeting => meeting.status === activeTab);
+  const filteredMeetings = meetings.filter(meeting => meeting.meeting_status === activeTab);
 
   if (loading) {
     return (
@@ -390,7 +403,16 @@ const Meetings: React.FC = () => {
                     value={newMeeting.title}
                     onChange={(e) => setNewMeeting(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Team standup, Project review..."
-                  />
+                />
+              </div>
+              <div>
+                <Label htmlFor="location">Location / Meeting Link</Label>
+                <Input
+                  id="location"
+                  value={newMeeting.location}
+                  onChange={(e) => setNewMeeting(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="Conference room, Zoom link, etc..."
+                />
                 </div>
                 <div>
                   <Label htmlFor="date">Date *</Label>
@@ -404,12 +426,12 @@ const Meetings: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="start_time">Start Time *</Label>
+                  <Label htmlFor="time">Start Time *</Label>
                   <Input
-                    id="start_time"
+                    id="time"
                     type="time"
-                    value={newMeeting.start_time}
-                    onChange={(e) => setNewMeeting(prev => ({ ...prev, start_time: e.target.value }))}
+                    value={newMeeting.time}
+                    onChange={(e) => setNewMeeting(prev => ({ ...prev, time: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -539,11 +561,11 @@ const Meetings: React.FC = () => {
                   <div>
                     <DialogTitle className="text-2xl">{selectedMeeting.title}</DialogTitle>
                     <DialogDescription className="mt-2">
-                      {format(parseISO(selectedMeeting.date), 'PPP')} at {selectedMeeting.start_time}
+                      {format(parseISO(selectedMeeting.date), 'PPP')} at {selectedMeeting.time || selectedMeeting.start_time}
                       {selectedMeeting.end_time && ` - ${selectedMeeting.end_time}`}
                     </DialogDescription>
                   </div>
-                  {getStatusBadge(selectedMeeting.status)}
+                  {getStatusBadge(selectedMeeting.meeting_status)}
                 </div>
               </DialogHeader>
 
@@ -562,7 +584,7 @@ const Meetings: React.FC = () => {
                     Agenda
                   </h4>
                   <ul className="space-y-1">
-                    {selectedMeeting.agenda.map((item, index) => (
+                    {(selectedMeeting.agenda || []).map((item, index) => (
                       <li key={index} className="flex items-center gap-2">
                         <CheckSquare className="w-4 h-4 text-muted-foreground" />
                         <span>{item}</span>
@@ -572,7 +594,7 @@ const Meetings: React.FC = () => {
                 </div>
 
                 {/* Status-specific content */}
-                {selectedMeeting.status === 'ongoing' && (
+                {selectedMeeting.meeting_status === 'ongoing' && (
                   <>
                     <Separator />
                     <div className="space-y-4">
@@ -614,7 +636,7 @@ const Meetings: React.FC = () => {
                           />
                         </div>
                         <div className="space-y-2 max-h-24 overflow-y-auto">
-                          {brainstormItems.map((item, index) => (
+                          {(selectedMeeting.brainstorm_items || []).map((item, index) => (
                             <div key={index} className="p-2 bg-yellow-50 border border-yellow-200 rounded">
                               {item}
                             </div>
@@ -643,7 +665,7 @@ const Meetings: React.FC = () => {
                           />
                         </div>
                         <div className="space-y-2 max-h-24 overflow-y-auto">
-                          {agreements.map((agreement, index) => (
+                          {(selectedMeeting.agreements || []).map((agreement, index) => (
                             <div key={index} className="p-2 bg-green-50 border border-green-200 rounded">
                               {agreement}
                             </div>
@@ -672,7 +694,7 @@ const Meetings: React.FC = () => {
                           />
                         </div>
                         <div className="space-y-2 max-h-24 overflow-y-auto">
-                          {actionItems.map((item, index) => (
+                          {(selectedMeeting.action_items || []).map((item, index) => (
                             <div key={index} className="p-2 bg-blue-50 border border-blue-200 rounded">
                               {item}
                             </div>
@@ -683,32 +705,32 @@ const Meetings: React.FC = () => {
                   </>
                 )}
 
-                {selectedMeeting.status === 'completed' && (
+                {selectedMeeting.meeting_status === 'completed' && (
                   <>
                     <Separator />
                     <div className="space-y-4">
                       <h4 className="font-medium">Meeting Summary</h4>
                       
-                      {selectedMeeting.notes && (
+                      {selectedMeeting.meeting_notes && (
                         <div>
                           <Label className="flex items-center gap-2 mb-2">
                             <MessageSquare className="w-4 h-4" />
                             Meeting Notes
                           </Label>
                           <div className="p-3 bg-gray-50 rounded border">
-                            {selectedMeeting.notes}
+                            {selectedMeeting.meeting_notes}
                           </div>
                         </div>
                       )}
 
-                      {selectedMeeting.agreements.length > 0 && (
+                      {(selectedMeeting.agreements || []).length > 0 && (
                         <div>
                           <Label className="flex items-center gap-2 mb-2">
                             <CheckCircle className="w-4 h-4" />
                             Agreements & Decisions
                           </Label>
                           <div className="space-y-2">
-                            {selectedMeeting.agreements.map((agreement, index) => (
+                            {(selectedMeeting.agreements || []).map((agreement, index) => (
                               <div key={index} className="p-2 bg-green-50 border border-green-200 rounded">
                                 {agreement}
                               </div>
@@ -717,14 +739,14 @@ const Meetings: React.FC = () => {
                         </div>
                       )}
 
-                      {selectedMeeting.action_items.length > 0 && (
+                      {(selectedMeeting.action_items || []).length > 0 && (
                         <div>
                           <Label className="flex items-center gap-2 mb-2">
                             <CheckSquare className="w-4 h-4" />
                             Action Items
                           </Label>
                           <div className="space-y-2">
-                            {selectedMeeting.action_items.map((item, index) => (
+                            {(selectedMeeting.action_items || []).map((item, index) => (
                               <div key={index} className="p-2 bg-blue-50 border border-blue-200 rounded">
                                 {item}
                               </div>
@@ -740,7 +762,7 @@ const Meetings: React.FC = () => {
                 
                 {/* Meeting Actions */}
                 <div className="flex gap-2 justify-end">
-                  {selectedMeeting.status === 'planned' && (
+                  {selectedMeeting.meeting_status === 'planned' && (
                     <>
                       <Button
                         variant="outline"
@@ -761,7 +783,7 @@ const Meetings: React.FC = () => {
                     </>
                   )}
                   
-                  {selectedMeeting.status === 'ongoing' && (
+                  {selectedMeeting.meeting_status === 'ongoing' && (
                     <Button
                       variant="destructive"
                       onClick={() => {

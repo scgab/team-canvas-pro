@@ -79,100 +79,64 @@ export type Database = {
       }
       calendar_events: {
         Row: {
-          assigned_members: string[] | null
-          attendees: string[] | null
-          created_at: string | null
-          created_by: string
-          date: string
-          description: string | null
-          id: string
-          location: string | null
-          time: string | null
-          title: string
-          type: string | null
-        }
-        Insert: {
-          assigned_members?: string[] | null
-          attendees?: string[] | null
-          created_at?: string | null
-          created_by: string
-          date: string
-          description?: string | null
-          id?: string
-          location?: string | null
-          time?: string | null
-          title: string
-          type?: string | null
-        }
-        Update: {
-          assigned_members?: string[] | null
-          attendees?: string[] | null
-          created_at?: string | null
-          created_by?: string
-          date?: string
-          description?: string | null
-          id?: string
-          location?: string | null
-          time?: string | null
-          title?: string
-          type?: string | null
-        }
-        Relationships: []
-      }
-      meetings: {
-        Row: {
           action_items: string[] | null
           agenda: string[] | null
           agreements: string[] | null
+          assigned_members: string[] | null
           attendees: string[] | null
           brainstorm_items: string[] | null
           created_at: string | null
           created_by: string
           date: string
           description: string | null
-          end_time: string | null
           id: string
-          notes: string | null
-          start_time: string
-          status: string | null
+          location: string | null
+          meeting_notes: string | null
+          meeting_status: string | null
+          meeting_summary: string | null
+          time: string | null
           title: string
-          updated_at: string | null
+          type: string | null
         }
         Insert: {
           action_items?: string[] | null
           agenda?: string[] | null
           agreements?: string[] | null
+          assigned_members?: string[] | null
           attendees?: string[] | null
           brainstorm_items?: string[] | null
           created_at?: string | null
           created_by: string
           date: string
           description?: string | null
-          end_time?: string | null
           id?: string
-          notes?: string | null
-          start_time: string
-          status?: string | null
+          location?: string | null
+          meeting_notes?: string | null
+          meeting_status?: string | null
+          meeting_summary?: string | null
+          time?: string | null
           title: string
-          updated_at?: string | null
+          type?: string | null
         }
         Update: {
           action_items?: string[] | null
           agenda?: string[] | null
           agreements?: string[] | null
+          assigned_members?: string[] | null
           attendees?: string[] | null
           brainstorm_items?: string[] | null
           created_at?: string | null
           created_by?: string
           date?: string
           description?: string | null
-          end_time?: string | null
           id?: string
-          notes?: string | null
-          start_time?: string
-          status?: string | null
+          location?: string | null
+          meeting_notes?: string | null
+          meeting_status?: string | null
+          meeting_summary?: string | null
+          time?: string | null
           title?: string
-          updated_at?: string | null
+          type?: string | null
         }
         Relationships: []
       }
