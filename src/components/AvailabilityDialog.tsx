@@ -78,6 +78,12 @@ export const AvailabilityDialog = ({ open, onOpenChange, selectedDate, userEmail
     const dateStr = selectedDate.toISOString().split('T')[0];
 
     try {
+      console.log('=== AVAILABILITY SAVE DEBUG ===');
+      console.log('User email:', userEmail);
+      console.log('Selected date:', dateStr);
+      console.log('Is available:', isAvailable);
+      console.log('Existing availability:', availability);
+
       const availabilityData = {
         team_member_email: userEmail,
         date: dateStr,
@@ -87,26 +93,45 @@ export const AvailabilityDialog = ({ open, onOpenChange, selectedDate, userEmail
         notes: notes.trim() || null
       };
 
+      console.log('Saving availability data:', availabilityData);
+
       if (availability) {
         // Update existing
-        const { error } = await supabase
+        console.log('Updating existing availability with ID:', availability.id);
+        const { data, error } = await supabase
           .from('availability')
           .update(availabilityData)
-          .eq('id', availability.id);
+          .eq('id', availability.id)
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
+        console.log('Update successful:', data);
       } else {
         // Create new
-        const { error } = await supabase
+        console.log('Creating new availability record');
+        const { data, error } = await supabase
           .from('availability')
-          .insert(availabilityData);
+          .insert(availabilityData)
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
+        console.log('Insert successful:', data);
       }
 
+      console.log('=== AVAILABILITY SAVE SUCCESS ===');
       toast.success('Availability updated successfully');
       onOpenChange(false);
     } catch (error: any) {
+      console.error('=== AVAILABILITY SAVE FAILED ===');
+      console.error('Error details:', error);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
       toast.error('Failed to update availability: ' + error.message);
     } finally {
       setLoading(false);

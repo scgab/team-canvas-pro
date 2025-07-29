@@ -74,6 +74,9 @@ const ShiftPlanning = () => {
   const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
   const [bulkShiftDialogOpen, setBulkShiftDialogOpen] = useState(false);
   
+  // Add controlled tab state for member view
+  const [memberActiveTab, setMemberActiveTab] = useState('my-shifts');
+  
   // Form states
   const [newShift, setNewShift] = useState({
     assigned_to: '',
@@ -94,11 +97,13 @@ const ShiftPlanning = () => {
   });
 
   useEffect(() => {
+    console.log('=== SHIFT PLANNING COMPONENT INIT ===');
     checkUserRole();
     fetchTeamMembers();
     fetchShifts();
     fetchAvailableShifts();
     setupRealTimeUpdates();
+    console.log('====================================');
   }, []);
 
   const setupRealTimeUpdates = () => {
@@ -159,6 +164,60 @@ const ShiftPlanning = () => {
           });
         setUserRole('member');
       }
+    }
+    
+    // Test availability table accessibility
+    await testAvailabilityTableAccess();
+  };
+
+  const testAvailabilityTableAccess = async () => {
+    try {
+      console.log('=== TESTING AVAILABILITY TABLE ACCESS ===');
+      
+      // Test if we can read from availability table
+      const { data: readTest, error: readError } = await supabase
+        .from('availability')
+        .select('*')
+        .limit(1);
+      
+      if (readError) {
+        console.error('Read test failed:', readError);
+      } else {
+        console.log('Read test passed:', readTest);
+      }
+
+      // Test if we can insert into availability table
+      const testData = {
+        team_member_email: 'test@example.com',
+        date: '2025-07-30',
+        is_available: true
+      };
+      
+      console.log('Testing insert with data:', testData);
+      
+      const { data: insertTest, error: insertError } = await supabase
+        .from('availability')
+        .insert([testData])
+        .select();
+      
+      if (insertError) {
+        console.error('Insert test failed:', insertError);
+      } else {
+        console.log('Insert test passed:', insertTest);
+        
+        // Clean up test data
+        if (insertTest && insertTest[0]) {
+          await supabase
+            .from('availability')
+            .delete()
+            .eq('id', insertTest[0].id);
+          console.log('Test data cleaned up');
+        }
+      }
+      
+      console.log('=== AVAILABILITY TABLE TEST COMPLETE ===');
+    } catch (error) {
+      console.error('Availability table test failed:', error);
     }
   };
 
@@ -582,7 +641,7 @@ const ShiftPlanning = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="my-shifts" className="w-full">
+      <Tabs value={memberActiveTab} onValueChange={setMemberActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="my-shifts">My Shifts</TabsTrigger>
           <TabsTrigger value="available">Available Shifts</TabsTrigger>
@@ -669,14 +728,25 @@ const ShiftPlanning = () => {
                   selected={selectedDate}
                   onSelect={(date) => {
                     if (date) {
+                      console.log('=== AVAILABILITY CALENDAR CLICK DEBUG ===');
+                      console.log('Current tab before click:', memberActiveTab);
+                      console.log('Date clicked:', date);
                       setSelectedDate(date);
-                      // Don't change tabs - stay in availability section
+                      console.log('Current tab after setSelectedDate:', memberActiveTab);
+                      // DO NOT change tabs - this should stay in availability section
+                      console.log('=======================================');
                     }
                   }}
                   className="rounded-md border"
                 />
                 <Button 
-                  onClick={() => setAvailabilityDialogOpen(true)}
+                  onClick={() => {
+                    console.log('=== AVAILABILITY BUTTON CLICK DEBUG ===');
+                    console.log('Current tab:', memberActiveTab);
+                    setAvailabilityDialogOpen(true);
+                    console.log('Opened availability dialog');
+                    console.log('========================================');
+                  }}
                   className="w-full"
                 >
                   <CalendarIcon className="w-4 h-4 mr-2" />
