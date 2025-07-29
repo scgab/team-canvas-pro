@@ -98,6 +98,7 @@ export type Database = {
           time: string | null
           title: string
           type: string | null
+          updated_at: string | null
         }
         Insert: {
           action_items?: string[] | null
@@ -119,6 +120,7 @@ export type Database = {
           time?: string | null
           title: string
           type?: string | null
+          updated_at?: string | null
         }
         Update: {
           action_items?: string[] | null
@@ -140,6 +142,7 @@ export type Database = {
           time?: string | null
           title?: string
           type?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
