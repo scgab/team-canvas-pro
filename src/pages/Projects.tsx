@@ -13,7 +13,7 @@ import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useSharedData } from "@/contexts/SharedDataContext";
 import { useAuth } from "@/hooks/useAuth";
-import { getUsers } from "@/utils/userDatabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Plus, 
@@ -43,8 +43,7 @@ const Projects = () => {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   
   // Get current user ID from user database
-  const users = getUsers();
-  const currentUser = users.find(u => u.email === user?.email);
+  const currentUser = null;
   
   // Store current user email globally for project creation
   if (user?.email && typeof window !== 'undefined') {

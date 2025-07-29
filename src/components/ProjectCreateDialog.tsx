@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useSharedData } from "@/contexts/SharedDataContext";
-import { getUsers } from "@/utils/userDatabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useUserColors } from "@/components/UserColorContext";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,7 @@ export function ProjectCreateDialog({ open, onOpenChange, onProjectCreated }: Pr
     deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default to 30 days from now
   });
 
-  const teamMembers = getUsers();
+  const teamMembers = [];
 
   const handleCreateProject = async () => {
     if (!newProject.title.trim()) {

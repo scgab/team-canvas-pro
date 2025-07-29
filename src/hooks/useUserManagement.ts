@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { User } from '@/utils/userDatabase';
+// Removed dependency on old userDatabase
 
 interface RegisteredUser {
   id: string;

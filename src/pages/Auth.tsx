@@ -1,25 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import { Eye, EyeOff, LogIn, User, Lock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-export default function Auth() {
-  const [emailOrUsername, setEmailOrUsername] = useState('');
+const Auth = () => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('login');
   
-  const navigate = useNavigate();
+  const { user, signInWithCredentials, signUp } = useAuth();
   const { toast } = useToast();
-  const { user, signInWithCredentials } = useAuth();
+  const navigate = useNavigate();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -30,187 +30,222 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
-    setLoginError(null);
-
-    // Basic validation
-    if (!emailOrUsername.trim()) {
-      setLoginError('Please enter your email or username');
-      setLoading(false);
-      return;
-    }
-
-    if (!password) {
-      setLoginError('Please enter your password');
-      setLoading(false);
-      return;
-    }
-
-    console.log('=== Login Attempt ===');
-    console.log('Email/Username:', emailOrUsername);
-    console.log('Password length:', password.length);
-
-    const { error } = await signInWithCredentials(emailOrUsername, password);
-
+    
+    const { error } = await signInWithCredentials(email, password);
+    
     if (error) {
-      console.error('Login failed:', error.message);
-      setLoginError(error.message);
-      
-      // Show toast for failed login
       toast({
         title: "Login Failed",
         description: error.message,
         variant: "destructive"
       });
     } else {
-      console.log('Login successful, redirecting to dashboard...');
-      
-      // Show success toast
       toast({
-        title: "Welcome back!",
-        description: "You've been successfully logged in. Let's manage our way to +$100M!",
-        duration: 3000
+        title: "Success",
+        description: "Logged in successfully!",
+        variant: "default"
       });
-      
-      // Navigate to dashboard
       navigate('/');
     }
+    
+    setLoading(false);
+  };
 
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !password || !fullName) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    
+    const { error } = await signUp(email, password, fullName);
+    
+    if (error) {
+      toast({
+        title: "Sign Up Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Account created! Please check your email to verify your account.",
+        variant: "default"
+      });
+      setActiveTab('login');
+    }
+    
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-secondary/20 p-4">
-      <div className="w-full max-w-lg text-center space-y-8">
-        {/* Header Section */}
-        <div className="space-y-4">
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Let's manage our way to +$100M!
-          </h1>
-          <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
-            Project Management
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-md mx-auto">
-            "Success is not final, failure is not fatal: it is the courage to continue that counts."
-          </p>
-        </div>
-
-        {/* Login Card */}
-        <Card className="w-full max-w-md mx-auto shadow-lg border-border/50">
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-xl font-semibold text-center flex items-center justify-center gap-2">
-              <LogIn className="w-5 h-5" />
-              Welcome Back
-            </CardTitle>
-            <CardDescription className="text-center">
-              Sign in to access your project management dashboard
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="space-y-4">
-            {loginError && (
-              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                {loginError}
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              {/* Email/Username Field */}
-              <div className="space-y-2">
-                <Label htmlFor="emailOrUsername" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Email or Username
-                </Label>
-                <Input
-                  id="emailOrUsername"
-                  type="text"
-                  placeholder="Enter your email or username"
-                  value={emailOrUsername}
-                  onChange={(e) => setEmailOrUsername(e.target.value)}
-                  required
-                  autoFocus
-                  className="h-11"
-                />
-              </div>
-
-              {/* Password Field */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  Password
-                </Label>
-                <div className="relative">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-secondary/5 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">Welcome</CardTitle>
+          <CardDescription>
+            Sign in to your account or create a new one
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="h-11 pr-10"
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-11 px-3 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </Button>
                 </div>
-              </div>
-
-              {/* Remember Me */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="rememberMe"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                />
-                <Label htmlFor="rememberMe" className="text-sm text-muted-foreground">
-                  Remember me for 24 hours
-                </Label>
-              </div>
-
-              {/* Login Button */}
-              <Button 
-                type="submit" 
-                disabled={loading}
-                className="w-full h-12 text-base font-medium"
-                size="lg"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                    Signing in...
+                
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
-                ) : (
-                  <>
-                    <LogIn className="w-4 h-4 mr-2" />
-                    Sign In
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <div className="text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Secure authentication • Welcome to the +$100M management team
-          </p>
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p><strong>Demo Accounts:</strong></p>
-            <p>hna@scandac.com • myh@scandac.com</p>
-          </div>
-        </div>
-      </div>
+                </div>
+                
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="signup">
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="signupEmail">Email</Label>
+                  <Input
+                    id="signupEmail"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="signupPassword">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="signupPassword"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Create a password (min 6 characters)"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    'Create Account'
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
-}
+};
+
+export default Auth;

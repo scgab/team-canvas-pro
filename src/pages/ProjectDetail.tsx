@@ -14,7 +14,7 @@ import { ProjectShareDialog } from "@/components/ProjectShareDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useSharedData } from "@/contexts/SharedDataContext";
 import { useAuth } from "@/hooks/useAuth";
-import { getUsers } from "@/utils/userDatabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { tasksService } from "@/services/database";
 import { ProjectNotes } from "@/components/ProjectNotes";
@@ -94,8 +94,7 @@ const ProjectDetail = () => {
   };
 
   const getTeamMembers = () => {
-    const users = getUsers();
-    return users.slice(0, project.team_size);
+    return [];
   };
 
   const teamMembers = getTeamMembers();

@@ -11,7 +11,7 @@ import { AnnouncementModal } from "@/components/AnnouncementModal";
 import { AddTeamMemberDialog } from "@/components/AddTeamMemberDialog";
 import { FileSharing } from "@/components/FileSharing";
 import { useAuth } from "@/hooks/useAuth";
-import { getUsers } from "@/utils/userDatabase";
+import { getUsers } from "@/utils/teamUtils";
 import { useUserColors } from "@/components/UserColorContext";
 import { useToast } from "@/hooks/use-toast";
 import { 

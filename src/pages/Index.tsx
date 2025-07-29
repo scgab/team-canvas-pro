@@ -1,12 +1,13 @@
 import { useAuth } from "@/hooks/useAuth";
-import Landing from "./Landing";
+import { AuthGuard } from "@/components/AuthGuard";
 import { Dashboard } from "@/components/Dashboard";
 
 const Index = () => {
-  const { user } = useAuth();
-
-  // Show dashboard if user is authenticated, otherwise show landing page
-  return user ? <Dashboard /> : <Landing />;
+  return (
+    <AuthGuard>
+      <Dashboard />
+    </AuthGuard>
+  );
 };
 
 export default Index;

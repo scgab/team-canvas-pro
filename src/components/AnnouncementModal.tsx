@@ -61,7 +61,7 @@ export function AnnouncementModal({ open, onOpenChange, onAnnouncementSent }: An
       title: announcement.title,
       content: announcement.content,
       type: announcement.type,
-      author: user.name,
+      author: user.user_metadata?.full_name || user.email || 'Unknown User',
       authorEmail: user.email,
       createdAt: new Date(),
       recipients: announcement.recipients

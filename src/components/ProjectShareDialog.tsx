@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { getUsers } from "@/utils/userDatabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useUserColors } from "@/components/UserColorContext";
 import { useSharedData } from "@/contexts/SharedDataContext";
 import { Copy, Link, Mail, Users } from "lucide-react";
@@ -28,7 +28,7 @@ export function ProjectShareDialog({ project, open, onOpenChange }: ProjectShare
   const [shareLink, setShareLink] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   
-  const teamMembers = getUsers();
+  const teamMembers = [];
 
   const generateShareLink = () => {
     if (!project) return;
