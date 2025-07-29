@@ -59,7 +59,9 @@ const Meetings: React.FC = () => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [editMeeting, setEditMeeting] = useState<NewMeeting | null>(null);
   const [activeTab, setActiveTab] = useState('planned');
   
   // Form state for new meeting
@@ -176,6 +178,56 @@ const Meetings: React.FC = () => {
     } catch (error) {
       console.error('Error creating meeting:', error);
       toast.error('Failed to create meeting');
+    }
+  };
+
+  const openEditDialog = (meeting: Meeting) => {
+    setEditMeeting({
+      title: meeting.title,
+      description: meeting.description || '',
+      date: meeting.date,
+      time: meeting.time || '',
+      end_time: meeting.end_time || '',
+      location: meeting.location || '',
+      attendees: meeting.attendees || [],
+      agenda: meeting.agenda || ['']
+    });
+    setSelectedMeeting(meeting); // Keep the selected meeting for editing
+    setShowEditDialog(true);
+  };
+
+  const updateMeeting = async () => {
+    if (!editMeeting || !selectedMeeting || !user) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('calendar_events')
+        .update({
+          title: editMeeting.title,
+          description: editMeeting.description,
+          date: editMeeting.date,
+          time: editMeeting.time,
+          location: editMeeting.location,
+          attendees: editMeeting.attendees,
+          assigned_members: editMeeting.attendees,
+          agenda: editMeeting.agenda.filter(item => item.trim() !== ''),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedMeeting.id);
+
+      if (error) throw error;
+
+      toast.success('Meeting updated successfully');
+      setShowEditDialog(false);
+      setEditMeeting(null);
+      setSelectedMeeting(null);
+      fetchMeetings();
+    } catch (error) {
+      console.error('Error updating meeting:', error);
+      toast.error('Failed to update meeting');
     }
   };
 
@@ -361,7 +413,21 @@ const Meetings: React.FC = () => {
     </Card>
   );
 
-  const filteredMeetings = meetings.filter(meeting => meeting.meeting_status === activeTab);
+  const filteredMeetings = meetings.filter(meeting => {
+    const today = new Date().toISOString().split('T')[0];
+    const meetingDate = meeting.date;
+    
+    switch (activeTab) {
+      case 'planned':
+        return meeting.meeting_status === 'planned' && meetingDate >= today;
+      case 'ongoing':
+        return meeting.meeting_status === 'ongoing';
+      case 'completed':
+        return meeting.meeting_status === 'completed' || meetingDate < today;
+      default:
+        return false;
+    }
+  });
 
   if (loading) {
     return (
@@ -766,8 +832,9 @@ const Meetings: React.FC = () => {
                     <>
                       <Button
                         variant="outline"
-                        onClick={() => setSelectedMeeting(null)}
+                        onClick={() => openEditDialog(selectedMeeting)}
                       >
+                        <Edit3 className="w-4 h-4 mr-2" />
                         Edit Meeting
                       </Button>
                       <Button
@@ -813,6 +880,128 @@ const Meetings: React.FC = () => {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Meeting Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Meeting</DialogTitle>
+            <DialogDescription>Update meeting details and agenda</DialogDescription>
+          </DialogHeader>
+          {editMeeting && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-title">Meeting Title *</Label>
+                  <Input
+                    id="edit-title"
+                    value={editMeeting.title}
+                    onChange={(e) => setEditMeeting(prev => prev ? { ...prev, title: e.target.value } : null)}
+                    placeholder="Team standup, Project review..."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-location">Location / Meeting Link</Label>
+                  <Input
+                    id="edit-location"
+                    value={editMeeting.location}
+                    onChange={(e) => setEditMeeting(prev => prev ? { ...prev, location: e.target.value } : null)}
+                    placeholder="Conference room, Zoom link, etc..."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-date">Date *</Label>
+                  <Input
+                    id="edit-date"
+                    type="date"
+                    value={editMeeting.date}
+                    onChange={(e) => setEditMeeting(prev => prev ? { ...prev, date: e.target.value } : null)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-time">Start Time *</Label>
+                  <Input
+                    id="edit-time"
+                    type="time"
+                    value={editMeeting.time}
+                    onChange={(e) => setEditMeeting(prev => prev ? { ...prev, time: e.target.value } : null)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-end-time">End Time</Label>
+                  <Input
+                    id="edit-end-time"
+                    type="time"
+                    value={editMeeting.end_time}
+                    onChange={(e) => setEditMeeting(prev => prev ? { ...prev, end_time: e.target.value } : null)}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editMeeting.description}
+                  onChange={(e) => setEditMeeting(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  placeholder="Meeting purpose and context..."
+                />
+              </div>
+              <div>
+                <Label>Agenda Items</Label>
+                <div className="space-y-2">
+                  {editMeeting.agenda.map((item, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        value={item}
+                        onChange={(e) => {
+                          const newAgenda = [...editMeeting.agenda];
+                          newAgenda[index] = e.target.value;
+                          setEditMeeting(prev => prev ? { ...prev, agenda: newAgenda } : null);
+                        }}
+                        placeholder={`Agenda item ${index + 1}...`}
+                      />
+                      {editMeeting.agenda.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newAgenda = editMeeting.agenda.filter((_, i) => i !== index);
+                            setEditMeeting(prev => prev ? { ...prev, agenda: newAgenda } : null);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditMeeting(prev => prev ? { ...prev, agenda: [...prev.agenda, ''] } : null);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Agenda Item
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={updateMeeting}>
+              Update Meeting
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
