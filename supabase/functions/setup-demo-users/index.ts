@@ -50,54 +50,49 @@ Deno.serve(async (req) => {
     for (const user of demoUsers) {
       console.log(`Processing user: ${user.email}`)
       
-      // Check if user already exists by listing users and filtering by email
-      const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-      
-      if (listError) {
-        console.error(`Failed to check existing users:`, listError)
-        results.push({
+      try {
+        // Try to create the user directly - if it exists, we'll get an error we can handle
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
           email: user.email,
-          status: 'error',
-          error: listError.message
+          password: user.password,
+          email_confirm: true, // Auto-confirm email
+          user_metadata: {
+            full_name: user.full_name
+          }
         })
-        continue
-      }
 
-      const existingUser = existingUsers.users.find(u => u.email === user.email)
-      
-      if (existingUser) {
-        console.log(`User ${user.email} already exists`)
-        results.push({
-          email: user.email,
-          status: 'already_exists',
-          user_id: existingUser.id
-        })
-        continue
-      }
-
-      // Create the user
-      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: user.email,
-        password: user.password,
-        email_confirm: true, // Auto-confirm email
-        user_metadata: {
-          full_name: user.full_name
+        if (createError) {
+          // Check if user already exists
+          if (createError.message.includes('already been registered') || 
+              createError.message.includes('already exists') ||
+              createError.status === 422) {
+            console.log(`User ${user.email} already exists`)
+            results.push({
+              email: user.email,
+              status: 'already_exists'
+            })
+          } else {
+            console.error(`Failed to create user ${user.email}:`, createError)
+            results.push({
+              email: user.email,
+              status: 'error',
+              error: createError.message
+            })
+          }
+        } else {
+          console.log(`Successfully created user ${user.email}`)
+          results.push({
+            email: user.email,
+            status: 'created',
+            user_id: newUser.user?.id
+          })
         }
-      })
-
-      if (createError) {
-        console.error(`Failed to create user ${user.email}:`, createError)
+      } catch (error) {
+        console.error(`Exception creating user ${user.email}:`, error)
         results.push({
           email: user.email,
           status: 'error',
-          error: createError.message
-        })
-      } else {
-        console.log(`Successfully created user ${user.email}`)
-        results.push({
-          email: user.email,
-          status: 'created',
-          user_id: newUser.user?.id
+          error: error.message
         })
       }
     }
