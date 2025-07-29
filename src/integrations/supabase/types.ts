@@ -119,6 +119,63 @@ export type Database = {
         }
         Relationships: []
       }
+      meetings: {
+        Row: {
+          action_items: string[] | null
+          agenda: string[] | null
+          agreements: string[] | null
+          attendees: string[] | null
+          brainstorm_items: string[] | null
+          created_at: string | null
+          created_by: string
+          date: string
+          description: string | null
+          end_time: string | null
+          id: string
+          notes: string | null
+          start_time: string
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_items?: string[] | null
+          agenda?: string[] | null
+          agreements?: string[] | null
+          attendees?: string[] | null
+          brainstorm_items?: string[] | null
+          created_at?: string | null
+          created_by: string
+          date: string
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          start_time: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_items?: string[] | null
+          agenda?: string[] | null
+          agreements?: string[] | null
+          attendees?: string[] | null
+          brainstorm_items?: string[] | null
+          created_at?: string | null
+          created_by?: string
+          date?: string
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          start_time?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string

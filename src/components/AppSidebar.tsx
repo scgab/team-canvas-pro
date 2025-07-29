@@ -8,7 +8,8 @@ import {
   Settings, 
   Plus,
   FolderOpen,
-  Brain
+  Brain,
+  Video
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -30,6 +31,7 @@ const mainNavItems = [
   { title: "Projects", url: "/projects", icon: FolderOpen },
   { title: "Board", url: "/board", icon: Kanban },
   { title: "Calendar", url: "/calendar", icon: Calendar },
+  { title: "Meetings", url: "/meetings", icon: Video },
   { title: "Team", url: "/team", icon: Users },
   { title: "Gantt Chart", url: "/analytics", icon: BarChart3 },
   { title: "AI Tools", url: "/ai-tools", icon: Brain },

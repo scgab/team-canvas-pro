@@ -12,6 +12,7 @@ import Calendar from "./pages/Calendar";
 import Team from "./pages/Team";
 import Analytics from "./pages/Analytics";
 import AITools from "./pages/AITools";
+import Meetings from "./pages/Meetings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/projects/:projectId/tasks" element={<AuthGuard><ProjectTaskBoard /></AuthGuard>} />
           <Route path="/board" element={<AuthGuard><Board /></AuthGuard>} />
           <Route path="/calendar" element={<AuthGuard><Calendar /></AuthGuard>} />
+          <Route path="/meetings" element={<AuthGuard><Meetings /></AuthGuard>} />
           <Route path="/team" element={<AuthGuard><Team /></AuthGuard>} />
           <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
           <Route path="/ai-tools" element={<AuthGuard><AITools /></AuthGuard>} />
