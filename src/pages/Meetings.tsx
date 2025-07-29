@@ -381,6 +381,18 @@ const Meetings: React.FC = () => {
           {meeting.meeting_status === 'planned' && (
             <div className="flex gap-2 mt-3">
               <Button 
+                variant="outline"
+                size="sm" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openEditDialog(meeting);
+                }}
+                className="border-gray-300"
+              >
+                <Edit3 className="w-3 h-3 mr-1" />
+                Edit
+              </Button>
+              <Button 
                 size="sm" 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -557,7 +569,13 @@ const Meetings: React.FC = () => {
               <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={createMeeting}>
+              <Button 
+                onClick={() => {
+                  console.log('Create meeting button clicked');
+                  createMeeting();
+                }}
+                disabled={!newMeeting.title || !newMeeting.date || !newMeeting.time}
+              >
                 Create Meeting
               </Button>
             </DialogFooter>
@@ -998,7 +1016,13 @@ const Meetings: React.FC = () => {
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={updateMeeting}>
+            <Button 
+              onClick={() => {
+                console.log('Update meeting button clicked');
+                updateMeeting();
+              }}
+              disabled={!editMeeting?.title || !editMeeting?.date || !editMeeting?.time}
+            >
               Update Meeting
             </Button>
           </DialogFooter>
