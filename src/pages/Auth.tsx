@@ -109,7 +109,30 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-secondary/5 p-4">
       <div className="w-full max-w-4xl flex gap-6 justify-center">
-        <DemoUserSetup />
+        <Card className="w-full max-w-md bg-blue-50 border-blue-200">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl font-bold text-blue-800">Quick Setup Instructions</CardTitle>
+            <CardDescription className="text-blue-600">
+              To restore your access to existing data
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-sm text-blue-800">
+              <p className="font-medium mb-2">Follow these steps:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Click "Sign Up" tab on the right →</li>
+                <li>Use your existing email: <code className="bg-blue-100 px-1 rounded">hna@scandac.com</code></li>
+                <li>Use your existing password: <code className="bg-blue-100 px-1 rounded">Scandac2025!</code></li>
+                <li>Enter any name (e.g., "HNA User")</li>
+                <li>Click "Create Account"</li>
+                <li>Then login normally</li>
+              </ol>
+            </div>
+            <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+              ✅ Your existing projects, tasks, and calendar events will automatically be linked to your new account!
+            </div>
+          </CardContent>
+        </Card>
         
         <Card className="w-full max-w-md">
         <CardHeader className="text-center">
