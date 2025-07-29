@@ -667,7 +667,12 @@ const ShiftPlanning = () => {
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
+                  onSelect={(date) => {
+                    if (date) {
+                      setSelectedDate(date);
+                      // Don't change tabs - stay in availability section
+                    }
+                  }}
                   className="rounded-md border"
                 />
                 <Button 

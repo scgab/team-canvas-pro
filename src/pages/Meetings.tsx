@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Layout } from '@/components/Layout';
 import { useNavigate } from 'react-router-dom';
 import { Video, Plus, Clock, Users, Calendar, Play, Square, CheckCircle, Edit3, Trash2, FileText, MessageSquare, Target, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -492,9 +493,10 @@ const Meetings: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <Layout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Meetings</h1>
           <p className="text-muted-foreground">Manage your team meetings and collaboration</p>
@@ -1067,7 +1069,8 @@ const Meetings: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </Layout>
   );
 };
 
