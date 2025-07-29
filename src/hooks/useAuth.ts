@@ -31,12 +31,17 @@ export const useAuth = () => {
     try {
       setLoading(true);
       
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('🔐 Attempting login with:', email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
+      console.log('🔐 Supabase auth response:', { data, error });
+      
       if (error) {
+        console.error('🔐 Login failed:', error.message);
         return { 
           error: { 
             message: error.message 
@@ -44,10 +49,11 @@ export const useAuth = () => {
         };
       }
       
+      console.log('🔐 Login successful:', data.user?.email);
       return { error: null };
       
     } catch (error) {
-      console.error('Authentication error:', error);
+      console.error('🔐 Authentication error:', error);
       return { 
         error: { 
           message: 'Authentication failed. Please try again.' 
