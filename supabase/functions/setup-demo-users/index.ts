@@ -50,10 +50,22 @@ Deno.serve(async (req) => {
     for (const user of demoUsers) {
       console.log(`Processing user: ${user.email}`)
       
-      // Check if user already exists
-      const { data: existingUser, error: checkError } = await supabaseAdmin.auth.admin.getUserByEmail(user.email)
+      // Check if user already exists by listing users and filtering by email
+      const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
       
-      if (existingUser && !checkError) {
+      if (listError) {
+        console.error(`Failed to check existing users:`, listError)
+        results.push({
+          email: user.email,
+          status: 'error',
+          error: listError.message
+        })
+        continue
+      }
+
+      const existingUser = existingUsers.users.find(u => u.email === user.email)
+      
+      if (existingUser) {
         console.log(`User ${user.email} already exists`)
         results.push({
           email: user.email,
