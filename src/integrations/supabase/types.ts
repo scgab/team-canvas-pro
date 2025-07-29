@@ -77,6 +77,78 @@ export type Database = {
         }
         Relationships: []
       }
+      availability: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: string
+          is_available: boolean | null
+          notes: string | null
+          preferred_end_time: string | null
+          preferred_start_time: string | null
+          team_member_email: string
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          id?: string
+          is_available?: boolean | null
+          notes?: string | null
+          preferred_end_time?: string | null
+          preferred_start_time?: string | null
+          team_member_email: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          is_available?: boolean | null
+          notes?: string | null
+          preferred_end_time?: string | null
+          preferred_start_time?: string | null
+          team_member_email?: string
+        }
+        Relationships: []
+      }
+      available_shifts: {
+        Row: {
+          claimed_by: string | null
+          competence_required: string | null
+          created_at: string | null
+          created_by: string
+          date: string
+          description: string | null
+          end_time: string
+          id: string
+          shift_type: string | null
+          start_time: string
+        }
+        Insert: {
+          claimed_by?: string | null
+          competence_required?: string | null
+          created_at?: string | null
+          created_by: string
+          date: string
+          description?: string | null
+          end_time: string
+          id?: string
+          shift_type?: string | null
+          start_time: string
+        }
+        Update: {
+          claimed_by?: string | null
+          competence_required?: string | null
+          created_at?: string | null
+          created_by?: string
+          date?: string
+          description?: string | null
+          end_time?: string
+          id?: string
+          shift_type?: string | null
+          start_time?: string
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           action_items: string[] | null
@@ -287,6 +359,48 @@ export type Database = {
         }
         Relationships: []
       }
+      shifts: {
+        Row: {
+          assigned_to: string | null
+          created_at: string | null
+          created_by: string
+          date: string
+          end_time: string
+          id: string
+          notes: string | null
+          shift_type: string | null
+          start_time: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string | null
+          created_by: string
+          date: string
+          end_time: string
+          id?: string
+          notes?: string | null
+          shift_type?: string | null
+          start_time: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string | null
+          created_by?: string
+          date?: string
+          end_time?: string
+          id?: string
+          notes?: string | null
+          shift_type?: string | null
+          start_time?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assignee: string | null
@@ -342,6 +456,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      team_members: {
+        Row: {
+          competence_level: string | null
+          created_at: string | null
+          email: string
+          hourly_rate: number | null
+          id: string
+          name: string
+          role: string | null
+        }
+        Insert: {
+          competence_level?: string | null
+          created_at?: string | null
+          email: string
+          hourly_rate?: number | null
+          id?: string
+          name: string
+          role?: string | null
+        }
+        Update: {
+          competence_level?: string | null
+          created_at?: string | null
+          email?: string
+          hourly_rate?: number | null
+          id?: string
+          name?: string
+          role?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
