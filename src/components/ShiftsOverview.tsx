@@ -22,6 +22,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 interface TeamMember {
   id: string;
@@ -71,7 +72,7 @@ export const ShiftsOverview = ({
   availableShifts, 
   onTabChange 
 }: ShiftsOverviewProps) => {
-  const [userProfile, setUserProfile] = useState<TeamMember | null>(null);
+  const { userProfile: profile, loading: profileLoading } = useUserProfile();
   const [stats, setStats] = useState({
     currentMonthShifts: 0,
     currentMonthHours: 0,
@@ -84,12 +85,10 @@ export const ShiftsOverview = ({
   });
 
   useEffect(() => {
-    if (currentUser && teamMembers.length > 0) {
-      const profile = teamMembers.find(m => m.email === currentUser.email);
-      setUserProfile(profile || null);
+    if (currentUser) {
       calculateStats();
     }
-  }, [currentUser, teamMembers, shifts]);
+  }, [currentUser, shifts]);
 
   const calculateStats = () => {
     const userShifts = shifts.filter(s => s.assigned_to === currentUser?.email);
@@ -155,10 +154,10 @@ export const ShiftsOverview = ({
   };
 
   const getQualifiedAvailableShifts = () => {
-    if (!userProfile) return [];
+    if (!profile) return [];
     
     const competenceLevels = ['beginner', 'intermediate', 'advanced', 'expert'];
-    const userLevel = competenceLevels.indexOf(userProfile.competence_level.toLowerCase());
+    const userLevel = competenceLevels.indexOf(profile.competence_level?.toLowerCase() || 'beginner');
     
     return availableShifts
       .filter(s => !s.claimed_by)
@@ -235,38 +234,80 @@ export const ShiftsOverview = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Avatar className="w-12 h-12">
-                <AvatarFallback>
-                  {userProfile?.name?.split(' ').map(n => n[0]).join('') || 'UN'}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-semibold">{userProfile?.name || 'Unknown'}</h3>
-                <p className="text-sm text-muted-foreground">{userProfile?.role || 'Team Member'}</p>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <Mail className="w-4 h-4" />
-                <span>{userProfile?.email}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Briefcase className="w-4 h-4" />
-                <span>Competence: {userProfile?.competence_level}</span>
-              </div>
-              {userProfile?.hourly_rate && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-lg">💰</span>
-                  <span>${userProfile.hourly_rate}/hour</span>
+            {profileLoading ? (
+              <div className="animate-pulse space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                    <div className="h-3 bg-gray-200 rounded w-16"></div>
+                  </div>
                 </div>
-              )}
-            </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-200 rounded w-32"></div>
+                  <div className="h-3 bg-gray-200 rounded w-28"></div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-16 h-16">
+                    <AvatarFallback className="text-lg">
+                      {profile?.full_name?.charAt(0)?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold">{profile?.full_name || 'Unknown User'}</h3>
+                    <p className="text-sm text-muted-foreground">{profile?.email}</p>
+                  </div>
+                </div>
+                
+                <div className="mt-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Age: </span>
+                      <span>{profile?.age || 'Not specified'}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Level: </span>
+                      <span className="font-medium text-primary">
+                        {profile?.competence_level || 'Beginner'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Department: </span>
+                      <span>{profile?.department || 'General'}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Role: </span>
+                      <span>{profile?.job_title || 'Team Member'}</span>
+                    </div>
+                  </div>
+                  
+                  {profile?.hire_date && (
+                    <div className="text-sm pt-2 border-t">
+                      <span className="text-muted-foreground">Hire Date: </span>
+                      <span>{new Date(profile.hire_date).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
 
-            <Badge variant="secondary" className="w-fit">
-              {userProfile?.competence_level} Level
-            </Badge>
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <Badge variant="secondary">
+                    {profile?.competence_level || 'Beginner'} Level
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open('/profile', '_blank')}
+                    className="text-primary hover:text-primary/80"
+                  >
+                    <User className="w-4 h-4 mr-1" />
+                    Edit Profile
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
