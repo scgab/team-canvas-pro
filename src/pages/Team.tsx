@@ -11,7 +11,7 @@ import { AnnouncementModal } from "@/components/AnnouncementModal";
 import { AddTeamMemberDialog } from "@/components/AddTeamMemberDialog";
 import { FileSharing } from "@/components/FileSharing";
 import { useAuth } from "@/hooks/useAuth";
-import { getUsers } from "@/utils/teamUtils";
+import { supabase } from "@/integrations/supabase/client";
 import { useUserColors } from "@/components/UserColorContext";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -28,6 +28,15 @@ import {
   Megaphone
 } from "lucide-react";
 
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  full_name?: string;
+  competence_level?: string;
+}
+
 const Team = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -36,9 +45,55 @@ const Team = () => {
   const [activeTab, setActiveTab] = useState("messaging");
   const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const currentUser = user?.user_metadata?.full_name || user?.email || 'Current User';
-  const teamMembers = getUsers();
+
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
+
+  const fetchTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching team members:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load team members",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Transform the data to match our interface
+      const transformedMembers: TeamMember[] = (data || []).map(member => ({
+        id: member.id,
+        name: member.name,
+        email: member.email,
+        role: member.role === 'admin' ? 'Admin' : 'Member',
+        full_name: member.full_name,
+        competence_level: member.competence_level
+      }));
+
+      setTeamMembers(transformedMembers);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load team members",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Check if messaging tab should be active from URL params
   useEffect(() => {
@@ -110,43 +165,67 @@ const Team = () => {
         </div>
 
         {/* Team Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {teamMembers.map((member) => {
-            const memberColor = getColorByEmail(member.email);
-            
-            return (
-              <Card key={member.id} className="bg-gradient-card shadow-custom-card">
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2].map((i) => (
+              <Card key={i} className="bg-gradient-card shadow-custom-card">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
-                    <Avatar className="w-12 h-12">
-                      <AvatarFallback 
-                        className="text-white"
-                        style={{ backgroundColor: memberColor.primary }}
-                      >
-                        {member.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-medium text-foreground">{member.name}</h3>
-                      <p className="text-sm text-muted-foreground">{member.role}</p>
-                      <Badge className="bg-success text-success-foreground text-xs mt-1">
-                        Active
-                      </Badge>
+                    <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                      <div className="h-3 bg-gray-200 rounded animate-pulse w-16"></div>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Mail className="w-4 h-4" />
-                      <span className="truncate">{member.email}</span>
-                    </div>
-                  </div>
-                </CardContent>
               </Card>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {teamMembers.map((member) => {
+              const memberColor = getColorByEmail(member.email);
+              
+              return (
+                <Card key={member.id} className="bg-gradient-card shadow-custom-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-12 h-12">
+                        <AvatarFallback 
+                          className="text-white"
+                          style={{ backgroundColor: memberColor.primary }}
+                        >
+                          {member.name.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="font-medium text-foreground">{member.name}</h3>
+                        <p className="text-sm text-muted-foreground">{member.role}</p>
+                        <Badge className="bg-success text-success-foreground text-xs mt-1">
+                          Active
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Mail className="w-4 h-4" />
+                        <span className="truncate">{member.email}</span>
+                      </div>
+                      {member.competence_level && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Award className="w-4 h-4" />
+                          <span className="truncate">{member.competence_level}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
