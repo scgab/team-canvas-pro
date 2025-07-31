@@ -15,6 +15,7 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
+  CheckCircle,
   Star,
   Phone,
   Mail,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { WeeklyShiftCalendar } from "./WeeklyShiftCalendar";
 
 interface TeamMember {
   id: string;
@@ -326,6 +328,9 @@ export const ShiftsOverview = ({
 
   return (
     <div className="space-y-6">
+      {/* Weekly Calendar - NEW ADDITION */}
+      <WeeklyShiftCalendar userProfile={profileData} />
+
       {/* Top Row - Personal Info, Stats, Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Personal Profile Card */}
