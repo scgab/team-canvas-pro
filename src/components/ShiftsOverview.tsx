@@ -442,24 +442,24 @@ export const ShiftsOverview = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-primary">{stats.currentMonthShifts}</p>
-                <p className="text-xs text-muted-foreground">This Month Shifts</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-primary">{Math.round(stats.currentMonthHours)}</p>
-                <p className="text-xs text-muted-foreground">This Month Hours</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">{stats.currentWeekShifts}</p>
-                <p className="text-xs text-muted-foreground">This Week</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{Math.round(stats.attendanceRate)}%</p>
-                <p className="text-xs text-muted-foreground">Attendance</p>
-              </div>
-            </div>
+             <div className="grid grid-cols-2 gap-4">
+               <div className="text-center">
+                 <p className="text-2xl font-bold text-blue-600">{stats.currentMonthShifts}</p>
+                 <p className="text-xs text-muted-foreground">This Month</p>
+               </div>
+               <div className="text-center">
+                 <p className="text-2xl font-bold text-green-600">{Math.round(stats.currentMonthHours)}h</p>
+                 <p className="text-xs text-muted-foreground">Hours Worked</p>
+               </div>
+               <div className="text-center">
+                 <p className="text-2xl font-bold text-purple-600">{stats.currentWeekShifts}</p>
+                 <p className="text-xs text-muted-foreground">This Week</p>
+               </div>
+               <div className="text-center">
+                 <p className="text-2xl font-bold text-orange-600">{Math.round(stats.attendanceRate)}%</p>
+                 <p className="text-xs text-muted-foreground">Availability</p>
+               </div>
+             </div>
             
             <div className="pt-2 border-t">
               <div className="text-center">
