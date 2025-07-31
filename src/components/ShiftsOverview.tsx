@@ -562,7 +562,7 @@ export const ShiftsOverview = ({
                   variant="outline" 
                   size="sm" 
                   className="mt-2"
-                  onClick={() => onTabChange('available')}
+                  onClick={() => {/* Removed tab change */}}
                 >
                   Find Available Shifts
                 </Button>
@@ -597,7 +597,7 @@ export const ShiftsOverview = ({
                       {shift.competence_required} required
                     </Badge>
                   </div>
-                  <Button size="sm" onClick={() => onTabChange('available')}>
+                  <Button size="sm" onClick={() => {/* Removed tab change */}}>
                     View
                   </Button>
                 </div>
