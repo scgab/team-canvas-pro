@@ -137,10 +137,10 @@ export const ShiftsOverview = ({
       
       console.log('🔍 Attempting to load profile for:', currentUser.email);
       
-      // Test Supabase connection first
+      // Test Supabase connection first - use proper PostgREST syntax
       const { data: testData, error: testError } = await supabase
         .from('user_profiles')
-        .select('count(*)')
+        .select('*')
         .limit(1);
       
       if (testError) {
