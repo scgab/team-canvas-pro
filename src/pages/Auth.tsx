@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { TeamAuthService } from '@/services/teamAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -289,9 +290,11 @@ const TrustIndicators = () => {
 const AuthenticationCard = () => {
   const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
+  const [isTeamSetup, setIsTeamSetup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [teamName, setTeamName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   
@@ -356,6 +359,20 @@ const AuthenticationCard = () => {
       return;
     }
 
+    // For signup, check if we need team setup
+    if (!isLogin && !isTeamSetup) {
+      if (!teamName.trim()) {
+        toast({
+          title: "Error",
+          description: "Please enter a team name",
+          variant: "destructive"
+        });
+        return;
+      }
+      setIsTeamSetup(true);
+      return;
+    }
+
     if (!isLogin && password.length < 6) {
       toast({
         title: "Error",
@@ -383,6 +400,35 @@ const AuthenticationCard = () => {
             description: "Successfully signed in",
           });
           navigate('/');
+        }
+      } else if (isTeamSetup) {
+        // Create team and admin user
+        try {
+          const teamData = await TeamAuthService.createTeamAndAdmin({
+            email,
+            password,
+            fullName,
+            teamName
+          });
+
+          toast({
+            title: "Team created successfully!",
+            description: `Welcome to ${teamName}! Your team ID is ${teamData.team.team_id}`,
+          });
+          
+          // Auto-login after successful team creation
+          const { error: loginError } = await signInWithCredentials(email, password);
+          if (!loginError) {
+            navigate('/');
+          }
+        } catch (error: any) {
+          toast({
+            title: "Team Creation Failed",
+            description: error.message,
+            variant: "destructive"
+          });
+          // Go back to first step
+          setIsTeamSetup(false);
         }
       } else {
         const { error } = await signUp(email, password, fullName);
@@ -419,29 +465,52 @@ const AuthenticationCard = () => {
           {/* Header */}
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              {isLogin ? 'Welcome Back' : 'Get Started'}
+              {isLogin ? 'Welcome Back' : 
+               isTeamSetup ? 'Create Your Team' : 
+               'Get Started'}
             </h2>
             <p className="text-gray-600">
-              {isLogin ? 'Sign in to your account' : 'Create your account'}
+              {isLogin ? 'Sign in to your account' : 
+               isTeamSetup ? 'Set up your team workspace' :
+               'Create your account and team'}
             </p>
           </div>
 
           {/* Auth Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             {!isLogin && (
-              <div>
-                <Label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter your full name"
-                  disabled={loading}
-                />
-              </div>
+              <>
+                <div>
+                  <Label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your full name"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="teamName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Team Name
+                  </Label>
+                  <Input
+                    id="teamName"
+                    type="text"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="Enter your team name"
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    You'll be the admin of this team and can invite members later.
+                  </p>
+                </div>
+              </>
             )}
 
             <div>
@@ -497,10 +566,14 @@ const AuthenticationCard = () => {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isLogin ? 'Signing in...' : 'Creating account...'}
+                  {isLogin ? 'Signing in...' : 
+                   isTeamSetup ? 'Creating team...' : 
+                   'Continue'}
                 </>
               ) : (
-                isLogin ? 'Sign In' : 'Create Account'
+                isLogin ? 'Sign In' : 
+                isTeamSetup ? 'Create Team & Account' : 
+                'Continue'
               )}
             </Button>
           </form>
@@ -532,12 +605,32 @@ const AuthenticationCard = () => {
             <span>Continue with Google</span>
           </Button>
 
+          {/* Back button for team setup */}
+          {isTeamSetup && (
+            <div className="text-center mt-4">
+              <button
+                onClick={() => {
+                  setIsTeamSetup(false);
+                  setTeamName('');
+                }}
+                className="text-gray-600 hover:text-gray-800 transition-colors"
+                disabled={loading}
+              >
+                ← Back to signup
+              </button>
+            </div>
+          )}
+
           {/* Toggle */}
           <div className="text-center mt-6">
             <p className="text-gray-600">
               {isLogin ? "Don't have an account? " : "Already have an account? "}
               <button
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setIsTeamSetup(false);
+                  setTeamName('');
+                }}
                 className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
                 disabled={loading}
               >
