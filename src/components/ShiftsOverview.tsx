@@ -64,7 +64,7 @@ interface ShiftsOverviewProps {
   teamMembers: TeamMember[];
   shifts: Shift[];
   availableShifts: AvailableShift[];
-  onTabChange: (tab: string) => void;
+  onTabChange?: (tab: string) => void;
 }
 
 export const ShiftsOverview = ({ 
@@ -302,27 +302,27 @@ export const ShiftsOverview = ({
       title: "Mark Availability",
       description: "Set your available days",
       icon: Calendar,
-      action: () => onTabChange('availability'),
+      action: () => onTabChange?.('availability'),
       priority: "high"
     },
     {
       title: "Claim Available Shift",
       description: "Browse open shifts",
       icon: Plus,
-      action: () => onTabChange('available'),
+      action: () => onTabChange?.('available'),
       badge: getQualifiedAvailableShifts().length
     },
     {
       title: "View My Schedule",
       description: "See upcoming shifts",
       icon: Clock,
-      action: () => onTabChange('my-shifts')
+      action: () => onTabChange?.('my-shifts')
     },
     {
       title: "View Reports",
       description: "See detailed reports",
       icon: BarChart3,
-      action: () => onTabChange('reports')
+      action: () => onTabChange?.('reports')
     }
   ];
 

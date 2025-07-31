@@ -673,66 +673,13 @@ const ShiftPlanning = () => {
 
         {/* Tab Content - COMPLETELY ISOLATED */}
         {memberActiveTab === 'shifts-overview' && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">🎯 SHIFTS OVERVIEW - STABLE VERSION</h2>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-blue-700">This Week</h3>
-                    <p className="text-2xl font-bold text-blue-600">3 Shifts</p>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-green-700">Hours</h3>
-                    <p className="text-2xl font-bold text-green-600">24 hrs</p>
-                  </div>
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-purple-700">This Month</h3>
-                    <p className="text-2xl font-bold text-purple-600">12 Shifts</p>
-                  </div>
-                  <div className="bg-orange-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-orange-700">Available</h3>
-                    <p className="text-2xl font-bold text-orange-600">85%</p>
-                  </div>
-                </div>
-                
-                <div className="mt-6">
-                  <h3 className="font-medium mb-3">Weekly Calendar</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="grid grid-cols-8 gap-2 text-sm">
-                      <div></div>
-                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                        <div key={day} className="text-center font-medium p-2 bg-white rounded">{day}</div>
-                      ))}
-                      
-                      <div className="text-right text-gray-500">09:00</div>
-                      {[1,2,3,4,5,6,7].map(day => (
-                        <div key={day} className="h-8 bg-white border rounded"></div>
-                      ))}
-                      
-                      <div className="text-right text-gray-500">13:00</div>
-                      {[1,2,3,4,5,6,7].map(day => (
-                        <div key={`lunch-${day}`} className="h-8 bg-white border rounded"></div>
-                      ))}
-                      
-                      <div className="text-right text-gray-500">17:00</div>
-                      {[1,2,3,4,5,6,7].map(day => (
-                        <div key={`evening-${day}`} className="h-8 bg-white border rounded"></div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                
-                {currentUser && (
-                  <div className="mt-6 bg-gray-50 p-4 rounded-lg">
-                    <h3 className="font-medium mb-2">Profile: {currentUser.email}</h3>
-                    <p className="text-sm text-gray-600">✅ Component is stable and working!</p>
-                    <p className="text-xs text-gray-500 mt-1">Current tab: shifts-overview | No automatic redirects</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <ShiftsOverview 
+            currentUser={currentUser}
+            teamMembers={teamMembers}
+            shifts={shifts}
+            availableShifts={availableShifts}
+            onTabChange={setMemberActiveTab}
+          />
         )}
         
         
