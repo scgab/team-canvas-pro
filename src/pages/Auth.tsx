@@ -361,8 +361,8 @@ const AuthenticationCard = () => {
 
   return (
     <div className="w-full max-w-md">
-      <Card className="bg-white/80 backdrop-blur-lg shadow-2xl border-white/20">
-        <CardContent className="p-8">
+      <Card className="bg-white/90 backdrop-blur-sm shadow-2xl border-white/20 pointer-events-auto">
+        <CardContent className="p-8 pointer-events-auto">
           {/* Header */}
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
