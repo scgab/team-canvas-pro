@@ -678,7 +678,6 @@ const ShiftPlanning = () => {
             teamMembers={teamMembers}
             shifts={shifts}
             availableShifts={availableShifts}
-            onTabChange={setMemberActiveTab}
           />
         )}
         
