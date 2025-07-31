@@ -687,13 +687,9 @@ const ShiftPlanning = () => {
 
         {/* Tab Content - COMPLETELY ISOLATED */}
         {memberActiveTab === 'shifts-overview' && (
-          <div>
-            <ShiftsOverview 
-              currentUser={currentUser}
-              teamMembers={teamMembers}
-              shifts={shifts}
-              availableShifts={availableShifts}
-            />
+          <div style={{backgroundColor: 'red', color: 'white', padding: '20px', fontSize: '24px'}}>
+            🎯 TEST: SHIFTS OVERVIEW TAB IS RENDERING! 
+            Current tab: {memberActiveTab}
           </div>
         )}
         
