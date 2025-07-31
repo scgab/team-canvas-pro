@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,6 +27,7 @@ import {
 
 const LandingHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -83,10 +84,16 @@ const LandingHeader = () => {
 
           {/* Right - CTA Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <button className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+            <button 
+              onClick={() => navigate('/auth?mode=login')}
+              className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+            >
               Sign In
             </button>
-            <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all">
+            <button 
+              onClick={() => navigate('/auth?mode=signup')}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
+            >
               Get Started
             </button>
           </div>
@@ -114,10 +121,16 @@ const LandingHeader = () => {
                 FAQ
               </button>
               <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200">
-                <button className="text-left text-gray-700 hover:text-blue-600 font-medium">
+                <button 
+                  onClick={() => navigate('/auth?mode=login')}
+                  className="text-left text-gray-700 hover:text-blue-600 font-medium"
+                >
                   Sign In
                 </button>
-                <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold text-left">
+                <button 
+                  onClick={() => navigate('/auth?mode=signup')}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold text-left"
+                >
                   Get Started
                 </button>
               </div>
@@ -273,6 +286,7 @@ const TrustIndicators = () => {
 };
 
 const AuthenticationCard = () => {
+  const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -283,6 +297,16 @@ const AuthenticationCard = () => {
   const { user, signInWithCredentials, signUp } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Set form mode based on URL parameter
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'signup') {
+      setIsLogin(false);
+    } else if (mode === 'login') {
+      setIsLogin(true);
+    }
+  }, [searchParams]);
 
   // Redirect if already authenticated
   useEffect(() => {
