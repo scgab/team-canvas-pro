@@ -58,12 +58,14 @@ export function AppSidebar() {
       <SidebarContent className="px-3 py-6">
         {/* Logo */}
         <div className="flex items-center gap-3 px-3 mb-8">
-          <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-            <Kanban className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+            <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+              <span className="text-blue-600 font-bold text-sm">W</span>
+            </div>
           </div>
           {open && (
-            <span className="text-xl font-bold text-sidebar-foreground">
-              ProManage
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+              WHEEWLS
             </span>
           )}
         </div>
