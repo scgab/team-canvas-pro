@@ -98,6 +98,7 @@ const ShiftPlanning = () => {
   });
 
   useEffect(() => {
+    console.log('🚨 INITIAL USEEFFECT RUNNING - This might cause re-renders');
     checkUserRole();
     fetchTeamMembers();
     fetchShifts();
@@ -141,8 +142,10 @@ const ShiftPlanning = () => {
   };
 
   const checkUserRole = async () => {
+    console.log('🔍 checkUserRole starting...');
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      console.log('📧 User found:', user.email);
       setCurrentUser(user);
       const { data: member, error: memberError } = await supabase
         .from('team_members')
@@ -151,9 +154,17 @@ const ShiftPlanning = () => {
         .maybeSingle();
       
       if (member && !memberError) {
-        setUserRole(member.role);
+        console.log('👤 Member role found:', member.role);
+        // ONLY set user role if it's different to prevent unnecessary re-renders
+        if (member.role !== userRole) {
+          console.log('🔄 Setting userRole from', userRole, 'to', member.role);
+          setUserRole(member.role);
+        }
       } else {
-        setUserRole('no_team');
+        console.log('❌ No member found, setting no_team');
+        if (userRole !== 'no_team') {
+          setUserRole('no_team');
+        }
         return;
       }
     }
@@ -639,7 +650,10 @@ const ShiftPlanning = () => {
         <div className="border-b border-gray-200 mb-6">
           <nav className="-mb-px flex space-x-8">
             <button
-              onClick={() => setMemberActiveTab('shifts-overview')}
+              onClick={() => {
+                console.log('🎯 CLICKING SHIFTS OVERVIEW TAB');
+                setMemberActiveTab('shifts-overview');
+              }}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 memberActiveTab === 'shifts-overview'
                   ? 'border-blue-500 text-blue-600'
@@ -673,12 +687,14 @@ const ShiftPlanning = () => {
 
         {/* Tab Content - COMPLETELY ISOLATED */}
         {memberActiveTab === 'shifts-overview' && (
-          <ShiftsOverview 
-            currentUser={currentUser}
-            teamMembers={teamMembers}
-            shifts={shifts}
-            availableShifts={availableShifts}
-          />
+          <div>
+            <ShiftsOverview 
+              currentUser={currentUser}
+              teamMembers={teamMembers}
+              shifts={shifts}
+              availableShifts={availableShifts}
+            />
+          </div>
         )}
         
         
