@@ -142,7 +142,7 @@ const ShiftPlanning = () => {
   };
 
   const checkUserRole = async () => {
-    console.log('🔍 checkUserRole starting...');
+    console.log('🔍 checkUserRole starting... Current userRole:', userRole);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       console.log('📧 User found:', user.email);
@@ -153,20 +153,27 @@ const ShiftPlanning = () => {
         .eq('email', user.email)
         .maybeSingle();
       
+      console.log('👤 Database query result:', { member, memberError });
+      
       if (member && !memberError) {
-        console.log('👤 Member role found:', member.role);
+        console.log('👤 Member role found:', member.role, 'Current userRole:', userRole);
         // ONLY set user role if it's different to prevent unnecessary re-renders
         if (member.role !== userRole) {
-          console.log('🔄 Setting userRole from', userRole, 'to', member.role);
+          console.log('🔄 CHANGING userRole from', userRole, 'to', member.role);
           setUserRole(member.role);
+        } else {
+          console.log('✅ userRole unchanged, staying as:', userRole);
         }
       } else {
-        console.log('❌ No member found, setting no_team');
+        console.log('❌ No member found, setting no_team. memberError:', memberError);
         if (userRole !== 'no_team') {
+          console.log('🔄 CHANGING userRole from', userRole, 'to no_team');
           setUserRole('no_team');
         }
         return;
       }
+    } else {
+      console.log('❌ No user found in auth');
     }
     
     // Test availability table accessibility
