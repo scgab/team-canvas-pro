@@ -55,7 +55,6 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   // Get start of current week (Monday)
   const getWeekStart = (date: Date) => {
@@ -86,9 +85,9 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
   const weekDates = getWeekDates(weekStart);
   const currentUser = userProfile?.email;
 
-  // Load shifts for current week with stability checks
+  // Load shifts for current week
   const loadWeeklyShifts = async () => {
-    if (!currentUser || !mounted) return;
+    if (!currentUser) return;
     
     try {
       setLoading(true);
@@ -115,19 +114,14 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
       console.error('Error loading weekly shifts:', error);
       setShifts([]);
     } finally {
-      if (mounted) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    setMounted(true);
-    if (currentUser && mounted) {
+    if (currentUser) {
       loadWeeklyShifts();
     }
-    
-    return () => setMounted(false);
   }, [currentWeek, currentUser]);
 
   // Navigate to previous week
@@ -186,7 +180,7 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
     return date.toDateString() === today.toDateString();
   };
 
-  if (!mounted || loading) {
+  if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
         <div className="animate-pulse h-64 bg-gray-200 rounded"></div>
