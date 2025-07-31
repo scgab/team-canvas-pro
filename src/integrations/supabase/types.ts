@@ -20,6 +20,7 @@ export type Database = {
           created_by: string
           id: string
           name: string
+          team_id: string | null
           updated_at: string
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           created_by: string
           id?: string
           name: string
+          team_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -34,9 +36,18 @@ export type Database = {
           created_by?: string
           id?: string
           name?: string
+          team_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_tool_categories_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_tools: {
         Row: {
@@ -50,6 +61,7 @@ export type Database = {
           note: string | null
           rating: number | null
           tags: string[] | null
+          team_id: string | null
         }
         Insert: {
           added_by: string
@@ -62,6 +74,7 @@ export type Database = {
           note?: string | null
           rating?: number | null
           tags?: string[] | null
+          team_id?: string | null
         }
         Update: {
           added_by?: string
@@ -74,8 +87,17 @@ export type Database = {
           note?: string | null
           rating?: number | null
           tags?: string[] | null
+          team_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_tools_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       availability: {
         Row: {
@@ -86,6 +108,7 @@ export type Database = {
           notes: string | null
           preferred_end_time: string | null
           preferred_start_time: string | null
+          team_id: string | null
           team_member_email: string
         }
         Insert: {
@@ -96,6 +119,7 @@ export type Database = {
           notes?: string | null
           preferred_end_time?: string | null
           preferred_start_time?: string | null
+          team_id?: string | null
           team_member_email: string
         }
         Update: {
@@ -106,9 +130,18 @@ export type Database = {
           notes?: string | null
           preferred_end_time?: string | null
           preferred_start_time?: string | null
+          team_id?: string | null
           team_member_email?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "availability_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       available_shifts: {
         Row: {
@@ -122,6 +155,7 @@ export type Database = {
           id: string
           shift_type: string | null
           start_time: string
+          team_id: string | null
         }
         Insert: {
           claimed_by?: string | null
@@ -134,6 +168,7 @@ export type Database = {
           id?: string
           shift_type?: string | null
           start_time: string
+          team_id?: string | null
         }
         Update: {
           claimed_by?: string | null
@@ -146,8 +181,17 @@ export type Database = {
           id?: string
           shift_type?: string | null
           start_time?: string
+          team_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "available_shifts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       calendar_events: {
         Row: {
@@ -167,6 +211,7 @@ export type Database = {
           meeting_notes: string | null
           meeting_status: string | null
           meeting_summary: string | null
+          team_id: string | null
           time: string | null
           title: string
           type: string | null
@@ -189,6 +234,7 @@ export type Database = {
           meeting_notes?: string | null
           meeting_status?: string | null
           meeting_summary?: string | null
+          team_id?: string | null
           time?: string | null
           title: string
           type?: string | null
@@ -211,12 +257,21 @@ export type Database = {
           meeting_notes?: string | null
           meeting_status?: string | null
           meeting_summary?: string | null
+          team_id?: string | null
           time?: string | null
           title?: string
           type?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -226,6 +281,7 @@ export type Database = {
           read: boolean | null
           receiver_id: string
           sender_id: string
+          team_id: string | null
         }
         Insert: {
           content: string
@@ -234,6 +290,7 @@ export type Database = {
           read?: boolean | null
           receiver_id: string
           sender_id: string
+          team_id?: string | null
         }
         Update: {
           content?: string
@@ -242,8 +299,17 @@ export type Database = {
           read?: boolean | null
           receiver_id?: string
           sender_id?: string
+          team_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "messages_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -282,6 +348,7 @@ export type Database = {
           created_by: string
           id: string
           project_id: string
+          team_id: string | null
           title: string
           updated_at: string | null
         }
@@ -291,6 +358,7 @@ export type Database = {
           created_by: string
           id?: string
           project_id: string
+          team_id?: string | null
           title: string
           updated_at?: string | null
         }
@@ -300,10 +368,19 @@ export type Database = {
           created_by?: string
           id?: string
           project_id?: string
+          team_id?: string | null
           title?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "project_notes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {
@@ -319,6 +396,7 @@ export type Database = {
           shared_with: string[] | null
           start_date: string | null
           status: string | null
+          team_id: string | null
           team_size: number | null
           title: string
           updated_at: string | null
@@ -336,6 +414,7 @@ export type Database = {
           shared_with?: string[] | null
           start_date?: string | null
           status?: string | null
+          team_id?: string | null
           team_size?: number | null
           title: string
           updated_at?: string | null
@@ -353,11 +432,20 @@ export type Database = {
           shared_with?: string[] | null
           start_date?: string | null
           status?: string | null
+          team_id?: string | null
           team_size?: number | null
           title?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projects_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shifts: {
         Row: {
@@ -371,6 +459,7 @@ export type Database = {
           shift_type: string | null
           start_time: string
           status: string | null
+          team_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -384,6 +473,7 @@ export type Database = {
           shift_type?: string | null
           start_time: string
           status?: string | null
+          team_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -397,9 +487,18 @@ export type Database = {
           shift_type?: string | null
           start_time?: string
           status?: string | null
+          team_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "shifts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
@@ -414,6 +513,7 @@ export type Database = {
           project_id: string | null
           start_date: string | null
           status: string | null
+          team_id: string | null
           title: string
           updated_at: string | null
         }
@@ -429,6 +529,7 @@ export type Database = {
           project_id?: string | null
           start_date?: string | null
           status?: string | null
+          team_id?: string | null
           title: string
           updated_at?: string | null
         }
@@ -444,6 +545,7 @@ export type Database = {
           project_id?: string | null
           start_date?: string | null
           status?: string | null
+          team_id?: string | null
           title?: string
           updated_at?: string | null
         }
@@ -455,6 +557,54 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tasks_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          invitation_token: string
+          invited_by: string
+          team_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          invitation_token: string
+          invited_by: string
+          team_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invitation_token?: string
+          invited_by?: string
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
         ]
       }
       team_members: {
@@ -462,28 +612,90 @@ export type Database = {
           competence_level: string | null
           created_at: string | null
           email: string
+          full_name: string | null
           hourly_rate: number | null
           id: string
+          invited_at: string | null
+          invited_by: string | null
+          joined_at: string | null
           name: string
           role: string | null
+          status: string | null
+          team_id: string | null
         }
         Insert: {
           competence_level?: string | null
           created_at?: string | null
           email: string
+          full_name?: string | null
           hourly_rate?: number | null
           id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          joined_at?: string | null
           name: string
           role?: string | null
+          status?: string | null
+          team_id?: string | null
         }
         Update: {
           competence_level?: string | null
           created_at?: string | null
           email?: string
+          full_name?: string | null
           hourly_rate?: number | null
           id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          joined_at?: string | null
           name?: string
           role?: string | null
+          status?: string | null
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          admin_email: string
+          created_at: string | null
+          id: string
+          subscription_plan: string | null
+          team_id: string
+          team_logo_url: string | null
+          team_name: string
+          team_settings: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_email: string
+          created_at?: string | null
+          id?: string
+          subscription_plan?: string | null
+          team_id: string
+          team_logo_url?: string | null
+          team_name: string
+          team_settings?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_email?: string
+          created_at?: string | null
+          id?: string
+          subscription_plan?: string | null
+          team_id?: string
+          team_logo_url?: string | null
+          team_name?: string
+          team_settings?: Json | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -515,6 +727,7 @@ export type Database = {
           postal_code: string | null
           profile_picture_url: string | null
           tax_id: string | null
+          team_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -544,6 +757,7 @@ export type Database = {
           postal_code?: string | null
           profile_picture_url?: string | null
           tax_id?: string | null
+          team_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -573,16 +787,36 @@ export type Database = {
           postal_code?: string | null
           profile_picture_url?: string | null
           tax_id?: string | null
+          team_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_team_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      user_is_team_admin: {
+        Args: { check_team_id: string }
+        Returns: boolean
+      }
+      user_is_team_member: {
+        Args: { check_team_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
