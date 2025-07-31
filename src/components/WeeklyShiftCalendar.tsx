@@ -86,13 +86,9 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
   const currentUser = userProfile?.email;
 
   // Load shifts for current week
-  useEffect(() => {
-    if (currentUser) {
-      loadWeeklyShifts();
-    }
-  }, [currentWeek, currentUser]);
-
   const loadWeeklyShifts = async () => {
+    if (!currentUser) return;
+    
     try {
       setLoading(true);
       
@@ -107,7 +103,12 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
         .lte('date', weekEnd.toISOString().split('T')[0])
         .order('start_time', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading weekly shifts:', error);
+        setShifts([]);
+        return;
+      }
+      
       setShifts(data || []);
     } catch (error) {
       console.error('Error loading weekly shifts:', error);
@@ -116,6 +117,12 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (currentUser) {
+      loadWeeklyShifts();
+    }
+  }, [currentWeek, currentUser]);
 
   // Navigate to previous week
   const goToPreviousWeek = () => {
