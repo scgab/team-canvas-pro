@@ -19,18 +19,36 @@ import {
   EyeOff,
   Loader2,
   Menu,
-  User
+  User,
+  FolderOpen,
+  Check,
+  ChevronDown
 } from 'lucide-react';
 
 const LandingHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const headerOffset = 80; // Account for fixed header height
+      const elementPosition = element.offsetTop;
+      const offsetPosition = elementPosition - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+    setIsMenuOpen(false); // Close mobile menu after clicking
+  };
 
   return (
     <header className="fixed top-0 w-full bg-white/90 backdrop-blur-lg border-b border-gray-200/20 z-50">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Left - Logo */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => scrollToSection('hero')}>
             <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
               <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center">
                 <span className="text-blue-600 font-bold text-lg">W</span>
@@ -43,24 +61,24 @@ const LandingHeader = () => {
 
           {/* Middle - Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a 
-              href="#products" 
+            <button 
+              onClick={() => scrollToSection('products')}
               className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
             >
               Products
-            </a>
-            <a 
-              href="#pricing" 
+            </button>
+            <button 
+              onClick={() => scrollToSection('pricing')}
               className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
             >
               Pricing
-            </a>
-            <a 
-              href="#faq" 
+            </button>
+            <button 
+              onClick={() => scrollToSection('faq')}
               className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
             >
               FAQ
-            </a>
+            </button>
           </nav>
 
           {/* Right - CTA Buttons */}
@@ -86,15 +104,15 @@ const LandingHeader = () => {
         {isMenuOpen && (
           <div className="md:hidden mt-4 py-4 border-t border-gray-200">
             <div className="flex flex-col space-y-4">
-              <a href="#products" className="text-gray-700 hover:text-blue-600 font-medium">
+              <button onClick={() => scrollToSection('products')} className="text-left text-gray-700 hover:text-blue-600 font-medium">
                 Products
-              </a>
-              <a href="#pricing" className="text-gray-700 hover:text-blue-600 font-medium">
+              </button>
+              <button onClick={() => scrollToSection('pricing')} className="text-left text-gray-700 hover:text-blue-600 font-medium">
                 Pricing
-              </a>
-              <a href="#faq" className="text-gray-700 hover:text-blue-600 font-medium">
+              </button>
+              <button onClick={() => scrollToSection('faq')} className="text-left text-gray-700 hover:text-blue-600 font-medium">
                 FAQ
-              </a>
+              </button>
               <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200">
                 <button className="text-left text-gray-700 hover:text-blue-600 font-medium">
                   Sign In
@@ -450,28 +468,6 @@ const AuthenticationCard = () => {
             </p>
           </div>
 
-          {/* Success Message */}
-          <div className="text-center mt-6 p-3 bg-green-50 rounded-lg border border-green-200">
-            <p className="text-sm text-green-700 font-medium">
-              Let's manage our way to +$100M!
-            </p>
-          </div>
-
-          {/* Demo Accounts */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-800 mb-2 text-sm">Demo Accounts:</h4>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span className="text-blue-700">Admin:</span>
-                <code className="text-blue-800">hna@scandac.com</code>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-blue-700">Member:</span>
-                <code className="text-blue-800">myh@scandac.com</code>
-              </div>
-              <p className="text-blue-600 mt-2">Password: test123</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
@@ -505,42 +501,303 @@ const BackgroundGraphics = () => {
   );
 };
 
+const ProductsSection = () => {
+  const products = [
+    {
+      title: "Project Management",
+      description: "Organize projects, track progress, and manage deadlines with our intuitive project management tools.",
+      icon: <FolderOpen className="w-8 h-8" />,
+      features: ["Kanban Boards", "Gantt Charts", "Task Assignment", "Progress Tracking"],
+      gradient: "from-blue-500 to-cyan-500"
+    },
+    {
+      title: "Team Collaboration",
+      description: "Keep your team connected with real-time messaging, file sharing, and collaborative workspaces.",
+      icon: <Users className="w-8 h-8" />,
+      features: ["Real-time Messaging", "File Sharing", "Team Calendar", "Video Meetings"],
+      gradient: "from-purple-500 to-pink-500"
+    },
+    {
+      title: "Workforce Management",
+      description: "Optimize your workforce with intelligent scheduling, shift planning, and performance analytics.",
+      icon: <Calendar className="w-8 h-8" />,
+      features: ["Shift Scheduling", "Availability Tracking", "Performance Reports", "Time Management"],
+      gradient: "from-green-500 to-teal-500"
+    },
+    {
+      title: "Analytics & Insights",
+      description: "Make data-driven decisions with comprehensive analytics and customizable reporting tools.",
+      icon: <BarChart3 className="w-8 h-8" />,
+      features: ["Custom Reports", "Performance Metrics", "Team Analytics", "ROI Tracking"],
+      gradient: "from-orange-500 to-red-500"
+    }
+  ];
+
+  return (
+    <section id="products" className="py-20 bg-white">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold text-gray-800 mb-4">
+            Powerful Products for Modern Teams
+          </h2>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Everything you need to manage projects, collaborate with your team, and optimize your workforce in one integrated platform.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {products.map((product, index) => (
+            <div key={index} className="bg-gray-50 rounded-2xl p-8 hover:shadow-lg transition-all">
+              <div className={`w-16 h-16 bg-gradient-to-r ${product.gradient} rounded-2xl flex items-center justify-center text-white mb-6`}>
+                {product.icon}
+              </div>
+              
+              <h3 className="text-2xl font-bold text-gray-800 mb-4">{product.title}</h3>
+              <p className="text-gray-600 mb-6">{product.description}</p>
+              
+              <ul className="space-y-2">
+                {product.features.map((feature, featureIndex) => (
+                  <li key={featureIndex} className="flex items-center text-gray-700">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const PricingSection = () => {
+  const pricingPlans = [
+    {
+      name: "Starter",
+      price: "Free",
+      period: "forever",
+      description: "Perfect for small teams getting started",
+      features: [
+        "Up to 5 team members",
+        "3 projects",
+        "Basic project management",
+        "Community support",
+        "Mobile app access"
+      ],
+      buttonText: "Get Started Free",
+      popular: false,
+      gradient: "from-gray-500 to-gray-600"
+    },
+    {
+      name: "Professional",
+      price: "$29",
+      period: "per user/month",
+      description: "Best for growing teams and businesses",
+      features: [
+        "Unlimited team members",
+        "Unlimited projects",
+        "Advanced analytics",
+        "Priority support",
+        "Custom integrations",
+        "Shift planning",
+        "Time tracking"
+      ],
+      buttonText: "Start Free Trial",
+      popular: true,
+      gradient: "from-blue-600 to-purple-600"
+    },
+    {
+      name: "Enterprise",
+      price: "Custom",
+      period: "contact us",
+      description: "For large organizations with custom needs",
+      features: [
+        "Everything in Professional",
+        "Custom branding",
+        "SSO integration",
+        "Dedicated support",
+        "Custom workflows",
+        "Advanced security",
+        "API access"
+      ],
+      buttonText: "Contact Sales",
+      popular: false,
+      gradient: "from-purple-600 to-pink-600"
+    }
+  ];
+
+  return (
+    <section id="pricing" className="py-20 bg-gray-50">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold text-gray-800 mb-4">
+            Simple, Transparent Pricing
+          </h2>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Choose the plan that works best for your team. All plans include our core features with no hidden fees.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {pricingPlans.map((plan, index) => (
+            <div key={index} className={`bg-white rounded-2xl p-8 relative ${plan.popular ? 'ring-2 ring-blue-500 shadow-xl' : 'shadow-lg'}`}>
+              {plan.popular && (
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                    Most Popular
+                  </span>
+                </div>
+              )}
+              
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">{plan.name}</h3>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold text-gray-800">{plan.price}</span>
+                  {plan.period && (
+                    <span className="text-gray-600 ml-2">/{plan.period}</span>
+                  )}
+                </div>
+                <p className="text-gray-600">{plan.description}</p>
+              </div>
+
+              <ul className="space-y-4 mb-8">
+                {plan.features.map((feature, featureIndex) => (
+                  <li key={featureIndex} className="flex items-center">
+                    <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                    <span className="text-gray-700">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                plan.popular 
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transform hover:scale-105' 
+                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+              }`}>
+                {plan.buttonText}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const FAQSection = () => {
+  const [openFAQ, setOpenFAQ] = useState<number | null>(null);
+
+  const faqs = [
+    {
+      question: "What is WHEEWLS and how does it work?",
+      answer: "WHEEWLS is an all-in-one workforce management platform that combines project management, team collaboration, and workforce optimization tools. It helps teams streamline their workflows, manage projects efficiently, and optimize their workforce scheduling."
+    },
+    {
+      question: "Can I try WHEEWLS for free?",
+      answer: "Yes! We offer a free Starter plan that includes up to 5 team members and 3 projects. You can also start a 14-day free trial of our Professional plan to explore all advanced features."
+    },
+    {
+      question: "How secure is my data with WHEEWLS?",
+      answer: "We take security seriously. All data is encrypted in transit and at rest, we're GDPR compliant, and we undergo regular security audits. Enterprise plans include additional security features like SSO and advanced access controls."
+    },
+    {
+      question: "Can I integrate WHEEWLS with other tools?",
+      answer: "Absolutely! WHEEWLS integrates with popular tools like Slack, Google Workspace, Microsoft Teams, and many others. Professional and Enterprise plans include custom integration options."
+    },
+    {
+      question: "What kind of support do you provide?",
+      answer: "We provide community support for free users, priority email support for Professional users, and dedicated support for Enterprise customers. All plans include access to our comprehensive documentation and video tutorials."
+    },
+    {
+      question: "Can I change my plan at any time?",
+      answer: "Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately, and we'll prorate any billing adjustments on your next invoice."
+    }
+  ];
+
+  return (
+    <section id="faq" className="py-20 bg-white">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold text-gray-800 mb-4">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Have questions? We have answers. If you can't find what you're looking for, feel free to contact our support team.
+          </p>
+        </div>
+
+        <div className="max-w-4xl mx-auto">
+          {faqs.map((faq, index) => (
+            <div key={index} className="border-b border-gray-200">
+              <button
+                onClick={() => setOpenFAQ(openFAQ === index ? null : index)}
+                className="w-full py-6 text-left flex justify-between items-center hover:text-blue-600 transition-colors"
+              >
+                <h3 className="text-lg font-semibold text-gray-800">{faq.question}</h3>
+                <div className={`transform transition-transform ${openFAQ === index ? 'rotate-180' : ''}`}>
+                  <ChevronDown className="w-5 h-5" />
+                </div>
+              </button>
+              {openFAQ === index && (
+                <div className="pb-6">
+                  <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="text-center mt-12">
+          <p className="text-gray-600 mb-4">Still have questions?</p>
+          <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all">
+            Contact Support
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Header */}
       <LandingHeader />
       
-      {/* Main Content with top padding for fixed header */}
-      <div className="pt-20 pb-8">
+      {/* Hero Section */}
+      <section id="hero" className="pt-20 pb-8">
         <div className="container mx-auto px-4 py-8 lg:py-16">
-          {/* Mobile: Stack vertically */}
-          <div className="block lg:hidden space-y-12">
-            <div className="text-center">
-              <AuthenticationCard />
-            </div>
-            <BrandingSection />
-            <FeatureHighlights />
-            <TrustIndicators />
-          </div>
-          
-          {/* Desktop: Side by side with 7/5 split */}
-          <div className="hidden lg:grid lg:grid-cols-12 gap-12 items-center min-h-[80vh]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start min-h-[80vh]">
+            
+            {/* Left Side - Branding and Content (7 columns) */}
             <div className="lg:col-span-7 space-y-8">
               <BrandingSection />
               <FeatureHighlights />
               <TrustIndicators />
             </div>
-            <div className="lg:col-span-5 flex justify-center">
+            
+            {/* Right Side - Authentication (5 columns) - Aligned with headline */}
+            <div className="lg:col-span-5 flex justify-center lg:justify-center">
               <div className="w-full max-w-md lg:max-w-lg">
                 <AuthenticationCard />
               </div>
             </div>
+            
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Products Section */}
+      <ProductsSection />
       
-      {/* Background Elements */}
+      {/* Pricing Section */}
+      <PricingSection />
+      
+      {/* FAQ Section */}
+      <FAQSection />
+      
       <BackgroundGraphics />
     </div>
   );
