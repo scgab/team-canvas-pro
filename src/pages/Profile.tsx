@@ -140,6 +140,21 @@ const Profile = () => {
     return errors;
   };
 
+  const validateAndFormatDate = (dateString: string) => {
+    if (!dateString || dateString.trim() === '') return null;
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      console.error('Date validation error:', error);
+      return null;
+    }
+  };
+
   const saveProfile = async () => {
     try {
       setSaving(true);
@@ -154,10 +169,14 @@ const Profile = () => {
         return;
       }
 
+      // Validate and format dates - convert empty strings to null
+      const formattedDateOfBirth = validateAndFormatDate(profileData.date_of_birth);
+      const formattedHireDate = validateAndFormatDate(profileData.hire_date);
+
       // Calculate age from date of birth
       let age = null;
-      if (profileData.date_of_birth) {
-        const birthDate = new Date(profileData.date_of_birth);
+      if (formattedDateOfBirth) {
+        const birthDate = new Date(formattedDateOfBirth);
         const today = new Date();
         age = today.getFullYear() - birthDate.getFullYear();
         const monthDiff = today.getMonth() - birthDate.getMonth();
@@ -171,13 +190,34 @@ const Profile = () => {
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ');
 
+      // Prepare update data with proper null handling
       const updateData = {
-        ...profileData,
+        email: user?.email,
+        full_name: profileData.full_name.trim(),
         first_name: firstName,
         last_name: lastName,
+        date_of_birth: formattedDateOfBirth,
         age: age,
-        email: user?.email
+        address_line_1: profileData.address_line_1?.trim() || null,
+        address_line_2: profileData.address_line_2?.trim() || null,
+        city: profileData.city?.trim() || null,
+        postal_code: profileData.postal_code?.trim() || null,
+        country: profileData.country || 'Denmark',
+        cpr_number: profileData.cpr_number?.trim() || null,
+        phone_number: profileData.phone_number?.trim() || null,
+        emergency_contact_name: profileData.emergency_contact_name?.trim() || null,
+        emergency_contact_phone: profileData.emergency_contact_phone?.trim() || null,
+        bank_account_number: profileData.bank_account_number?.trim() || null,
+        bank_name: profileData.bank_name?.trim() || null,
+        tax_id: profileData.tax_id?.trim() || null,
+        profile_picture_url: profileData.profile_picture_url?.trim() || null,
+        hire_date: formattedHireDate,
+        department: profileData.department?.trim() || null,
+        job_title: profileData.job_title?.trim() || null,
+        employee_id: profileData.employee_id?.trim() || null
       };
+
+      console.log('Saving profile data:', updateData);
 
       const { data, error } = await supabase
         .from('user_profiles')
@@ -192,6 +232,7 @@ const Profile = () => {
         throw error;
       }
 
+      setProfileData(data);
       setIsEditing(false);
       toast({
         title: "Success",
