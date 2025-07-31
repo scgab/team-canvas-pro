@@ -385,7 +385,6 @@ const AuthenticationCard = () => {
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                   placeholder="Enter your full name"
                   disabled={loading}
                 />
@@ -401,7 +400,6 @@ const AuthenticationCard = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                 placeholder="Enter your email"
                 disabled={loading}
               />
@@ -417,7 +415,7 @@ const AuthenticationCard = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  className="pr-12"
                   placeholder={isLogin ? "Enter your password" : "Create a password (min 6 characters)"}
                   disabled={loading}
                 />
