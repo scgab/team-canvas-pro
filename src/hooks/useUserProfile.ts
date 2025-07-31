@@ -34,51 +34,59 @@ interface UserProfile {
 export const useUserProfile = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const currentUser = localStorage.getItem('currentUser');
 
   useEffect(() => {
-    if (currentUser) {
-      loadProfile();
-      setupRealtimeSubscription();
-    }
-  }, [currentUser]);
+    checkAuthAndLoadProfile();
+    setupRealtimeSubscription();
+  }, []);
 
-  const loadProfile = async () => {
+  const checkAuthAndLoadProfile = async () => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      // Get current authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        console.error('Authentication error:', authError);
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔍 Loading profile for authenticated user:', user.email);
+      
+      // Try to load existing profile
+      const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('email', currentUser)
+        .eq('email', user.email)
         .single();
 
-      if (data) {
-        setUserProfile(data);
-        localStorage.setItem('userProfile', JSON.stringify(data));
+      if (profileData) {
+        console.log('✅ Profile loaded successfully:', profileData);
+        setUserProfile(profileData);
+        localStorage.setItem('userProfile', JSON.stringify(profileData));
+      } else if (profileError?.code === 'PGRST116') {
+        // No profile found, create one
+        console.log('📝 No profile found, creating default profile');
+        await createDefaultProfile(user);
       } else {
-        await createDefaultProfile();
+        console.error('Profile loading error:', profileError);
+        await createDefaultProfile(user);
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
-      const cached = localStorage.getItem('userProfile');
-      if (cached) {
-        setUserProfile(JSON.parse(cached));
-      } else {
-        await createDefaultProfile();
-      }
-    } finally {
+      console.error('Error in checkAuthAndLoadProfile:', error);
       setLoading(false);
     }
   };
 
-  const createDefaultProfile = async () => {
-    if (!currentUser) return;
-
+  const createDefaultProfile = async (user: any) => {
     try {
+      console.log('Creating default profile for:', user.email);
+      
       const defaultProfile = {
-        email: currentUser,
-        full_name: currentUser.split('@')[0].replace(/[._]/g, ' '),
+        email: user.email,
+        full_name: user.user_metadata?.full_name || user.email.split('@')[0].replace(/[._]/g, ' '),
         competence_level: 'Beginner',
         department: 'General',
         country: 'Denmark'
@@ -91,38 +99,39 @@ export const useUserProfile = () => {
         .single();
 
       if (data) {
+        console.log('✅ Default profile created:', data);
         setUserProfile(data);
         localStorage.setItem('userProfile', JSON.stringify(data));
+      } else {
+        console.error('Error creating default profile:', error);
+        // Set fallback profile for display
+        setUserProfile({
+          id: 'temp',
+          email: user.email,
+          full_name: user.user_metadata?.full_name || user.email.split('@')[0].replace(/[._]/g, ' '),
+          competence_level: 'Beginner',
+          department: 'General'
+        });
       }
     } catch (error) {
       console.error('Error creating default profile:', error);
-      // Set fallback profile for display
-      const fallbackProfile = {
-        id: 'temp',
-        email: currentUser,
-        full_name: currentUser.split('@')[0].replace(/[._]/g, ' '),
-        competence_level: 'Beginner',
-        department: 'General'
-      };
-      setUserProfile(fallbackProfile);
+    } finally {
+      setLoading(false);
     }
   };
 
   const setupRealtimeSubscription = () => {
-    if (!currentUser) return;
-
     const subscription = supabase
       .channel('profile_changes')
       .on('postgres_changes', 
         { 
           event: '*', 
           schema: 'public', 
-          table: 'user_profiles',
-          filter: `email=eq.${currentUser}`
+          table: 'user_profiles'
         },
         (payload) => {
-          console.log('Profile updated:', payload);
-          if (payload.new) {
+          console.log('Profile updated via realtime:', payload);
+          if (payload.new && (payload.new as any).email === userProfile?.email) {
             setUserProfile(payload.new as UserProfile);
             localStorage.setItem('userProfile', JSON.stringify(payload.new));
           }
@@ -136,7 +145,7 @@ export const useUserProfile = () => {
   };
 
   const refreshProfile = () => {
-    loadProfile();
+    checkAuthAndLoadProfile();
   };
 
   return { userProfile, loading, refreshProfile };
