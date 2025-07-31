@@ -74,6 +74,12 @@ export const ShiftsOverview = ({
   availableShifts, 
   onTabChange 
 }: ShiftsOverviewProps) => {
+  console.log('🚀 SHIFTS OVERVIEW COMPONENT RENDERING WITH:', {
+    currentUser: currentUser?.email,
+    teamMembersCount: teamMembers?.length,
+    shiftsCount: shifts?.length,
+    availableShiftsCount: availableShifts?.length
+  });
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -189,11 +195,11 @@ export const ShiftsOverview = ({
   };
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser?.email) {
       loadUserProfile();
       calculateStats();
     }
-  }, [currentUser, shifts]);
+  }, [currentUser?.email, shifts?.length]);
 
   const calculateStats = () => {
     const userShifts = shifts.filter(s => s.assigned_to === currentUser?.email);

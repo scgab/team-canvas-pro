@@ -726,6 +726,13 @@ const ShiftPlanning = () => {
     </div>
   );
 
+  console.log('🎯 RENDER DEBUG:', {
+    userRole,
+    memberActiveTab,
+    currentUser: currentUser?.email,
+    showingMemberView: userRole !== 'no_team' && userRole !== 'admin'
+  });
+
   return (
     <Layout>
       {userRole === 'no_team' ? (
