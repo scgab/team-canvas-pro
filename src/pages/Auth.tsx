@@ -17,63 +17,154 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  Menu,
+  User
 } from 'lucide-react';
+
+const LandingHeader = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  return (
+    <header className="fixed top-0 w-full bg-white/90 backdrop-blur-lg border-b border-gray-200/20 z-50">
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          {/* Left - Logo */}
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+              <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center">
+                <span className="text-blue-600 font-bold text-lg">W</span>
+              </div>
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+              WHEEWLS
+            </h1>
+          </div>
+
+          {/* Middle - Navigation */}
+          <nav className="hidden md:flex items-center space-x-8">
+            <a 
+              href="#products" 
+              className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
+            >
+              Products
+            </a>
+            <a 
+              href="#pricing" 
+              className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
+            >
+              Pricing
+            </a>
+            <a 
+              href="#faq" 
+              className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
+            >
+              FAQ
+            </a>
+          </nav>
+
+          {/* Right - CTA Buttons */}
+          <div className="hidden md:flex items-center space-x-4">
+            <button className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+              Sign In
+            </button>
+            <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all">
+              Get Started
+            </button>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button 
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <div className="md:hidden mt-4 py-4 border-t border-gray-200">
+            <div className="flex flex-col space-y-4">
+              <a href="#products" className="text-gray-700 hover:text-blue-600 font-medium">
+                Products
+              </a>
+              <a href="#pricing" className="text-gray-700 hover:text-blue-600 font-medium">
+                Pricing
+              </a>
+              <a href="#faq" className="text-gray-700 hover:text-blue-600 font-medium">
+                FAQ
+              </a>
+              <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200">
+                <button className="text-left text-gray-700 hover:text-blue-600 font-medium">
+                  Sign In
+                </button>
+                <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold text-left">
+                  Get Started
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+};
 
 const BrandingSection = () => {
   return (
     <div className="space-y-6">
-      {/* Logo and Brand Name */}
-      <div className="space-y-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-blue-600 font-bold text-xl">W</span>
-            </div>
-          </div>
-          <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-            WHEEWLS
-          </h1>
-        </div>
-        
-        {/* Main Slogan */}
-        <h2 className="text-2xl lg:text-3xl font-semibold text-gray-800 leading-tight">
-          Streamline Your Workforce,
+      {/* Main Headline - Larger and more prominent */}
+      <div className="space-y-6">
+        <h1 className="text-4xl lg:text-6xl font-bold text-gray-800 leading-tight">
+          Streamline Your
           <br />
-          <span className="text-blue-600">Maximize Your Success</span>
-        </h2>
+          <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            Workforce Management
+          </span>
+        </h1>
         
         {/* Supporting Tagline */}
-        <p className="text-lg text-gray-600 leading-relaxed max-w-lg">
+        <p className="text-xl lg:text-2xl text-gray-600 leading-relaxed max-w-2xl">
           The all-in-one platform for project management, team collaboration, 
           and workforce optimization. Transform how your team works together.
         </p>
+        
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 pt-4">
+          <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all">
+            Start Free Trial
+          </button>
+          <button className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg font-semibold text-lg hover:border-blue-600 hover:text-blue-600 transition-all">
+            Watch Demo
+          </button>
+        </div>
       </div>
       
-      {/* Value Propositions */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/80 transition-all group">
-          <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+      {/* Value Props Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8">
+        <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:shadow-lg transition-all">
+          <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-xl flex items-center justify-center mb-4">
             <Zap className="w-6 h-6 text-white" />
           </div>
-          <h3 className="font-semibold text-gray-800">Boost Efficiency</h3>
+          <h3 className="font-semibold text-gray-800 mb-2">Boost Efficiency</h3>
           <p className="text-sm text-gray-600">Streamline workflows and eliminate bottlenecks</p>
         </div>
         
-        <div className="bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/80 transition-all group">
-          <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+        <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:shadow-lg transition-all">
+          <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-500 rounded-xl flex items-center justify-center mb-4">
             <Users className="w-6 h-6 text-white" />
           </div>
-          <h3 className="font-semibold text-gray-800">Team Synergy</h3>
+          <h3 className="font-semibold text-gray-800 mb-2">Team Synergy</h3>
           <p className="text-sm text-gray-600">Connect teams across projects and departments</p>
         </div>
         
-        <div className="bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/80 transition-all group">
-          <div className="w-10 h-10 bg-gradient-to-r from-orange-400 to-red-500 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+        <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:shadow-lg transition-all">
+          <div className="w-12 h-12 bg-gradient-to-r from-orange-400 to-red-500 rounded-xl flex items-center justify-center mb-4">
             <TrendingUp className="w-6 h-6 text-white" />
           </div>
-          <h3 className="font-semibold text-gray-800">Drive Growth</h3>
-          <p className="text-sm text-gray-600">Scale your operations with data-driven insights</p>
+          <h3 className="font-semibold text-gray-800 mb-2">Drive Growth</h3>
+          <p className="text-sm text-gray-600">Scale operations with data-driven insights</p>
         </div>
       </div>
     </div>
@@ -416,27 +507,35 @@ const BackgroundGraphics = () => {
 
 const Auth = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative">
-      <div className="container mx-auto px-4 py-8 lg:py-16 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-screen">
-          {/* Left Side - Branding and Content */}
-          <div className="order-2 lg:order-1 space-y-6 lg:space-y-8 animate-fade-in">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Header */}
+      <LandingHeader />
+      
+      {/* Main Content with top padding for fixed header */}
+      <div className="pt-20 pb-8">
+        <div className="container mx-auto px-4 py-8 lg:py-16">
+          {/* Mobile: Stack vertically */}
+          <div className="block lg:hidden space-y-12">
+            <div className="text-center">
+              <AuthenticationCard />
+            </div>
             <BrandingSection />
-            <div className="hidden lg:block space-y-8">
+            <FeatureHighlights />
+            <TrustIndicators />
+          </div>
+          
+          {/* Desktop: Side by side with 7/5 split */}
+          <div className="hidden lg:grid lg:grid-cols-12 gap-12 items-center min-h-[80vh]">
+            <div className="lg:col-span-7 space-y-8">
+              <BrandingSection />
               <FeatureHighlights />
               <TrustIndicators />
             </div>
-          </div>
-          
-          {/* Right Side - Authentication */}
-          <div className="order-1 lg:order-2 flex justify-center lg:justify-end animate-scale-in">
-            <AuthenticationCard />
-          </div>
-          
-          {/* Mobile: Show features below auth */}
-          <div className="order-3 lg:hidden space-y-6 animate-fade-in">
-            <FeatureHighlights />
-            <TrustIndicators />
+            <div className="lg:col-span-5 flex justify-center">
+              <div className="w-full max-w-md lg:max-w-lg">
+                <AuthenticationCard />
+              </div>
+            </div>
           </div>
         </div>
       </div>
