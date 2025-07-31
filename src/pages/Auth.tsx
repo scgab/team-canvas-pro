@@ -483,7 +483,7 @@ const BackgroundGraphics = () => {
       </div>
 
       {/* Grid Pattern */}
-      <div className="fixed inset-0 opacity-5">
+      <div className="fixed inset-0 opacity-5 pointer-events-none">
         <div 
           className="absolute inset-0" 
           style={{
