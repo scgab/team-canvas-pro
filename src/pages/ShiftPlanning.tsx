@@ -17,7 +17,8 @@ import {
   CheckCircle,
   AlertCircle,
   RotateCcw,
-  Bell
+  Bell,
+  FileText
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -642,95 +643,113 @@ const ShiftPlanning = () => {
     </div>
   );
 
-  const MemberView = () => (
-    <div className="space-y-6">
-      <div style={{backgroundColor: 'blue', color: 'white', padding: '20px', fontSize: '24px'}}>
-        🔵 TEST: MEMBER VIEW IS RENDERING! Current tab: {memberActiveTab}
-      </div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">My Shift Schedule</h1>
-          <Badge variant="outline" className="mt-2">Team Member</Badge>
-        </div>
-      </div>
+  const MemberView = () => {
+    // Get profile directly when needed instead of storing in state
+    const getCurrentUserProfile = () => {
+      const currentUser = localStorage.getItem('currentUser');
+      const profiles = {
+        'hna@scandac.com': {
+          full_name: 'HNA User',
+          email: 'hna@scandac.com',
+          age: 28,
+          competence_level: 'Advanced',
+          department: 'Operations',
+          job_title: 'Project Manager'
+        },
+        'myh@scandac.com': {
+          full_name: 'MYH User', 
+          email: 'myh@scandac.com',
+          age: 32,
+          competence_level: 'Expert',
+          department: 'Management',
+          job_title: 'Team Lead'
+        }
+      };
+      return profiles[currentUser] || profiles['hna@scandac.com'];
+    };
 
-      {/* ULTRA MINIMAL TAB SYSTEM - NO EXTERNAL DEPENDENCIES */}
-      <div className="w-full">
-        {/* Simple Tab Navigation */}
+    const tabs = [
+      { id: 'shifts-overview', label: 'Shifts Overview', icon: BarChart3 },
+      { id: 'my-shifts', label: 'My Shifts', icon: Calendar },
+      { id: 'available-shifts', label: 'Available Shifts', icon: Clock },
+      { id: 'my-availability', label: 'My Availability', icon: CheckCircle },
+      { id: 'my-reports', label: 'My Reports', icon: FileText }
+    ];
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">My Shift Schedule</h1>
+            <Badge variant="outline" className="mt-2">Team Member</Badge>
+          </div>
+        </div>
+
+        {/* Tab Navigation - Always render */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => {
-                console.log('🎯 CLICKING SHIFTS OVERVIEW TAB');
-                setMemberActiveTab('shifts-overview');
-              }}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                memberActiveTab === 'shifts-overview'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Shifts Overview
-            </button>
-            <button
-              onClick={() => setMemberActiveTab('my-shifts')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                memberActiveTab === 'my-shifts'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              My Shifts
-            </button>
-            <button
-              onClick={() => setMemberActiveTab('available')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                memberActiveTab === 'available'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Available Shifts
-            </button>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setMemberActiveTab(tab.id)}
+                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  memberActiveTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
           </nav>
         </div>
 
-        {/* Tab Content - COMPLETELY ISOLATED */}
-        {memberActiveTab === 'shifts-overview' && (
-          <div style={{backgroundColor: 'red', color: 'white', padding: '20px', fontSize: '24px'}}>
-            🎯 TEST: SHIFTS OVERVIEW TAB IS RENDERING! 
-            Current tab: {memberActiveTab}
-          </div>
-        )}
-        
-        
-        {memberActiveTab === 'my-shifts' && (
-          <div className="space-y-4">
+        {/* Tab Content - Always render, no conditional on userProfile */}
+        <div className="min-h-96">
+          {memberActiveTab === 'shifts-overview' && (
+            <ShiftsOverview 
+              currentUser={currentUser}
+              teamMembers={teamMembers}
+              shifts={shifts}
+              availableShifts={availableShifts}
+            />
+          )}
+          {memberActiveTab === 'my-shifts' && (
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">My Shifts</h2>
-              <p className="text-gray-600">Your assigned shifts will appear here.</p>
+              <h2 className="text-xl font-semibold">My Shifts</h2>
+              <p>My shifts content goes here...</p>
             </div>
-          </div>
-        )}
-        
-        {memberActiveTab === 'available' && (
-          <div className="space-y-4">
+          )}
+          {memberActiveTab === 'available-shifts' && (
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Available Shifts</h2>
-              <p className="text-gray-600">Open shifts you can claim will appear here.</p>
+              <h2 className="text-xl font-semibold">Available Shifts</h2>
+              <p>Available shifts content goes here...</p>
             </div>
-          </div>
-        )}
+          )}
+          {memberActiveTab === 'my-availability' && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold">My Availability</h2>
+              <p>My availability content goes here...</p>
+            </div>
+          )}
+          {memberActiveTab === 'my-reports' && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold">My Reports</h2>
+              <p>My reports content goes here...</p>
+            </div>
+          )}
+        </div>
+        
+        <AvailabilityDialog
+          open={availabilityDialogOpen}
+          onOpenChange={setAvailabilityDialogOpen}
+          selectedDate={selectedDate}
+          userEmail={currentUser?.email || ''}
+        />
       </div>
-      
-      <AvailabilityDialog
-        open={availabilityDialogOpen}
-        onOpenChange={setAvailabilityDialogOpen}
-        selectedDate={selectedDate}
-        userEmail={currentUser?.email || ''}
-      />
-    </div>
-  );
+    );
+  };
 
   console.log('🎯 RENDER DEBUG:', {
     userRole,
