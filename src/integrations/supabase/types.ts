@@ -487,6 +487,93 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profiles: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          age: number | null
+          bank_account_number: string | null
+          bank_name: string | null
+          city: string | null
+          country: string | null
+          cpr_number: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          department: string | null
+          email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          employee_id: string | null
+          first_name: string | null
+          full_name: string
+          hire_date: string | null
+          id: string
+          job_title: string | null
+          last_name: string | null
+          phone_number: string | null
+          postal_code: string | null
+          profile_picture_url: string | null
+          tax_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          age?: number | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          city?: string | null
+          country?: string | null
+          cpr_number?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          department?: string | null
+          email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_id?: string | null
+          first_name?: string | null
+          full_name: string
+          hire_date?: string | null
+          id?: string
+          job_title?: string | null
+          last_name?: string | null
+          phone_number?: string | null
+          postal_code?: string | null
+          profile_picture_url?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          age?: number | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          city?: string | null
+          country?: string | null
+          cpr_number?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          department?: string | null
+          email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_id?: string | null
+          first_name?: string | null
+          full_name?: string
+          hire_date?: string | null
+          id?: string
+          job_title?: string | null
+          last_name?: string | null
+          phone_number?: string | null
+          postal_code?: string | null
+          profile_picture_url?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
