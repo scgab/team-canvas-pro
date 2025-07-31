@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { AvailabilityDialog } from "@/components/AvailabilityDialog";
 import { ShiftReports } from "@/components/ShiftReports";
 import { BulkShiftDialog } from "@/components/BulkShiftDialog";
+import { ShiftsOverview } from "@/components/ShiftsOverview";
 
 interface TeamMember {
   id: string;
@@ -75,7 +76,7 @@ const ShiftPlanning = () => {
   const [bulkShiftDialogOpen, setBulkShiftDialogOpen] = useState(false);
   
   // Add controlled tab state for member view
-  const [memberActiveTab, setMemberActiveTab] = useState('my-shifts');
+  const [memberActiveTab, setMemberActiveTab] = useState('overview');
   
   // Form states
   const [newShift, setNewShift] = useState({
@@ -642,12 +643,23 @@ const ShiftPlanning = () => {
       </div>
 
       <Tabs value={memberActiveTab} onValueChange={setMemberActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">Shifts Overview</TabsTrigger>
           <TabsTrigger value="my-shifts">My Shifts</TabsTrigger>
           <TabsTrigger value="available">Available Shifts</TabsTrigger>
           <TabsTrigger value="availability">My Availability</TabsTrigger>
           <TabsTrigger value="reports">My Reports</TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="overview" className="space-y-4">
+          <ShiftsOverview
+            currentUser={currentUser}
+            teamMembers={teamMembers}
+            shifts={shifts}
+            availableShifts={availableShifts}
+            onTabChange={setMemberActiveTab}
+          />
+        </TabsContent>
         
         <TabsContent value="my-shifts" className="space-y-4">
           <div className="grid gap-4">
