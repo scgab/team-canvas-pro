@@ -75,8 +75,11 @@ const ShiftPlanning = () => {
   const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
   const [bulkShiftDialogOpen, setBulkShiftDialogOpen] = useState(false);
   
-  // Add controlled tab state for member view
+  // Add controlled tab state for member view with stability fixes
   const [memberActiveTab, setMemberActiveTab] = useState('shifts-overview');
+  const [tabsReady, setTabsReady] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState('');
   
   // Form states
   const [newShift, setNewShift] = useState({
@@ -99,11 +102,33 @@ const ShiftPlanning = () => {
 
   useEffect(() => {
     console.log('=== SHIFT PLANNING COMPONENT INIT ===');
-    checkUserRole();
-    fetchTeamMembers();
-    fetchShifts();
-    fetchAvailableShifts();
-    setupRealTimeUpdates();
+    setDebugInfo(`Component initialized at ${new Date().toISOString()}`);
+    
+    const initializeComponent = async () => {
+      try {
+        setLoading(true);
+        await checkUserRole();
+        await fetchTeamMembers();
+        await fetchShifts();
+        await fetchAvailableShifts();
+        setupRealTimeUpdates();
+        
+        // Small delay to ensure everything is stable
+        setTimeout(() => {
+          setTabsReady(true);
+          setLoading(false);
+          console.log('✅ Component initialization complete');
+        }, 200);
+      } catch (error) {
+        console.error('❌ Component initialization failed:', error);
+        setTimeout(() => {
+          setTabsReady(true);
+          setLoading(false);
+        }, 200);
+      }
+    };
+    
+    initializeComponent();
     console.log('====================================');
   }, []);
 
@@ -640,24 +665,53 @@ const ShiftPlanning = () => {
         </div>
       </div>
 
-      <Tabs value={memberActiveTab} onValueChange={setMemberActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="shifts-overview">Shifts Overview</TabsTrigger>
-          <TabsTrigger value="my-shifts">My Shifts</TabsTrigger>
-          <TabsTrigger value="available">Available Shifts</TabsTrigger>
-          <TabsTrigger value="availability">My Availability</TabsTrigger>
-          <TabsTrigger value="reports">My Reports</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="shifts-overview" className="space-y-4">
-          <ShiftsOverview
-            currentUser={currentUser}
-            teamMembers={teamMembers}
-            shifts={shifts}
-            availableShifts={availableShifts}
-            onTabChange={setMemberActiveTab}
-          />
-        </TabsContent>
+      {/* Debug Info */}
+      {debugInfo && (
+        <div className="mb-4 p-2 bg-yellow-100 text-yellow-800 text-xs rounded">
+          Debug: {debugInfo} | Current Tab: {memberActiveTab} | Ready: {tabsReady.toString()}
+        </div>
+      )}
+
+      {/* Prevent rendering until everything is ready */}
+      {!tabsReady || loading ? (
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="flex space-x-4 mb-6">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="h-10 bg-gray-200 rounded w-32"></div>
+            ))}
+          </div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      ) : (
+        <Tabs 
+          value={memberActiveTab} 
+          onValueChange={(newTab) => {
+            console.log('🔄 Tab change requested:', newTab);
+            setMemberActiveTab(newTab);
+            setDebugInfo(`Tab changed to ${newTab} at ${new Date().toISOString()}`);
+          }} 
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="shifts-overview">Shifts Overview</TabsTrigger>
+            <TabsTrigger value="my-shifts">My Shifts</TabsTrigger>
+            <TabsTrigger value="available">Available Shifts</TabsTrigger>
+            <TabsTrigger value="availability">My Availability</TabsTrigger>
+            <TabsTrigger value="reports">My Reports</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="shifts-overview" className="space-y-4">
+            <div className="min-h-96">
+              <ShiftsOverview
+                currentUser={currentUser}
+                teamMembers={teamMembers}
+                shifts={shifts}
+                availableShifts={availableShifts}
+                onTabChange={setMemberActiveTab}
+              />
+            </div>
+          </TabsContent>
         
         <TabsContent value="my-shifts" className="space-y-4">
           <div className="grid gap-4">
@@ -772,8 +826,9 @@ const ShiftPlanning = () => {
             teamMembers={teamMembers.filter(m => m.email === currentUser?.email)} 
             shifts={getMyShifts()} 
           />
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      )}
       
       <AvailabilityDialog
         open={availabilityDialogOpen}

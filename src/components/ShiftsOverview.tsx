@@ -75,6 +75,8 @@ export const ShiftsOverview = ({
   onTabChange 
 }: ShiftsOverviewProps) => {
   console.log('🚀 ShiftsOverview component rendered', { currentUser: currentUser?.email });
+  const [componentReady, setComponentReady] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -190,11 +192,23 @@ export const ShiftsOverview = ({
   };
 
   useEffect(() => {
+    setMounted(true);
     console.log('🔍 ShiftsOverview useEffect triggered', { currentUser: currentUser?.email, shiftsCount: shifts.length });
+    
     if (currentUser) {
       loadUserProfile();
       calculateStats();
     }
+    
+    // Ensure component is stable
+    const timer = setTimeout(() => {
+      setComponentReady(true);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      setMounted(false);
+    };
   }, [currentUser, shifts]);
 
   const calculateStats = () => {
@@ -328,29 +342,32 @@ export const ShiftsOverview = ({
     }
   ];
 
-  // Show loading state while data is being fetched
-  console.log('📊 ShiftsOverview render check', { profileLoading, hasProfileData: !!profileData });
-  if (profileLoading && !profileData) {
+  // Enhanced loading and stability checks
+  console.log('📊 ShiftsOverview render check', { 
+    profileLoading, 
+    hasProfileData: !!profileData, 
+    componentReady, 
+    mounted,
+    currentUser: currentUser?.email 
+  });
+
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-gray-500">Loading user profile...</div>
+      </div>
+    );
+  }
+
+  if (!mounted || !componentReady || (profileLoading && !profileData)) {
     console.log('💤 Showing loading state');
     return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="h-64 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-lg shadow p-6">
-              <div className="animate-pulse">
-                <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
-                <div className="space-y-2">
-                  <div className="h-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                </div>
-              </div>
-            </div>
+      <div className="animate-pulse space-y-6">
+        <div className="h-64 bg-gray-200 rounded-lg"></div>
+        <div className="h-32 bg-gray-200 rounded-lg"></div>
+        <div className="grid grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="h-24 bg-gray-200 rounded-lg"></div>
           ))}
         </div>
       </div>

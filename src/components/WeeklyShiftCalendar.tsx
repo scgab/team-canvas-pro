@@ -55,6 +55,7 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Get start of current week (Monday)
   const getWeekStart = (date: Date) => {
@@ -85,9 +86,9 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
   const weekDates = getWeekDates(weekStart);
   const currentUser = userProfile?.email;
 
-  // Load shifts for current week
+  // Load shifts for current week with stability checks
   const loadWeeklyShifts = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !mounted) return;
     
     try {
       setLoading(true);
@@ -114,14 +115,19 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
       console.error('Error loading weekly shifts:', error);
       setShifts([]);
     } finally {
-      setLoading(false);
+      if (mounted) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    if (currentUser) {
+    setMounted(true);
+    if (currentUser && mounted) {
       loadWeeklyShifts();
     }
+    
+    return () => setMounted(false);
   }, [currentWeek, currentUser]);
 
   // Navigate to previous week
@@ -180,6 +186,14 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
     return date.toDateString() === today.toDateString();
   };
 
+  if (!mounted || loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div className="animate-pulse h-64 bg-gray-200 rounded"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
       {/* Header with navigation */}
@@ -217,67 +231,58 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
         </div>
       </div>
 
-      {/* Loading state */}
-      {loading && (
-        <div className="animate-pulse">
-          <div className="h-64 bg-gray-200 rounded-lg"></div>
-        </div>
-      )}
-
       {/* Calendar Grid */}
-      {!loading && (
-        <div className="overflow-x-auto">
-          <div className="min-w-full">
-            {/* Days header */}
-            <div className="grid grid-cols-8 gap-1 mb-2">
-              <div className="p-2"></div> {/* Empty cell for time column */}
-              {weekDates.map((date, index) => (
-                <div
-                  key={index}
-                  className={`p-2 text-center text-sm font-medium rounded-lg ${
-                    isToday(date)
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-50 text-gray-700'
-                  }`}
-                >
-                  <div className="font-semibold">
-                    {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                  </div>
-                  <div className="text-xs">
-                    {date.getDate()}
-                  </div>
+      <div className="overflow-x-auto">
+        <div className="min-w-full">
+          {/* Days header */}
+          <div className="grid grid-cols-8 gap-1 mb-2">
+            <div className="p-2"></div> {/* Empty cell for time column */}
+            {weekDates.map((date, index) => (
+              <div
+                key={index}
+                className={`p-2 text-center text-sm font-medium rounded-lg ${
+                  isToday(date)
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-50 text-gray-700'
+                }`}
+              >
+                <div className="font-semibold">
+                  {date.toLocaleDateString('en-US', { weekday: 'short' })}
                 </div>
-              ))}
-            </div>
+                <div className="text-xs">
+                  {date.getDate()}
+                </div>
+              </div>
+            ))}
+          </div>
 
-            {/* Time slots and shifts */}
-            <div className="space-y-1">
-              {timeSlots.map((time, timeIndex) => (
-                <div key={timeIndex} className="grid grid-cols-8 gap-1">
-                  {/* Time column */}
-                  <div className="p-2 text-xs text-gray-500 text-right font-medium">
-                    {time}
-                  </div>
-                  
-                  {/* Day columns */}
-                  {weekDates.map((date, dateIndex) => {
-                    const shift = getShiftForDateTime(date, time);
-                    
-                    return (
-                      <ShiftCell
-                        key={dateIndex}
-                        shift={shift}
-                        date={date}
-                        time={time}
-                      />
-                    );
-                  })}
+          {/* Time slots and shifts */}
+          <div className="space-y-1">
+            {timeSlots.map((time, timeIndex) => (
+              <div key={timeIndex} className="grid grid-cols-8 gap-1">
+                {/* Time column */}
+                <div className="p-2 text-xs text-gray-500 text-right font-medium">
+                  {time}
                 </div>
-              ))}
-            </div>
+                
+                {/* Day columns */}
+                {weekDates.map((date, dateIndex) => {
+                  const shift = getShiftForDateTime(date, time);
+                  
+                  return (
+                    <ShiftCell
+                      key={dateIndex}
+                      shift={shift}
+                      date={date}
+                      time={time}
+                    />
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Legend */}
       <div className="mt-6 flex items-center justify-between">
