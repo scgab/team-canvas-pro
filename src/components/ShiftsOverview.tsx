@@ -74,6 +74,7 @@ export const ShiftsOverview = ({
   availableShifts, 
   onTabChange 
 }: ShiftsOverviewProps) => {
+  console.log('🚀 ShiftsOverview component rendered', { currentUser: currentUser?.email });
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -189,6 +190,7 @@ export const ShiftsOverview = ({
   };
 
   useEffect(() => {
+    console.log('🔍 ShiftsOverview useEffect triggered', { currentUser: currentUser?.email, shiftsCount: shifts.length });
     if (currentUser) {
       loadUserProfile();
       calculateStats();
@@ -327,7 +329,9 @@ export const ShiftsOverview = ({
   ];
 
   // Show loading state while data is being fetched
+  console.log('📊 ShiftsOverview render check', { profileLoading, hasProfileData: !!profileData });
   if (profileLoading && !profileData) {
+    console.log('💤 Showing loading state');
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
@@ -352,6 +356,8 @@ export const ShiftsOverview = ({
       </div>
     );
   }
+
+  console.log('✅ Rendering main ShiftsOverview content');
 
   return (
     <div className="space-y-6">
