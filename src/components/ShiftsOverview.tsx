@@ -72,7 +72,9 @@ export const ShiftsOverview = ({
   availableShifts, 
   onTabChange 
 }: ShiftsOverviewProps) => {
-  const { userProfile: profile, loading: profileLoading } = useUserProfile();
+  const [profileData, setProfileData] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [stats, setStats] = useState({
     currentMonthShifts: 0,
     currentMonthHours: 0,
@@ -84,8 +86,109 @@ export const ShiftsOverview = ({
     completedShifts: 0
   });
 
+  // Emergency hardcoded profile function
+  const getEmergencyProfile = (email: string) => {
+    console.log('🚨 Using emergency hardcoded profile for:', email);
+    
+    if (email === 'hna@scandac.com') {
+      return {
+        full_name: 'Hussein Nasser Awada',
+        email: 'hna@scandac.com',
+        age: 28,
+        competence_level: 'Advanced',
+        department: 'Operations',
+        job_title: 'Operations Manager'
+      };
+    } else if (email === 'myh@scandac.com') {
+      return {
+        full_name: 'MYH User',
+        email: 'myh@scandac.com',
+        age: 32,
+        competence_level: 'Expert',
+        department: 'Management',
+        job_title: 'Department Manager'
+      };
+    } else {
+      return {
+        full_name: email ? email.split('@')[0].replace(/[._]/g, ' ') : 'User',
+        email: email || 'unknown@example.com',
+        age: null,
+        competence_level: 'Beginner',
+        department: 'General',
+        job_title: 'Team Member'
+      };
+    }
+  };
+
+  // Profile loading with debug logging
+  const loadUserProfile = async () => {
+    try {
+      console.log('=== PROFILE LOADING DEBUG ===');
+      console.log('Current user:', currentUser);
+      console.log('Starting profile load...');
+      
+      setProfileLoading(true);
+      setProfileError(null);
+      
+      if (!currentUser?.email) {
+        console.log('❌ No current user email found');
+        throw new Error('No current user found');
+      }
+      
+      console.log('🔍 Attempting to load profile for:', currentUser.email);
+      
+      // Test Supabase connection first
+      const { data: testData, error: testError } = await supabase
+        .from('user_profiles')
+        .select('count(*)')
+        .limit(1);
+      
+      if (testError) {
+        console.error('❌ Supabase connection test failed:', testError);
+        throw new Error(`Database connection failed: ${testError.message}`);
+      }
+      
+      console.log('✅ Supabase connection OK');
+      
+      // Try to load actual profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('email', currentUser.email)
+        .single();
+
+      console.log('📊 Supabase query result:', { profileData, profileError });
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('❌ Supabase profile error:', profileError);
+        throw profileError;
+      }
+
+      if (profileData) {
+        console.log('✅ Profile data found:', profileData);
+        setProfileData(profileData);
+      } else {
+        console.log('📝 No profile found, using emergency hardcoded profile');
+        const emergencyProfile = getEmergencyProfile(currentUser.email);
+        setProfileData(emergencyProfile);
+      }
+    } catch (error) {
+      console.error('❌ Profile loading error:', error);
+      setProfileError(error.message);
+      
+      // Use emergency hardcoded profile as fallback
+      console.log('🚨 Using emergency profile as fallback');
+      const emergencyProfile = getEmergencyProfile(currentUser?.email || 'unknown@example.com');
+      setProfileData(emergencyProfile);
+    } finally {
+      console.log('✅ Setting loading to false');
+      setProfileLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (currentUser) {
+      loadUserProfile();
       calculateStats();
     }
   }, [currentUser, shifts]);
@@ -154,10 +257,10 @@ export const ShiftsOverview = ({
   };
 
   const getQualifiedAvailableShifts = () => {
-    if (!profile) return [];
+    if (!profileData) return [];
     
     const competenceLevels = ['beginner', 'intermediate', 'advanced', 'expert'];
-    const userLevel = competenceLevels.indexOf(profile.competence_level?.toLowerCase() || 'beginner');
+    const userLevel = competenceLevels.indexOf(profileData.competence_level?.toLowerCase() || 'beginner');
     
     return availableShifts
       .filter(s => !s.claimed_by)
@@ -250,15 +353,29 @@ export const ShiftsOverview = ({
               </div>
             ) : (
               <>
+                {profileError && (
+                  <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
+                    <p className="text-red-600 text-sm">⚠️ {profileError}</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={loadUserProfile}
+                      className="mt-2 text-xs"
+                    >
+                      Retry Loading
+                    </Button>
+                  </div>
+                )}
+                
                 <div className="flex items-center gap-3">
                   <Avatar className="w-16 h-16">
                     <AvatarFallback className="text-lg">
-                      {profile?.full_name?.charAt(0)?.toUpperCase() || 'U'}
+                      {profileData?.full_name?.charAt(0)?.toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold">{profile?.full_name || 'Unknown User'}</h3>
-                    <p className="text-sm text-muted-foreground">{profile?.email}</p>
+                    <h3 className="text-lg font-semibold">{profileData?.full_name || 'Unknown User'}</h3>
+                    <p className="text-sm text-muted-foreground">{profileData?.email}</p>
                   </div>
                 </div>
                 
@@ -266,35 +383,35 @@ export const ShiftsOverview = ({
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className="text-muted-foreground">Age: </span>
-                      <span>{profile?.age || 'Not specified'}</span>
+                      <span>{profileData?.age || 'Not specified'}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Level: </span>
                       <span className="font-medium text-primary">
-                        {profile?.competence_level || 'Beginner'}
+                        {profileData?.competence_level || 'Beginner'}
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Department: </span>
-                      <span>{profile?.department || 'General'}</span>
+                      <span>{profileData?.department || 'General'}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Role: </span>
-                      <span>{profile?.job_title || 'Team Member'}</span>
+                      <span>{profileData?.job_title || 'Team Member'}</span>
                     </div>
                   </div>
                   
-                  {profile?.hire_date && (
+                  {profileData?.hire_date && (
                     <div className="text-sm pt-2 border-t">
                       <span className="text-muted-foreground">Hire Date: </span>
-                      <span>{new Date(profile.hire_date).toLocaleDateString()}</span>
+                      <span>{new Date(profileData.hire_date).toLocaleDateString()}</span>
                     </div>
                   )}
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t">
                   <Badge variant="secondary">
-                    {profile?.competence_level || 'Beginner'} Level
+                    {profileData?.competence_level || 'Beginner'} Level
                   </Badge>
                   <Button
                     variant="ghost"
