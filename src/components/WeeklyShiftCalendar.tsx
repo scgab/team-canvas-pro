@@ -83,11 +83,11 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
 
   const weekStart = getWeekStart(currentWeek);
   const weekDates = getWeekDates(weekStart);
-  const currentUser = userProfile?.email;
+  const currentUserEmail = userProfile?.email;
 
   // Load shifts for current week
   const loadWeeklyShifts = async () => {
-    if (!currentUser) return;
+    if (!currentUserEmail) return;
     
     try {
       setLoading(true);
@@ -98,7 +98,7 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
       const { data, error } = await supabase
         .from('shifts')
         .select('*')
-        .eq('assigned_to', currentUser)
+        .eq('assigned_to', currentUserEmail)
         .gte('date', weekStart.toISOString().split('T')[0])
         .lte('date', weekEnd.toISOString().split('T')[0])
         .order('start_time', { ascending: true });
@@ -119,10 +119,10 @@ export const WeeklyShiftCalendar = ({ userProfile }: WeeklyShiftCalendarProps) =
   };
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUserEmail) {
       loadWeeklyShifts();
     }
-  }, [currentWeek, currentUser]);
+  }, [currentWeek, currentUserEmail]);
 
   // Navigate to previous week
   const goToPreviousWeek = () => {
