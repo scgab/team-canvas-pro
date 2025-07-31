@@ -495,6 +495,7 @@ export type Database = {
           bank_account_number: string | null
           bank_name: string | null
           city: string | null
+          competence_level: string | null
           country: string | null
           cpr_number: string | null
           created_at: string | null
@@ -523,6 +524,7 @@ export type Database = {
           bank_account_number?: string | null
           bank_name?: string | null
           city?: string | null
+          competence_level?: string | null
           country?: string | null
           cpr_number?: string | null
           created_at?: string | null
@@ -551,6 +553,7 @@ export type Database = {
           bank_account_number?: string | null
           bank_name?: string | null
           city?: string | null
+          competence_level?: string | null
           country?: string | null
           cpr_number?: string | null
           created_at?: string | null
