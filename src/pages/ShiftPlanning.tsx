@@ -146,24 +146,22 @@ const ShiftPlanning = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setCurrentUser(user);
-      const { data: member } = await supabase
+      const { data: member, error: memberError } = await supabase
         .from('team_members')
-        .select('role')
+        .select('role, team_id')
         .eq('email', user.email)
-        .single();
+        .maybeSingle();
       
-      if (member) {
+      console.log('👤 Team member lookup:', { member, memberError });
+      
+      if (member && !memberError) {
+        console.log('✅ Found existing team member:', member.role);
         setUserRole(member.role);
       } else {
-        // Auto-create team member if doesn't exist
-        await supabase
-          .from('team_members')
-          .insert({
-            email: user.email || '',
-            name: user.user_metadata?.full_name || user.email || 'Unknown',
-            role: 'member'
-          });
-        setUserRole('member');
+        console.log('❌ No team member found, need to handle team assignment first');
+        // Instead of auto-creating, we should guide user to join a team
+        setUserRole('no_team');
+        return; // Exit early if no team membership
       }
     }
     
@@ -788,7 +786,17 @@ const ShiftPlanning = () => {
 
   return (
     <Layout>
-      {userRole === 'admin' ? <AdminView /> : <MemberView />}
+      {userRole === 'no_team' ? (
+        <div className="p-6 text-center">
+          <h2 className="text-2xl font-bold mb-4">No Team Access</h2>
+          <p className="text-muted-foreground mb-4">
+            You need to be a member of a team to access shift planning.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Please contact your administrator to be added to a team.
+          </p>
+        </div>
+      ) : userRole === 'admin' ? <AdminView /> : <MemberView />}
     </Layout>
   );
 };
