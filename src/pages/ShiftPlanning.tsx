@@ -637,6 +637,9 @@ const ShiftPlanning = () => {
 
   const MemberView = () => (
     <div className="space-y-6">
+      <div style={{backgroundColor: 'blue', color: 'white', padding: '20px', fontSize: '24px'}}>
+        🔵 TEST: MEMBER VIEW IS RENDERING! Current tab: {memberActiveTab}
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">My Shift Schedule</h1>
