@@ -105,9 +105,28 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
+      console.log('🔓 Attempting to sign out...');
+      
+      // Try to sign out from Supabase
       const { error } = await supabase.auth.signOut();
       
+      // Always clear local session state, even if server logout fails
+      setSession(null);
+      setUser(null);
+      
+      // Clear any local storage items related to auth
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('sb-susniyygjqxfvisjwpun-auth-token');
+      
+      console.log('🔓 Local session cleared');
+      
+      // If there was a server error but we cleared locally, still consider it a success
       if (error) {
+        console.warn('🔓 Server logout failed but local session cleared:', error.message);
+        // Don't return error if it's just a session not found error
+        if (error.message.includes('Session not found') || error.message.includes('session_not_found')) {
+          return { error: null };
+        }
         return { 
           error: { 
             message: error.message 
@@ -115,10 +134,18 @@ export const useAuth = () => {
         };
       }
       
+      console.log('🔓 Sign out successful');
       return { error: null };
       
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('🔓 Sign out error:', error);
+      
+      // Always clear local session even on error
+      setSession(null);
+      setUser(null);
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('sb-susniyygjqxfvisjwpun-auth-token');
+      
       return { 
         error: { 
           message: 'Failed to sign out. Please try again.' 
