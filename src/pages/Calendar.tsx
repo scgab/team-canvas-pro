@@ -13,7 +13,6 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { useSharedData } from "@/contexts/SharedDataContext";
-import { TeamDataService } from "@/services/teamData";
 import { CalendarEventEditDialog } from "@/components/CalendarEventEditDialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -53,7 +52,8 @@ interface PublicHoliday {
 
 const Calendar = () => {
   const { toast } = useToast();
-  const { projects, calendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } = useSharedData();
+  const { projects } = useSharedData();
+  const [events, setEvents] = useState<any[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
@@ -62,18 +62,53 @@ const Calendar = () => {
     title: "",
     description: "",
     date: new Date(),
-    time: "",
-    duration: "",
+    start_time: "",
+    end_time: "",
     type: "meeting" as const,
-    attendees: "",
-    location: "",
-    assignedMembers: [] as string[]
+    priority: "medium" as const,
+    attendees: [] as string[],
+    location: ""
   });
 
   const teamMembers = [
     { email: 'hna@scandac.com', name: 'HNA User' },
     { email: 'myh@scandac.com', name: 'MYH User' }
   ];
+
+  useEffect(() => {
+    loadDefaultEvents();
+  }, []);
+
+  const loadDefaultEvents = () => {
+    const defaultEvents = [
+      {
+        id: 1,
+        title: 'Team Standup',
+        description: 'Daily team synchronization meeting',
+        date: new Date().toISOString().split('T')[0],
+        start_time: '09:00',
+        end_time: '09:30',
+        type: 'meeting',
+        priority: 'high',
+        attendees: ['hna@scandac.com', 'myh@scandac.com'],
+        created_by: 'hna@scandac.com'
+      },
+      {
+        id: 2,
+        title: 'Project Review',
+        description: 'Review current project progress',
+        date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
+        start_time: '14:00',
+        end_time: '15:00',
+        type: 'meeting',
+        priority: 'medium',
+        attendees: ['hna@scandac.com', 'myh@scandac.com'],
+        created_by: 'myh@scandac.com'
+      }
+    ];
+    
+    setEvents(defaultEvents);
+  };
 
   // Public holidays for Denmark, Sweden, UK, and USA (2024-2025)
   const publicHolidays: PublicHoliday[] = [
@@ -119,7 +154,8 @@ const Calendar = () => {
   };
 
   // Add new event
-  const handleAddEvent = async () => {
+  const handleAddEvent = () => {
+    // Validation
     if (!newEvent.title.trim()) {
       toast({
         title: "Error",
@@ -129,45 +165,83 @@ const Calendar = () => {
       return;
     }
 
+    if (!newEvent.start_time) {
+      toast({
+        title: "Error",
+        description: "Please select a start time.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!newEvent.end_time) {
+      toast({
+        title: "Error",
+        description: "Please select an end time.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate time order
+    if (newEvent.start_time >= newEvent.end_time) {
+      toast({
+        title: "Error",
+        description: "End time must be after start time.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      console.log('Creating calendar event:', newEvent);
-      
-      // Format date properly to avoid timezone issues
+      // Format date properly
       const year = newEvent.date.getFullYear();
       const month = String(newEvent.date.getMonth() + 1).padStart(2, '0');
       const day = String(newEvent.date.getDate()).padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
       
-      // Use TeamDataService instead of SharedDataContext to ensure proper team_id handling
-      await TeamDataService.createCalendarEvent({
-        title: newEvent.title,
-        description: newEvent.description,
+      // Create new event object
+      const eventToAdd = {
+        id: Date.now(),
+        title: newEvent.title.trim(),
+        description: newEvent.description.trim(),
         date: formattedDate,
-        time: newEvent.time || '',
+        start_time: newEvent.start_time,
+        end_time: newEvent.end_time,
         type: newEvent.type,
-        attendees: newEvent.attendees ? newEvent.attendees.split(",").map(a => a.trim()) : [],
-        location: newEvent.location,
-        assigned_members: newEvent.assignedMembers
-      });
+        priority: newEvent.priority,
+        attendees: newEvent.attendees,
+        created_by: localStorage.getItem('currentUser') || 'user',
+        created_at: new Date().toISOString()
+      };
 
+      // Add to events list
+      setEvents(prev => [...prev, eventToAdd]);
+      
+      // Reset form
       setNewEvent({
         title: "",
         description: "",
         date: new Date(),
-        time: "",
-        duration: "",
+        start_time: "",
+        end_time: "",
         type: "meeting",
-        attendees: "",
-        location: "",
-        assignedMembers: []
+        priority: "medium",
+        attendees: [],
+        location: ""
       });
+      
+      // Close modal
       setIsAddEventOpen(false);
-
+      
+      // Show success
       toast({
         title: "Event Created",
         description: `${newEvent.title} has been added to your calendar.`,
       });
+      
     } catch (error) {
+      console.error('Error creating event:', error);
       toast({
         title: "Error",
         description: "Failed to create event. Please try again.",
@@ -208,19 +282,11 @@ const Calendar = () => {
 
   // Get events for a specific date (including project deadlines)
   const getEventsForDate = (date: Date) => {
-    console.log('Getting events for date:', date, 'Calendar events:', calendarEvents);
+    const dateStr = date.toISOString().split('T')[0];
     
-    const userEvents = calendarEvents.filter(event => {
-      // Create date from string without timezone issues
-      const eventDateParts = event.date.split('-');
-      const eventDate = new Date(parseInt(eventDateParts[0]), parseInt(eventDateParts[1]) - 1, parseInt(eventDateParts[2]));
-      return eventDate.toDateString() === date.toDateString();
-    }).map(event => ({
+    const userEvents = events.filter(event => event.date === dateStr).map(event => ({
       ...event,
-      date: (() => {
-        const dateParts = event.date.split('-');
-        return new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-      })(),
+      date: new Date(event.date),
       color: "#3B82F6"
     }));
 
@@ -263,7 +329,7 @@ const Calendar = () => {
     const today = new Date();
     const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
     
-    const upcomingUserEvents = calendarEvents.filter(event => {
+    const upcomingUserEvents = events.filter(event => {
       const eventDate = new Date(event.date);
       return eventDate >= today && eventDate <= in30Days;
     });
@@ -287,6 +353,22 @@ const Calendar = () => {
 
     return [...upcomingUserEvents, ...upcomingProjectDeadlines]
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
+
+  const openCreateEventModal = () => {
+    const today = new Date();
+    setNewEvent({
+      title: "",
+      description: "",
+      date: today,
+      start_time: "09:00",
+      end_time: "10:00",
+      type: "meeting",
+      priority: "medium",
+      attendees: [],
+      location: ""
+    });
+    setIsAddEventOpen(true);
   };
 
   const getEventTypeColor = (type: string) => {
@@ -321,9 +403,9 @@ const Calendar = () => {
           <div className="flex gap-2">
             <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-primary hover:bg-primary-dark">
+                <Button onClick={openCreateEventModal} className="bg-gradient-primary hover:bg-primary-dark">
                   <Plus className="w-4 h-4 mr-2" />
-                  Schedule Meeting
+                  Create Event
                 </Button>
               </DialogTrigger>
             <DialogContent className="max-w-md">
@@ -375,21 +457,21 @@ const Calendar = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="event-time">Time</Label>
+                    <Label htmlFor="event-start-time">Start Time *</Label>
                     <Input
-                      id="event-time"
+                      id="event-start-time"
                       type="time"
-                      value={newEvent.time}
-                      onChange={(e) => setNewEvent(prev => ({ ...prev, time: e.target.value }))}
+                      value={newEvent.start_time}
+                      onChange={(e) => setNewEvent(prev => ({ ...prev, start_time: e.target.value }))}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="event-duration">Duration</Label>
+                    <Label htmlFor="event-end-time">End Time *</Label>
                     <Input
-                      id="event-duration"
-                      value={newEvent.duration}
-                      onChange={(e) => setNewEvent(prev => ({ ...prev, duration: e.target.value }))}
-                      placeholder="e.g., 1 hour"
+                      id="event-end-time"
+                      type="time"
+                      value={newEvent.end_time}
+                      onChange={(e) => setNewEvent(prev => ({ ...prev, end_time: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -402,58 +484,35 @@ const Calendar = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="meeting">Meeting</SelectItem>
+                        <SelectItem value="appointment">Appointment</SelectItem>
                         <SelectItem value="deadline">Deadline</SelectItem>
-                        <SelectItem value="milestone">Milestone</SelectItem>
                         <SelectItem value="reminder">Reminder</SelectItem>
+                        <SelectItem value="event">Event</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="event-location">Location</Label>
-                    <Input
-                      id="event-location"
-                      value={newEvent.location}
-                      onChange={(e) => setNewEvent(prev => ({ ...prev, location: e.target.value }))}
-                      placeholder="Location"
-                    />
+                    <Label htmlFor="event-priority">Priority</Label>
+                    <Select value={newEvent.priority} onValueChange={(value: any) => setNewEvent(prev => ({ ...prev, priority: value }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="event-attendees">Attendees</Label>
+                  <Label htmlFor="event-location">Location</Label>
                   <Input
-                    id="event-attendees"
-                    value={newEvent.attendees}
-                    onChange={(e) => setNewEvent(prev => ({ ...prev, attendees: e.target.value }))}
-                    placeholder="Comma separated names"
+                    id="event-location"
+                    value={newEvent.location}
+                    onChange={(e) => setNewEvent(prev => ({ ...prev, location: e.target.value }))}
+                    placeholder="Meeting location (optional)"
                   />
-                </div>
-                <div>
-                  <Label>Assign to Team Members</Label>
-                  <div className="space-y-2 mt-2">
-                    {teamMembers.map(member => (
-                      <label key={member.email} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={newEvent.assignedMembers.includes(member.email)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setNewEvent(prev => ({
-                                ...prev,
-                                assignedMembers: [...prev.assignedMembers, member.email]
-                              }));
-                            } else {
-                              setNewEvent(prev => ({
-                                ...prev,
-                                assignedMembers: prev.assignedMembers.filter(email => email !== member.email)
-                              }));
-                            }
-                          }}
-                          className="rounded border-input"
-                        />
-                        <span className="text-sm">{member.name} ({member.email})</span>
-                      </label>
-                    ))}
-                  </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsAddEventOpen(false)}>
@@ -477,7 +536,12 @@ const Calendar = () => {
           event={editingEvent}
           onSubmit={async (eventData) => {
             try {
-              await updateCalendarEvent(editingEvent.id, eventData);
+              // Update event in local state
+              setEvents(prev => prev.map(event => 
+                event.id === editingEvent.id 
+                  ? { ...event, ...eventData }
+                  : event
+              ));
               setEditingEvent(null);
               toast({
                 title: "Event Updated",
@@ -493,7 +557,8 @@ const Calendar = () => {
           }}
           onDelete={async () => {
             try {
-              await deleteCalendarEvent(editingEvent.id);
+              // Remove event from local state
+              setEvents(prev => prev.filter(event => event.id !== editingEvent.id));
               setEditingEvent(null);
               toast({
                 title: "Event Deleted",
@@ -741,25 +806,25 @@ const Calendar = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-gradient-card shadow-custom-card">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary">{calendarEvents.filter(e => e.type === 'meeting').length}</div>
+              <div className="text-2xl font-bold text-primary">{events.filter(e => e.type === 'meeting').length}</div>
               <div className="text-sm text-muted-foreground">Meetings</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-card shadow-custom-card">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-destructive">{calendarEvents.filter(e => e.type === 'deadline').length}</div>
+              <div className="text-2xl font-bold text-destructive">{events.filter(e => e.type === 'deadline').length}</div>
               <div className="text-sm text-muted-foreground">Deadlines</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-card shadow-custom-card">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-warning">{calendarEvents.filter(e => e.type === 'milestone').length}</div>
+              <div className="text-2xl font-bold text-warning">{events.filter(e => e.type === 'milestone').length}</div>
               <div className="text-sm text-muted-foreground">Milestones</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-card shadow-custom-card">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-success">{calendarEvents.length}</div>
+              <div className="text-2xl font-bold text-success">{events.length}</div>
               <div className="text-sm text-muted-foreground">Total Events</div>
             </CardContent>
           </Card>
