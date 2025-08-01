@@ -292,6 +292,41 @@ export class TeamDataService {
     return data;
   }
 
+  // AI Tool Categories - team scoped
+  static async getTeamAIToolCategories() {
+    const teamId = await this.getCurrentTeamId();
+    if (!teamId) return [];
+
+    const { data, error } = await supabase
+      .from('ai_tool_categories')
+      .select('*')
+      .eq('team_id', teamId)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching team AI tool categories:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  static async createAIToolCategory(categoryData: any) {
+    const teamId = await this.getCurrentTeamId();
+    if (!teamId) throw new Error('No team found');
+
+    const { data, error } = await supabase
+      .from('ai_tool_categories')
+      .insert([{
+        ...categoryData,
+        team_id: teamId
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
   // Project Notes - team scoped
   static async getTeamProjectNotes(projectId?: string) {
     const teamId = await this.getCurrentTeamId();

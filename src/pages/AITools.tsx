@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { aiToolsService, aiToolCategoriesService } from "@/services/database";
+import { TeamDataService } from "@/services/teamData";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AITool {
@@ -465,7 +466,7 @@ const AITools = () => {
     
     try {
       const currentUser = (window as any).currentUserEmail || 'unknown';
-      await aiToolCategoriesService.create({
+      await TeamDataService.createAIToolCategory({
         name: newCategoryName,
         created_by: currentUser
       });
