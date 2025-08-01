@@ -203,18 +203,17 @@ const Calendar = () => {
     }
 
     try {
-      // Format date properly
-      const year = newEvent.date.getFullYear();
-      const month = String(newEvent.date.getMonth() + 1).padStart(2, '0');
-      const day = String(newEvent.date.getDate()).padStart(2, '0');
-      const formattedDate = `${year}-${month}-${day}`;
+      // Format date properly to avoid timezone issues
+      const eventDate = newEvent.date instanceof Date 
+        ? `${newEvent.date.getFullYear()}-${String(newEvent.date.getMonth() + 1).padStart(2, '0')}-${String(newEvent.date.getDate()).padStart(2, '0')}`
+        : newEvent.date;
       
       // Create new event object
       const eventToAdd = {
         id: Date.now(),
         title: newEvent.title.trim(),
         description: newEvent.description.trim(),
-        date: formattedDate,
+        date: eventDate,
         start_time: newEvent.start_time,
         end_time: newEvent.end_time,
         type: newEvent.type,
@@ -230,37 +229,59 @@ const Calendar = () => {
       // If meeting checkbox is checked, also create in meetings database
       if (createMeeting && user) {
         try {
-          const meetingData = {
-            title: newEvent.title.trim(),
-            description: newEvent.description?.trim() || '',
-            date: formattedDate,
-            time: newEvent.start_time,
-            end_time: newEvent.end_time,
-            type: 'meeting',
-            location: newEvent.location || '',
-            attendees: newEvent.attendees || [],
-            assigned_members: newEvent.attendees || [],
-            agenda: [],
-            meeting_status: 'planned',
-            created_by: user.id
-          };
+          // First check if user is part of any team
+          const { data: teamMember, error: teamError } = await supabase
+            .from('team_members')
+            .select('team_id')
+            .eq('email', user.email)
+            .limit(1)
+            .maybeSingle();
 
-          const { error } = await supabase
-            .from('calendar_events')
-            .insert([meetingData]);
+          if (teamError) {
+            console.error('Error checking team membership:', teamError);
+            throw new Error('Unable to verify team membership');
+          }
 
-          if (error) {
-            console.error('Error creating meeting:', error);
+          if (!teamMember) {
             toast({
-              title: "Partial Success",
-              description: "Event created but failed to sync to meetings.",
-              variant: "destructive"
+              title: "Note",
+              description: "Event created in calendar only. Join a team to sync meetings.",
+              variant: "default"
             });
           } else {
-            toast({
-              title: "Success",
-              description: "Event created and synced to meetings!",
-            });
+            const meetingData = {
+              title: newEvent.title.trim(),
+              description: newEvent.description?.trim() || '',
+              date: eventDate,
+              time: newEvent.start_time,
+              end_time: newEvent.end_time,
+              type: 'meeting',
+              location: newEvent.location || '',
+              attendees: newEvent.attendees || [],
+              assigned_members: newEvent.attendees || [],
+              agenda: [],
+              meeting_status: 'planned',
+              created_by: user.id,
+              team_id: teamMember.team_id
+            };
+
+            const { error } = await supabase
+              .from('calendar_events')
+              .insert([meetingData]);
+
+            if (error) {
+              console.error('Error creating meeting:', error);
+              toast({
+                title: "Partial Success",
+                description: "Event created but failed to sync to meetings.",
+                variant: "destructive"
+              });
+            } else {
+              toast({
+                title: "Success",
+                description: "Event created and synced to meetings!",
+              });
+            }
           }
         } catch (error) {
           console.error('Error syncing to meetings:', error);
