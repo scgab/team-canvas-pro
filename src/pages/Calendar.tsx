@@ -11,9 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useSharedData } from "@/contexts/SharedDataContext";
 import { CalendarEventEditDialog } from "@/components/CalendarEventEditDialog";
+import { usePersistedState } from "@/hooks/useDataPersistence";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { 
@@ -53,11 +57,13 @@ interface PublicHoliday {
 const Calendar = () => {
   const { toast } = useToast();
   const { projects } = useSharedData();
-  const [events, setEvents] = useState<any[]>([]);
+  const { user } = useAuth();
+  const [events, setEvents] = usePersistedState<any[]>('calendar-events', []);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [createMeeting, setCreateMeeting] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -76,7 +82,10 @@ const Calendar = () => {
   ];
 
   useEffect(() => {
-    loadDefaultEvents();
+    // Only load defaults if no events exist in localStorage
+    if (events.length === 0) {
+      loadDefaultEvents();
+    }
   }, []);
 
   const loadDefaultEvents = () => {
@@ -154,7 +163,7 @@ const Calendar = () => {
   };
 
   // Add new event
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     // Validation
     if (!newEvent.title.trim()) {
       toast({
@@ -215,8 +224,58 @@ const Calendar = () => {
         created_at: new Date().toISOString()
       };
 
-      // Add to events list
+      // Add to events list (persisted via usePersistedState)
       setEvents(prev => [...prev, eventToAdd]);
+
+      // If meeting checkbox is checked, also create in meetings database
+      if (createMeeting && user) {
+        try {
+          const meetingData = {
+            title: newEvent.title.trim(),
+            description: newEvent.description?.trim() || '',
+            date: formattedDate,
+            time: newEvent.start_time,
+            end_time: newEvent.end_time,
+            type: 'meeting',
+            location: newEvent.location || '',
+            attendees: newEvent.attendees || [],
+            assigned_members: newEvent.attendees || [],
+            agenda: [],
+            meeting_status: 'planned',
+            created_by: user.id
+          };
+
+          const { error } = await supabase
+            .from('calendar_events')
+            .insert([meetingData]);
+
+          if (error) {
+            console.error('Error creating meeting:', error);
+            toast({
+              title: "Partial Success",
+              description: "Event created but failed to sync to meetings.",
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Success",
+              description: "Event created and synced to meetings!",
+            });
+          }
+        } catch (error) {
+          console.error('Error syncing to meetings:', error);
+          toast({
+            title: "Partial Success",
+            description: "Event created but failed to sync to meetings.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Event Created",
+          description: `${newEvent.title} has been added to your calendar.`,
+        });
+      }
       
       // Reset form
       setNewEvent({
@@ -230,15 +289,10 @@ const Calendar = () => {
         attendees: [],
         location: ""
       });
+      setCreateMeeting(false);
       
       // Close modal
       setIsAddEventOpen(false);
-      
-      // Show success
-      toast({
-        title: "Event Created",
-        description: `${newEvent.title} has been added to your calendar.`,
-      });
       
     } catch (error) {
       console.error('Error creating event:', error);
@@ -524,6 +578,19 @@ const Calendar = () => {
                     placeholder="Meeting location (optional)"
                   />
                 </div>
+                
+                {/* Meeting Sync Checkbox */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="create-meeting" 
+                    checked={createMeeting}
+                    onCheckedChange={(checked) => setCreateMeeting(checked as boolean)}
+                  />
+                  <Label htmlFor="create-meeting" className="text-sm">
+                    Also create as meeting (sync to Meetings page)
+                  </Label>
+                </div>
+                
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsAddEventOpen(false)}>
                     Cancel
