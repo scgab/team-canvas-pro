@@ -312,7 +312,9 @@ const AITools = () => {
 
     try {
       const currentUser = (window as any).currentUserEmail || 'unknown';
-      await aiToolsService.create({
+      
+      // Use TeamDataService instead of aiToolsService to ensure proper team_id handling
+      await TeamDataService.createAITool({
         name: newTool.name,
         link: newTool.link,
         note: newTool.note,
