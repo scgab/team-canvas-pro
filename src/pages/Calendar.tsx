@@ -168,6 +168,7 @@ const Calendar = () => {
         description: `${newEvent.title} has been added to your calendar.`,
       });
     } catch (error) {
+      console.error('Calendar event creation error:', error);
       toast({
         title: "Error",
         description: "Failed to create event. Please try again.",
