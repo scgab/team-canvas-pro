@@ -286,35 +286,16 @@ const AITools = () => {
     };
   }, []);
 
-  // Add new AI tool with local state management
+  // Add new AI tool
   const addAiTool = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const effectiveCategory = selectedCategoryForAdd || newTool.category;
     
-    // Validation
-    if (!newTool.name.trim()) {
+    if (!newTool.name.trim() || !newTool.link.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a tool name",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!newTool.link.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a tool URL",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!newTool.note.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a tool description",
+        description: "Name and link are required",
         variant: "destructive"
       });
       return;
@@ -329,41 +310,18 @@ const AITools = () => {
       return;
     }
 
-    // Check if tool already exists
-    const allTools = Object.values(aiTools).flat();
-    const existingTool = allTools.find(tool => 
-      tool.name.toLowerCase() === newTool.name.toLowerCase()
-    );
-    
-    if (existingTool) {
-      toast({
-        title: "Error",
-        description: "Tool already exists",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
-      // Create new tool object for local state
-      const toolToAdd: AITool = {
-        id: Date.now(), // Simple ID generation
-        name: newTool.name.trim(),
-        link: newTool.link.trim(),
-        note: newTool.note.trim(),
+      const currentUser = (window as any).currentUserEmail || 'unknown';
+      await aiToolsService.create({
+        name: newTool.name,
+        link: newTool.link,
+        note: newTool.note,
         category: effectiveCategory,
-        rating: newTool.rating || 3,
-        isFavorite: newTool.isFavorite,
         tags: newTool.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        addedBy: (window as any).currentUserEmail || 'user',
-        addedAt: new Date().toISOString()
-      };
-
-      // Add to local state
-      setAiTools(prev => ({
-        ...prev,
-        [effectiveCategory]: [...(prev[effectiveCategory] || []), toolToAdd]
-      }));
+        rating: newTool.rating,
+        is_favorite: newTool.isFavorite,
+        added_by: currentUser
+      });
 
       // Reset form
       setNewTool({
@@ -372,7 +330,7 @@ const AITools = () => {
         note: '',
         category: '',
         tags: '',
-        rating: 3,
+        rating: 0,
         isFavorite: false
       });
       setSelectedCategoryForAdd('');
@@ -386,7 +344,7 @@ const AITools = () => {
       console.error('Error adding AI tool:', error);
       toast({
         title: "Error",
-        description: "Failed to add AI tool. Please try again.",
+        description: "Failed to add AI tool",
         variant: "destructive"
       });
     }
