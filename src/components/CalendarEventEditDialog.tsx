@@ -7,19 +7,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { calendarService } from "@/services/database";
 import { Trash2 } from "lucide-react";
 
 interface CalendarEvent {
-  id: string;
+  id: string | number;
   title: string;
   description?: string;
-  date: Date;
+  date: Date | string | { value?: { iso?: string; value?: number } };
+  start_time?: string;
+  end_time?: string;
   time?: string;
   type: "meeting" | "deadline" | "milestone" | "reminder";
   location?: string;
   assigned_members?: string[];
   attendees?: string[];
+  priority?: string;
 }
 
 interface Props {
@@ -43,29 +45,53 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
     title: string;
     description: string;
     date: string;
-    time: string;
+    start_time: string;
+    end_time: string;
     type: "meeting" | "deadline" | "milestone" | "reminder";
     location: string;
+    priority: string;
     assigned_members: string[];
   }>({
     title: '',
     description: '',
     date: '',
-    time: '',
+    start_time: '',
+    end_time: '',
     type: 'meeting',
     location: '',
+    priority: 'medium',
     assigned_members: []
   });
 
   useEffect(() => {
     if (event) {
+      console.log('Editing event:', event);
+      
+      // Handle both Date objects and string dates
+      let dateStr = '';
+      if (event.date instanceof Date) {
+        dateStr = event.date.toISOString().split('T')[0];
+      } else if (typeof event.date === 'string') {
+        dateStr = event.date;
+      } else if (event.date && typeof event.date === 'object' && 'value' in event.date && event.date.value) {
+        // Handle complex date objects
+        const dateValue = event.date.value;
+        if (dateValue.iso) {
+          dateStr = new Date(dateValue.iso).toISOString().split('T')[0];
+        } else if (dateValue.value) {
+          dateStr = new Date(dateValue.value).toISOString().split('T')[0];
+        }
+      }
+      
       setFormData({
         title: event.title || '',
         description: event.description || '',
-        date: event.date.toISOString().split('T')[0],
-        time: event.time || '',
+        date: dateStr,
+        start_time: event.start_time || event.time || '',
+        end_time: event.end_time || '',
         type: event.type || 'meeting',
         location: event.location || '',
+        priority: event.priority || 'medium',
         assigned_members: event.assigned_members || []
       });
     }
@@ -86,25 +112,24 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
     if (!event) return;
 
     try {
-      await calendarService.update(event.id, {
+      // Pass the form data directly to the parent's onSubmit function
+      // The parent (Calendar component) will handle the local state update
+      await onSubmit({
         title: formData.title,
         description: formData.description,
         date: formData.date,
-        time: formData.time || null,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
         type: formData.type,
         location: formData.location,
+        priority: formData.priority,
         assigned_members: formData.assigned_members,
         attendees: formData.assigned_members // Keep attendees in sync with assigned members
       });
 
-      toast({
-        title: "Event Updated",
-        description: `"${formData.title}" has been updated.`,
-      });
-
-      await onSubmit(formData);
       onClose();
     } catch (error) {
+      console.error('Error in handleSubmit:', error);
       toast({
         title: "Error",
         description: "Failed to update event. Please try again.",
@@ -118,16 +143,11 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
 
     if (confirm('Are you sure you want to delete this event?')) {
       try {
-        await calendarService.delete(event.id);
-        
-        toast({
-          title: "Event Deleted",
-          description: "The event has been removed from the calendar.",
-        });
-
+        // Call the parent's onDelete function which handles local state update
         await onDelete();
         onClose();
       } catch (error) {
+        console.error('Error in handleDelete:', error);
         toast({
           title: "Error",
           description: "Failed to delete event. Please try again.",
@@ -200,12 +220,37 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
               />
             </div>
             <div>
-              <Label htmlFor="event-time">Time</Label>
+              <Label htmlFor="event-priority">Priority</Label>
+              <Select value={formData.priority} onValueChange={(value: any) => setFormData(prev => ({ ...prev, priority: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="event-start-time">Start Time</Label>
               <Input
-                id="event-time"
+                id="event-start-time"
                 type="time"
-                value={formData.time}
-                onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
+                value={formData.start_time}
+                onChange={(e) => setFormData(prev => ({ ...prev, start_time: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="event-end-time">End Time</Label>
+              <Input
+                id="event-end-time"
+                type="time"
+                value={formData.end_time}
+                onChange={(e) => setFormData(prev => ({ ...prev, end_time: e.target.value }))}
               />
             </div>
           </div>
@@ -228,9 +273,10 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="meeting">Meeting</SelectItem>
+                <SelectItem value="appointment">Appointment</SelectItem>
                 <SelectItem value="deadline">Deadline</SelectItem>
-                <SelectItem value="milestone">Milestone</SelectItem>
                 <SelectItem value="reminder">Reminder</SelectItem>
+                <SelectItem value="event">Event</SelectItem>
               </SelectContent>
             </Select>
           </div>
