@@ -286,16 +286,35 @@ const AITools = () => {
     };
   }, []);
 
-  // Add new AI tool
+  // Add new AI tool with local state management
   const addAiTool = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const effectiveCategory = selectedCategoryForAdd || newTool.category;
     
-    if (!newTool.name.trim() || !newTool.link.trim()) {
+    // Validation
+    if (!newTool.name.trim()) {
       toast({
         title: "Error",
-        description: "Name and link are required",
+        description: "Please enter a tool name",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!newTool.link.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a tool URL",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!newTool.note.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a tool description",
         variant: "destructive"
       });
       return;
@@ -310,18 +329,41 @@ const AITools = () => {
       return;
     }
 
-    try {
-      const currentUser = (window as any).currentUserEmail || 'unknown';
-      await aiToolsService.create({
-        name: newTool.name,
-        link: newTool.link,
-        note: newTool.note,
-        category: effectiveCategory,
-        tags: newTool.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        rating: newTool.rating,
-        is_favorite: newTool.isFavorite,
-        added_by: currentUser
+    // Check if tool already exists
+    const allTools = Object.values(aiTools).flat();
+    const existingTool = allTools.find(tool => 
+      tool.name.toLowerCase() === newTool.name.toLowerCase()
+    );
+    
+    if (existingTool) {
+      toast({
+        title: "Error",
+        description: "Tool already exists",
+        variant: "destructive"
       });
+      return;
+    }
+
+    try {
+      // Create new tool object for local state
+      const toolToAdd: AITool = {
+        id: Date.now(), // Simple ID generation
+        name: newTool.name.trim(),
+        link: newTool.link.trim(),
+        note: newTool.note.trim(),
+        category: effectiveCategory,
+        rating: newTool.rating || 3,
+        isFavorite: newTool.isFavorite,
+        tags: newTool.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+        addedBy: (window as any).currentUserEmail || 'user',
+        addedAt: new Date().toISOString()
+      };
+
+      // Add to local state
+      setAiTools(prev => ({
+        ...prev,
+        [effectiveCategory]: [...(prev[effectiveCategory] || []), toolToAdd]
+      }));
 
       // Reset form
       setNewTool({
@@ -330,7 +372,7 @@ const AITools = () => {
         note: '',
         category: '',
         tags: '',
-        rating: 0,
+        rating: 3,
         isFavorite: false
       });
       setSelectedCategoryForAdd('');
@@ -344,7 +386,7 @@ const AITools = () => {
       console.error('Error adding AI tool:', error);
       toast({
         title: "Error",
-        description: "Failed to add AI tool",
+        description: "Failed to add AI tool. Please try again.",
         variant: "destructive"
       });
     }
