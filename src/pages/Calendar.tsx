@@ -13,6 +13,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { useSharedData } from "@/contexts/SharedDataContext";
+import { TeamDataService } from "@/services/teamData";
 import { CalendarEventEditDialog } from "@/components/CalendarEventEditDialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -137,7 +138,8 @@ const Calendar = () => {
       const day = String(newEvent.date.getDate()).padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
       
-      await createCalendarEvent({
+      // Use TeamDataService instead of SharedDataContext to ensure proper team_id handling
+      await TeamDataService.createCalendarEvent({
         title: newEvent.title,
         description: newEvent.description,
         date: formattedDate,
