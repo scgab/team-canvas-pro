@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { projectsService, tasksService, messagesService, calendarService } from '@/services/database';
+import { TeamDataService } from '@/services/teamData';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Project {
@@ -108,13 +109,13 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       try {
         setLoading(true);
         
-        // Load all data from Supabase in parallel
+        // Load all data from Supabase in parallel using team-based services
         const [projectsData, tasksData, notesData, messagesData, eventsData] = await Promise.all([
-          projectsService.getAll(),
-          tasksService.getAll(),
-          supabase.from('project_notes').select('*').order('created_at', { ascending: false }),
-          messagesService.getAll(),
-          calendarService.getAll()
+          TeamDataService.getTeamProjects(),
+          TeamDataService.getTeamTasks(),
+          TeamDataService.getTeamProjectNotes(),
+          TeamDataService.getTeamMessages(),
+          TeamDataService.getTeamCalendarEvents()
         ]);
 
         // Transform projects data
@@ -154,7 +155,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }));
 
         // Transform notes data
-        const transformedNotes: ProjectNote[] = notesData.data?.map((n: any) => ({
+        const transformedNotes: ProjectNote[] = notesData.map((n: any) => ({
           id: n.id,
           title: n.title,
           content: n.content,
@@ -162,7 +163,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           created_by: n.created_by,
           created_at: n.created_at,
           updated_at: n.updated_at
-        })) || [];
+        }));
 
         // Transform messages data
         const transformedMessages = messagesData.map((m: any) => ({
@@ -294,7 +295,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const randomColor = colors[Math.floor(Math.random() * colors.length)];
       const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
 
-      const newProject = await projectsService.create({
+      const newProject = await TeamDataService.createProject({
         title: projectData.title,
         description: projectData.description,
         priority: projectData.priority,
@@ -336,27 +337,18 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // Convert status to database format
       const dbStatus = taskData.status === 'inProgress' ? 'in_progress' : taskData.status;
       
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          title: taskData.title,
-          description: taskData.description,
-          priority: taskData.priority,
-          status: dbStatus,
-          project_id: taskData.project_id,
-          assignee: taskData.assignee,
-          due_date: taskData.due_date?.toISOString().split('T')[0] || null,
-          start_date: taskData.start_date?.toISOString().split('T')[0] || null,
-          duration: taskData.duration || 1,
-          created_by: currentUserEmail
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating task:', error);
-        throw error;
-      }
+      const data = await TeamDataService.createTask({
+        title: taskData.title,
+        description: taskData.description,
+        priority: taskData.priority,
+        status: dbStatus,
+        project_id: taskData.project_id,
+        assignee: taskData.assignee,
+        due_date: taskData.due_date?.toISOString().split('T')[0] || null,
+        start_date: taskData.start_date?.toISOString().split('T')[0] || null,
+        duration: taskData.duration || 1,
+        created_by: currentUserEmail
+      });
 
       const newTask: Task = {
         id: data.id,
