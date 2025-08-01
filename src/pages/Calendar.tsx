@@ -282,11 +282,15 @@ const Calendar = () => {
 
   // Get events for a specific date (including project deadlines)
   const getEventsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local date string to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     
     const userEvents = events.filter(event => event.date === dateStr).map(event => ({
       ...event,
-      date: new Date(event.date),
+      date: new Date(event.date + 'T00:00:00'), // Add time to avoid timezone offset
       color: "#3B82F6"
     }));
 
@@ -448,7 +452,13 @@ const Calendar = () => {
                       <CalendarComponent
                         mode="single"
                         selected={newEvent.date}
-                        onSelect={(date) => date && setNewEvent(prev => ({ ...prev, date }))}
+                        onSelect={(date) => {
+                          if (date) {
+                            setNewEvent(prev => ({ ...prev, date }));
+                            // Auto-close the dialog after date selection
+                            setTimeout(() => setIsAddEventOpen(false), 100);
+                          }
+                        }}
                         initialFocus
                         className={cn("p-3 pointer-events-auto")}
                       />
@@ -628,7 +638,12 @@ const Calendar = () => {
                       } ${isSelected ? 'bg-accent/20 border-accent' : ''} ${
                         hasHoliday ? 'bg-destructive/5 border-destructive/20' : ''
                       }`}
-                      onClick={() => setSelectedDate(day)}
+                      onClick={() => {
+                        setSelectedDate(day);
+                        // Open create event dialog with selected date
+                        setNewEvent(prev => ({ ...prev, date: day }));
+                        setIsAddEventOpen(true);
+                      }}
                     >
                       <div className={`text-sm font-medium mb-1 ${isToday(day) ? 'text-primary' : hasHoliday ? 'text-destructive' : 'text-foreground'}`}>
                         {day.getDate()}
