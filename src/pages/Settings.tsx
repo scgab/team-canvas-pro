@@ -356,7 +356,7 @@ const Settings = () => {
               <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg border">
                 <h4 className="font-semibold mb-2">Send Admin Invitation</h4>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Send a full admin access invitation to hassan@quartz.org with unlimited team capabilities.
+                  Grant full admin access with unlimited team capabilities to any email address.
                 </p>
                 <AdminInviteButton />
               </div>
