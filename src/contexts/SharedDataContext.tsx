@@ -83,7 +83,7 @@ interface SharedDataContextType {
   loading: boolean;
   createProject: (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'createdBy'>) => Promise<void>;
   createTask: (taskData: Omit<Task, 'id' | 'createdBy' | 'createdAt'>) => Promise<Task>;
-  createNote: (noteData: Omit<ProjectNote, 'id' | 'created_by' | 'created_at' | 'updated_at'>) => Promise<void>;
+  createNote: (noteData: Omit<ProjectNote, 'id' | 'created_by' | 'created_at' | 'updated_at'>) => Promise<ProjectNote>;
   updateNote: (noteId: string, updates: Partial<ProjectNote>) => Promise<void>;
   deleteNote: (noteId: string) => Promise<void>;
   sendMessage: (senderId: string, receiverId: string, content: string) => Promise<void>;
@@ -377,23 +377,26 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
       
-      const { data, error } = await supabase
-        .from('project_notes')
-        .insert([{
-          title: noteData.title,
-          content: noteData.content,
-          project_id: noteData.project_id,
-          created_by: currentUserEmail
-        }])
-        .select()
-        .single();
+      const data = await TeamDataService.createProjectNote({
+        title: noteData.title,
+        content: noteData.content,
+        project_id: noteData.project_id,
+        created_by: currentUserEmail
+      });
 
-      if (error) {
-        console.error('Error creating note:', error);
-        throw error;
-      }
+      const newNote: ProjectNote = {
+        id: data.id,
+        title: data.title,
+        content: data.content,
+        project_id: data.project_id,
+        created_by: data.created_by,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
 
-      console.log('Note created successfully:', data);
+      setNotes(prev => [newNote, ...prev]);
+      console.log('Note created successfully:', newNote);
+      return newNote;
     } catch (error) {
       console.error('Error creating note:', error);
       throw error;
