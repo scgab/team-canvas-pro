@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistedState } from "@/hooks/useDataPersistence";
+import { AdminInviteButton } from "@/components/AdminInviteButton";
 import { Moon, Sun, Clock, Globe, Palette, Bell, User, Shield } from "lucide-react";
 
 type DateFormat = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD";
@@ -335,6 +336,30 @@ const Settings = () => {
                   handleNestedSettingChange("notifications", "teamUpdates", checked)
                 }
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Admin Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Admin Actions
+            </CardTitle>
+            <CardDescription>
+              Administrative functions and special invitations.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4">
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg border">
+                <h4 className="font-semibold mb-2">Send Admin Invitation</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Send a full admin access invitation to hassan@quartz.org with unlimited team capabilities.
+                </p>
+                <AdminInviteButton />
+              </div>
             </div>
           </CardContent>
         </Card>
