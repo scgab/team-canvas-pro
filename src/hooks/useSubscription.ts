@@ -14,7 +14,7 @@ export const useSubscription = () => {
   const { toast } = useToast();
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData>({
     subscribed: false,
-    subscription_tier: 'starter',
+    subscription_tier: 'free',
     subscription_end: null
   });
   const [loading, setLoading] = useState(true);
@@ -38,7 +38,7 @@ export const useSubscription = () => {
 
       setSubscriptionData({
         subscribed: data.subscribed || false,
-        subscription_tier: data.subscription_tier || 'starter',
+        subscription_tier: data.subscription_tier || 'free',
         subscription_end: data.subscription_end || null
       });
     } catch (error) {

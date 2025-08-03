@@ -6,56 +6,97 @@ import { useSubscription } from '@/hooks/useSubscription';
 
 const plans = [
   {
-    id: 'starter',
-    name: 'Starter',
-    price: 'Free',
-    description: 'Perfect for small teams getting started',
-    members: 'Up to 5 team members',
+    id: 'free',
+    name: 'Free',
+    price: '€0',
+    description: 'For individuals looking to keep track of their work',
+    members: 'Up to 3 members',
     icon: Check,
     features: [
-      'Up to 5 team members',
-      '3 projects',
-      'Basic project management',
-      'Community support',
-      'Mobile app access'
+      'Unlimited docs',
+      '200+ templates',
+      '8 column types',
+      'iOS and Android apps'
     ],
     popular: false,
     disabled: true
   },
   {
-    id: 'professional',
-    name: 'Professional',
-    price: '$29',
-    description: 'Best for growing teams and businesses',
-    members: 'Unlimited team members',
+    id: 'basic',
+    name: 'Basic',
+    price: '€29',
+    description: 'Manage all your team\'s work in one place',
+    members: 'Up to 9 members',
+    icon: Zap,
+    features: [
+      'Everything in Free',
+      'Unlimited free viewers',
+      'Unlimited items',
+      '5GB file storage',
+      '500 AI credits per month',
+      'Prioritised customer support',
+      'Create dashboard based on 1 board'
+    ],
+    popular: false,
+    disabled: false
+  },
+  {
+    id: 'standard',
+    name: 'Standard',
+    price: '€49',
+    description: 'Collaborate & optimize your work across teams',
+    members: 'Up to 18 members',
     icon: Crown,
     features: [
-      'Unlimited team members',
-      'Unlimited projects',
-      'Advanced analytics',
-      'Priority support',
-      'Custom integrations',
-      'Shift planning',
-      'Time tracking'
+      'Everything in Basic',
+      'Timeline & Gantt views',
+      'Calendar View',
+      'Guest access',
+      '500 AI credits per month',
+      'Automations (250 actions/month)',
+      'Integrations (250 actions/month)',
+      'Create dashboard combining 5 boards'
     ],
     popular: true,
+    disabled: false
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '€79',
+    description: 'Streamline complex workflows at scale',
+    members: 'Up to 36 members',
+    icon: Rocket,
+    features: [
+      'Everything in Standard',
+      'Private boards',
+      'Chart View',
+      'Time tracking',
+      'Formula Column',
+      '500 AI credits per month',
+      'Automations (25K actions/month)',
+      'Integrations (25K actions/month)',
+      'Create dashboard combining 20 boards'
+    ],
+    popular: false,
     disabled: false
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
     price: 'Custom',
-    description: 'For large organizations with custom needs',
-    members: 'Contact us',
+    description: 'Get exclusive features for your organization',
+    members: 'Unlimited members',
     icon: Building,
     features: [
-      'Everything in Professional',
-      'Custom branding',
-      'SSO integration',
-      'Dedicated support',
-      'Custom workflows',
-      'Advanced security',
-      'API access'
+      'Everything in Pro',
+      'Enterprise-scale automations & integrations',
+      'Multi-level permissions',
+      'Enterprise-grade security & governance',
+      'Advanced reporting & analytics',
+      '500 AI credits per month',
+      'Enterprise support',
+      'Create dashboard combining 50 boards'
     ],
     popular: false,
     disabled: true
@@ -66,16 +107,18 @@ export const SubscriptionPlans = () => {
   const { subscription_tier, createCheckout, openCustomerPortal, subscribed } = useSubscription();
 
   const handlePlanSelect = (planId: string) => {
-    if (planId === 'starter' || planId === 'enterprise') {
-      return; // Starter plan is already active, enterprise needs custom pricing
+    if (planId === 'free' || planId === 'enterprise') {
+      return; // Free plan is already active, enterprise needs custom pricing
     }
     createCheckout(planId);
   };
 
   const getCurrentPlanName = () => {
-    return subscription_tier === 'starter' ? 'Starter' : 
-           subscription_tier === 'professional' ? 'Professional' :
-           subscription_tier === 'enterprise' ? 'Enterprise' : 'Starter';
+    return subscription_tier === 'free' ? 'Free' : 
+           subscription_tier === 'basic' ? 'Basic' :
+           subscription_tier === 'standard' ? 'Standard' :
+           subscription_tier === 'pro' ? 'Pro' :
+           subscription_tier === 'enterprise' ? 'Enterprise' : 'Free';
   };
 
   return (
@@ -102,7 +145,7 @@ export const SubscriptionPlans = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {plans.map((plan) => {
           const Icon = plan.icon;
           const isCurrentPlan = subscription_tier === plan.id;
@@ -132,11 +175,8 @@ export const SubscriptionPlans = () => {
                 <CardTitle className="text-2xl">{plan.name}</CardTitle>
                 <div className="text-3xl font-bold text-primary">
                   {plan.price}
-                  {plan.name === 'Professional' && (
-                    <span className="text-sm font-normal text-muted-foreground">/per user/month</span>
-                  )}
-                  {plan.price === 'Free' && (
-                    <span className="text-sm font-normal text-muted-foreground"> forever</span>
+                  {plan.price !== 'Custom' && plan.price !== '€0' && (
+                    <span className="text-sm font-normal text-muted-foreground">/month</span>
                   )}
                 </div>
                 <CardDescription>{plan.description}</CardDescription>
@@ -162,7 +202,7 @@ export const SubscriptionPlans = () => {
                   {isCurrentPlan
                     ? 'Current Plan'
                     : plan.disabled
-                    ? plan.id === 'starter'
+                    ? plan.id === 'free'
                       ? 'Free Forever'
                       : 'Contact Sales'
                     : `Choose ${plan.name}`}

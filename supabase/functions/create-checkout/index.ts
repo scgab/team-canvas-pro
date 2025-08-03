@@ -36,10 +36,12 @@ serve(async (req) => {
     const { plan } = await req.json();
     logStep("Received plan", { plan });
 
-    // Plan configuration - Professional is $29 per user per month
+    // Plan configuration
     const planConfig = {
-      professional: { price: 2900, name: "Professional Plan - Per User" }, // $29 in cents
-      enterprise: { price: 15000, name: "Enterprise Plan - Custom pricing" } // Custom pricing placeholder
+      basic: { price: 2900, name: "Basic Plan - Up to 9 members" }, // €29 in cents
+      standard: { price: 4900, name: "Standard Plan - Up to 18 members" }, // €49 in cents
+      pro: { price: 7900, name: "Pro Plan - Up to 36 members" }, // €79 in cents
+      enterprise: { price: 15000, name: "Enterprise Plan - Unlimited members" } // €150 in cents
     };
 
     if (!planConfig[plan as keyof typeof planConfig]) {
@@ -68,7 +70,7 @@ serve(async (req) => {
       line_items: [
         {
           price_data: {
-            currency: "usd",
+            currency: "eur",
             product_data: { name: selectedPlan.name },
             unit_amount: selectedPlan.price,
             recurring: { interval: "month" },

@@ -363,53 +363,92 @@ const PricingSection = () => {
 
   const plans = [
     {
-      name: 'Starter',
-      price: 'Free',
-      description: 'Perfect for small teams getting started',
-      members: 'Up to 5 team members',
+      name: 'Free',
+      price: '€0',
+      description: 'For individuals looking to keep track of their work',
+      members: 'Up to 3 members',
       icon: Check,
       features: [
-        'Up to 5 team members',
-        '3 projects',
-        'Basic project management',
-        'Community support',
-        'Mobile app access'
+        'Unlimited docs',
+        '200+ templates',
+        '8 column types',
+        'iOS and Android apps'
       ],
       popular: false,
-      buttonText: 'Get Started Free'
+      buttonText: 'Free Forever'
     },
     {
-      name: 'Professional',
-      price: '$29',
-      description: 'Best for growing teams and businesses',
-      members: 'Unlimited team members',
-      icon: Crown,
+      name: 'Basic',
+      price: '€29',
+      description: 'Manage all your team\'s work in one place',
+      members: 'Up to 9 members',
+      icon: Zap,
       features: [
-        'Unlimited team members',
-        'Unlimited projects',
-        'Advanced analytics',
-        'Priority support',
-        'Custom integrations',
-        'Shift planning',
-        'Time tracking'
+        'Everything in Free',
+        'Unlimited free viewers',
+        'Unlimited items',
+        '5GB file storage',
+        '500 AI credits per month',
+        'Prioritised customer support',
+        'Create dashboard based on 1 board'
       ],
       popular: true,
-      buttonText: 'Start Free Trial'
+      buttonText: 'Get Started'
+    },
+    {
+      name: 'Standard',
+      price: '€49',
+      description: 'Collaborate & optimize your work across teams',
+      members: 'Up to 18 members',
+      icon: Crown,
+      features: [
+        'Everything in Basic',
+        'Timeline & Gantt views',
+        'Calendar View',
+        'Guest access',
+        '500 AI credits per month',
+        'Automations (250 actions/month)',
+        'Integrations (250 actions/month)',
+        'Create dashboard combining 5 boards'
+      ],
+      popular: false,
+      buttonText: 'Get Started'
+    },
+    {
+      name: 'Pro',
+      price: '€79',
+      description: 'Streamline complex workflows at scale',
+      members: 'Up to 36 members',
+      icon: Rocket,
+      features: [
+        'Everything in Standard',
+        'Private boards',
+        'Chart View',
+        'Time tracking',
+        'Formula Column',
+        '500 AI credits per month',
+        'Automations (25K actions/month)',
+        'Integrations (25K actions/month)',
+        'Create dashboard combining 20 boards'
+      ],
+      popular: false,
+      buttonText: 'Get Started'
     },
     {
       name: 'Enterprise',
       price: 'Custom',
-      description: 'For large organizations with custom needs',
-      members: 'Contact us',
+      description: 'Get exclusive features for your organization',
+      members: 'Unlimited members',
       icon: Building,
       features: [
-        'Everything in Professional',
-        'Custom branding',
-        'SSO integration',
-        'Dedicated support',
-        'Custom workflows',
-        'Advanced security',
-        'API access'
+        'Everything in Pro',
+        'Enterprise-scale automations & integrations',
+        'Multi-level permissions',
+        'Enterprise-grade security & governance',
+        'Advanced reporting & analytics',
+        '500 AI credits per month',
+        'Enterprise support',
+        'Create dashboard combining 50 boards'
       ],
       popular: false,
       buttonText: 'Contact Sales'
@@ -432,7 +471,7 @@ const PricingSection = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {plans.map((plan) => {
             const Icon = plan.icon;
             return (
@@ -458,11 +497,8 @@ const PricingSection = () => {
                     <h3 className="text-xl font-bold text-gray-800 mb-2">{plan.name}</h3>
                     <div className="text-3xl font-bold text-blue-600 mb-2">
                       {plan.price}
-                      {plan.name === 'Professional' && (
-                        <span className="text-sm font-normal text-gray-500">/per user/month</span>
-                      )}
-                      {plan.price === 'Free' && (
-                        <span className="text-sm font-normal text-gray-500"> forever</span>
+                      {plan.price !== 'Custom' && plan.price !== '€0' && (
+                        <span className="text-sm font-normal text-gray-500">/month</span>
                       )}
                     </div>
                     <p className="text-gray-600 text-sm mb-2">{plan.description}</p>
@@ -470,12 +506,17 @@ const PricingSection = () => {
                   </div>
 
                   <ul className="space-y-2 mb-6">
-                    {plan.features.map((feature, index) => (
+                    {plan.features.slice(0, 4).map((feature, index) => (
                       <li key={index} className="flex items-start gap-2">
                         <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                         <span className="text-sm text-gray-600">{feature}</span>
                       </li>
                     ))}
+                    {plan.features.length > 4 && (
+                      <li className="text-sm text-gray-500 italic">
+                        +{plan.features.length - 4} more features
+                      </li>
+                    )}
                   </ul>
 
                   <Button
@@ -485,7 +526,7 @@ const PricingSection = () => {
                         : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
                     }`}
                     onClick={handlePlanSelect}
-                    disabled={plan.name === 'Starter'}
+                    disabled={plan.name === 'Free'}
                   >
                     {plan.buttonText}
                   </Button>
