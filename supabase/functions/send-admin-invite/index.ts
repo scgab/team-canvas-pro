@@ -26,7 +26,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending admin invite to: ${email} with ${adminLevel} access`);
 
     const emailResponse = await resend.emails.send({
-      from: "Team Management <onboarding@resend.dev>",
+      from: "Team Management <noreply@nordicneptune.com>",
       to: [email],
       subject: "🚀 Admin Access Granted - Unlimited Team Management",
       html: `
