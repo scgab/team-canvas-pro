@@ -363,6 +363,7 @@ const PricingSection = () => {
 
   const plans = [
     {
+      id: 'free',
       name: 'Free',
       price: '€0',
       description: 'For individuals looking to keep track of their work',
@@ -378,6 +379,7 @@ const PricingSection = () => {
       buttonText: 'Free Forever'
     },
     {
+      id: 'basic',
       name: 'Basic',
       price: '€29',
       description: 'Manage all your team\'s work in one place',
@@ -396,6 +398,7 @@ const PricingSection = () => {
       buttonText: 'Get Started'
     },
     {
+      id: 'standard',
       name: 'Standard',
       price: '€49',
       description: 'Collaborate & optimize your work across teams',
@@ -415,6 +418,7 @@ const PricingSection = () => {
       buttonText: 'Get Started'
     },
     {
+      id: 'pro',
       name: 'Pro',
       price: '€79',
       description: 'Streamline complex workflows at scale',
@@ -435,6 +439,7 @@ const PricingSection = () => {
       buttonText: 'Get Started'
     },
     {
+      id: 'enterprise',
       name: 'Enterprise',
       price: 'Custom',
       description: 'Get exclusive features for your organization',
@@ -455,8 +460,16 @@ const PricingSection = () => {
     }
   ];
 
-  const handlePlanSelect = () => {
-    navigate('/auth');
+  const handlePlanSelect = (planId: string) => {
+    if (planId === 'free') {
+      navigate('/auth');
+    } else if (planId === 'enterprise') {
+      // Contact sales - could open a modal or navigate to contact page
+      navigate('/auth');
+    } else {
+      // Navigate to auth page with plan parameter
+      navigate(`/auth?plan=${planId}`);
+    }
   };
 
   return (
@@ -525,7 +538,7 @@ const PricingSection = () => {
                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
                         : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
                     }`}
-                    onClick={handlePlanSelect}
+                    onClick={() => handlePlanSelect(plan.id)}
                     disabled={plan.name === 'Free'}
                   >
                     {plan.buttonText}

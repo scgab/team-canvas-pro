@@ -340,12 +340,18 @@ const AuthenticationCard = () => {
     }
   }, [searchParams]);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated or handle plan selection
   useEffect(() => {
     if (user) {
-      navigate('/');
+      const plan = searchParams.get('plan');
+      if (plan && plan !== 'free') {
+        // User is authenticated and wants to subscribe to a paid plan
+        navigate(`/subscription?plan=${plan}`);
+      } else {
+        navigate('/');
+      }
     }
-  }, [user, navigate]);
+  }, [user, navigate, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
