@@ -12,7 +12,11 @@ import {
   Users,
   TrendingUp,
   Zap,
-  Lock
+  Lock,
+  Check,
+  Crown,
+  Rocket,
+  Building
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -354,6 +358,197 @@ const BackgroundGraphics = () => {
   );
 };
 
+const PricingSection = () => {
+  const navigate = useNavigate();
+
+  const plans = [
+    {
+      name: 'Free',
+      price: '€0',
+      description: 'For individuals looking to keep track of their work',
+      members: 'Up to 3 members',
+      icon: Check,
+      features: [
+        'Unlimited docs',
+        '200+ templates',
+        '8 column types',
+        'iOS and Android apps'
+      ],
+      popular: false,
+      buttonText: 'Free Forever'
+    },
+    {
+      name: 'Basic',
+      price: '€29',
+      description: 'Manage all your team\'s work in one place',
+      members: 'Up to 9 members',
+      icon: Zap,
+      features: [
+        'Everything in Free',
+        'Unlimited free viewers',
+        'Unlimited items',
+        '5GB file storage',
+        '500 AI credits per month',
+        'Prioritised customer support',
+        'Create dashboard based on 1 board'
+      ],
+      popular: true,
+      buttonText: 'Get Started'
+    },
+    {
+      name: 'Standard',
+      price: '€49',
+      description: 'Collaborate & optimize your work across teams',
+      members: 'Up to 18 members',
+      icon: Crown,
+      features: [
+        'Everything in Basic',
+        'Timeline & Gantt views',
+        'Calendar View',
+        'Guest access',
+        '500 AI credits per month',
+        'Automations (250 actions/month)',
+        'Integrations (250 actions/month)',
+        'Create dashboard combining 5 boards'
+      ],
+      popular: false,
+      buttonText: 'Get Started'
+    },
+    {
+      name: 'Pro',
+      price: '€79',
+      description: 'Streamline complex workflows at scale',
+      members: 'Up to 36 members',
+      icon: Rocket,
+      features: [
+        'Everything in Standard',
+        'Private boards',
+        'Chart View',
+        'Time tracking',
+        'Formula Column',
+        '500 AI credits per month',
+        'Automations (25K actions/month)',
+        'Integrations (25K actions/month)',
+        'Create dashboard combining 20 boards'
+      ],
+      popular: false,
+      buttonText: 'Get Started'
+    },
+    {
+      name: 'Enterprise',
+      price: 'Custom',
+      description: 'Get exclusive features for your organization',
+      members: 'Unlimited members',
+      icon: Building,
+      features: [
+        'Everything in Pro',
+        'Enterprise-scale automations & integrations',
+        'Multi-level permissions',
+        'Enterprise-grade security & governance',
+        'Advanced reporting & analytics',
+        '500 AI credits per month',
+        'Enterprise support',
+        'Create dashboard combining 50 boards'
+      ],
+      popular: false,
+      buttonText: 'Contact Sales'
+    }
+  ];
+
+  const handlePlanSelect = () => {
+    navigate('/auth');
+  };
+
+  return (
+    <div className="bg-white py-16">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl lg:text-4xl font-bold text-gray-800 mb-4">
+            Choose Your Plan
+          </h2>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Scale your team productivity with the right plan for your needs
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          {plans.map((plan) => {
+            const Icon = plan.icon;
+            return (
+              <Card
+                key={plan.name}
+                className={`relative ${
+                  plan.popular ? 'border-blue-500 shadow-lg scale-105' : ''
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                      Most Popular
+                    </span>
+                  </div>
+                )}
+                
+                <CardContent className="p-6">
+                  <div className="text-center mb-6">
+                    <div className="mx-auto mb-4 p-3 bg-blue-50 rounded-full w-fit">
+                      <Icon className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">{plan.name}</h3>
+                    <div className="text-3xl font-bold text-blue-600 mb-2">
+                      {plan.price}
+                      {plan.price !== 'Custom' && plan.price !== '€0' && (
+                        <span className="text-sm font-normal text-gray-500">/month</span>
+                      )}
+                    </div>
+                    <p className="text-gray-600 text-sm mb-2">{plan.description}</p>
+                    <p className="text-sm font-semibold text-blue-600">{plan.members}</p>
+                  </div>
+
+                  <ul className="space-y-2 mb-6">
+                    {plan.features.slice(0, 4).map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-gray-600">{feature}</span>
+                      </li>
+                    ))}
+                    {plan.features.length > 4 && (
+                      <li className="text-sm text-gray-500 italic">
+                        +{plan.features.length - 4} more features
+                      </li>
+                    )}
+                  </ul>
+
+                  <Button
+                    className={`w-full ${
+                      plan.popular
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                    }`}
+                    onClick={handlePlanSelect}
+                    disabled={plan.name === 'Free'}
+                  >
+                    {plan.buttonText}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        
+        <div className="text-center mt-8">
+          <p className="text-gray-600">
+            All plans include our core features. Need a custom solution?{' '}
+            <button className="text-blue-600 hover:text-blue-700 font-semibold">
+              Contact our sales team
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Landing = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative">
@@ -380,6 +575,9 @@ const Landing = () => {
           </div>
         </div>
       </div>
+      
+      {/* Pricing Section */}
+      <PricingSection />
       
       {/* Background Elements */}
       <BackgroundGraphics />
