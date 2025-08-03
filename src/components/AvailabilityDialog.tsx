@@ -1,138 +1,102 @@
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Calendar } from "@/components/ui/calendar";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { CalendarDays, Clock } from "lucide-react";
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Clock, Save } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AvailabilityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedDate: Date;
-  userEmail: string;
+  selectedDate: Date | null;
+  teamId: string | null;
+  onSuccess?: () => void;
 }
 
-interface Availability {
-  id: string;
-  team_member_email: string;
-  date: string;
-  is_available: boolean;
-  preferred_start_time: string | null;
-  preferred_end_time: string | null;
-  notes: string | null;
-}
-
-export const AvailabilityDialog = ({ open, onOpenChange, selectedDate, userEmail }: AvailabilityDialogProps) => {
-  const [availability, setAvailability] = useState<Availability | null>(null);
+export const AvailabilityDialog = ({ 
+  open, 
+  onOpenChange, 
+  selectedDate, 
+  teamId,
+  onSuccess 
+}: AvailabilityDialogProps) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('17:00');
   const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (open && selectedDate) {
-      fetchAvailability();
-    }
-  }, [open, selectedDate, userEmail]);
+  const handleSave = async () => {
+    if (!selectedDate || !teamId || !user?.email) return;
 
-  const fetchAvailability = async () => {
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    
-    const { data, error } = await supabase
-      .from('availability')
-      .select('*')
-      .eq('team_member_email', userEmail)
-      .eq('date', dateStr)
-      .single();
+    setLoading(true);
+    try {
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      
+      // Check if availability already exists for this date
+      const { data: existing } = await supabase
+        .from('availability')
+        .select('id')
+        .eq('team_id', teamId)
+        .eq('team_member_email', user.email)
+        .eq('date', dateStr)
+        .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching availability:', error);
-      return;
-    }
+      if (existing) {
+        // Update existing
+        const { error } = await supabase
+          .from('availability')
+          .update({
+            is_available: isAvailable,
+            preferred_start_time: isAvailable ? startTime : null,
+            preferred_end_time: isAvailable ? endTime : null,
+            notes: notes
+          })
+          .eq('id', existing.id);
 
-    if (data) {
-      setAvailability(data);
-      setIsAvailable(data.is_available);
-      setStartTime(data.preferred_start_time || '09:00');
-      setEndTime(data.preferred_end_time || '17:00');
-      setNotes(data.notes || '');
-    } else {
-      // Reset to defaults for new availability
-      setAvailability(null);
+        if (error) throw error;
+      } else {
+        // Create new
+        const { error } = await supabase
+          .from('availability')
+          .insert({
+            team_id: teamId,
+            team_member_email: user.email,
+            date: dateStr,
+            is_available: isAvailable,
+            preferred_start_time: isAvailable ? startTime : null,
+            preferred_end_time: isAvailable ? endTime : null,
+            notes: notes
+          });
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Availability updated successfully"
+      });
+
+      onOpenChange(false);
+      onSuccess?.();
+      
+      // Reset form
       setIsAvailable(true);
       setStartTime('09:00');
       setEndTime('17:00');
       setNotes('');
-    }
-  };
-
-  const saveAvailability = async () => {
-    setLoading(true);
-    const dateStr = selectedDate.toISOString().split('T')[0];
-
-    try {
-      console.log('=== AVAILABILITY SAVE DEBUG ===');
-      console.log('User email:', userEmail);
-      console.log('Selected date:', dateStr);
-      console.log('Is available:', isAvailable);
-      console.log('Existing availability:', availability);
-
-      const availabilityData = {
-        team_member_email: userEmail,
-        date: dateStr,
-        is_available: isAvailable,
-        preferred_start_time: isAvailable ? startTime : null,
-        preferred_end_time: isAvailable ? endTime : null,
-        notes: notes.trim() || null
-      };
-
-      console.log('Saving availability data:', availabilityData);
-
-      if (availability) {
-        // Update existing
-        console.log('Updating existing availability with ID:', availability.id);
-        const { data, error } = await supabase
-          .from('availability')
-          .update(availabilityData)
-          .eq('id', availability.id)
-          .select();
-
-        if (error) {
-          console.error('Update error:', error);
-          throw error;
-        }
-        console.log('Update successful:', data);
-      } else {
-        // Create new
-        console.log('Creating new availability record');
-        const { data, error } = await supabase
-          .from('availability')
-          .insert(availabilityData)
-          .select();
-
-        if (error) {
-          console.error('Insert error:', error);
-          throw error;
-        }
-        console.log('Insert successful:', data);
-      }
-
-      console.log('=== AVAILABILITY SAVE SUCCESS ===');
-      toast.success('Availability updated successfully');
-      onOpenChange(false);
     } catch (error: any) {
-      console.error('=== AVAILABILITY SAVE FAILED ===');
-      console.error('Error details:', error);
-      console.error('Error message:', error.message);
-      console.error('Error code:', error.code);
-      toast.error('Failed to update availability: ' + error.message);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update availability",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -140,60 +104,60 @@ export const AvailabilityDialog = ({ open, onOpenChange, selectedDate, userEmail
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4" />
-            Availability for {selectedDate.toDateString()}
+            <Clock className="w-5 h-5" />
+            Set Availability for {selectedDate?.toLocaleDateString()}
           </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="available">Available for work</Label>
-            <Switch
-              id="available"
-              checked={isAvailable}
-              onCheckedChange={setIsAvailable}
-            />
+          <div className="flex gap-4">
+            <Button
+              variant={isAvailable ? "default" : "outline"}
+              onClick={() => setIsAvailable(true)}
+              className="flex-1"
+            >
+              Available
+            </Button>
+            <Button
+              variant={!isAvailable ? "destructive" : "outline"}
+              onClick={() => setIsAvailable(false)}
+              className="flex-1"
+            >
+              Not Available
+            </Button>
           </div>
 
           {isAvailable && (
-            <>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm font-medium mb-2 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Preferred Time Range
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label htmlFor="start-time" className="text-xs text-muted-foreground">Start Time</Label>
-                    <Input
-                      id="start-time"
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="end-time" className="text-xs text-muted-foreground">End Time</Label>
-                    <Input
-                      id="end-time"
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                    />
-                  </div>
-                </div>
+                <Label htmlFor="start-time">Preferred Start Time</Label>
+                <Input
+                  id="start-time"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
               </div>
-            </>
+              <div>
+                <Label htmlFor="end-time">Preferred End Time</Label>
+                <Input
+                  id="end-time"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
+              </div>
+            </div>
           )}
 
           <div>
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">Notes (Optional)</Label>
             <Textarea
               id="notes"
-              placeholder={isAvailable ? "Any specific preferences or constraints..." : "Reason for unavailability..."}
+              placeholder="Add any additional notes about your availability..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
@@ -201,18 +165,11 @@ export const AvailabilityDialog = ({ open, onOpenChange, selectedDate, userEmail
           </div>
 
           <div className="flex gap-2 pt-4">
-            <Button 
-              onClick={saveAvailability} 
-              disabled={loading}
-              className="flex-1"
-            >
+            <Button onClick={handleSave} disabled={loading} className="flex items-center gap-2">
+              <Save className="w-4 h-4" />
               {loading ? 'Saving...' : 'Save Availability'}
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
           </div>

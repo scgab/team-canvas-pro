@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Calendar, Clock, CheckCircle, FileText, UserPlus } from 'lucide-react';
+import { BarChart3, Calendar, Clock, CheckCircle, FileText, UserPlus, Settings } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { ShiftsOverview } from '@/components/ShiftsOverview';
 import { MakeShifts } from '@/components/MakeShifts';
+import { AllShiftsManagement } from '@/components/AllShiftsManagement';
+import { AvailabilityCalendar } from '@/components/AvailabilityCalendar';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -123,7 +125,10 @@ const ShiftPlanningPage = () => {
     { id: 'shifts-overview', label: 'Shifts Overview', icon: BarChart3 }
   ];
 
-  const adminTab = { id: 'make-shifts', label: 'Make Shifts', icon: UserPlus };
+  const adminTabs = [
+    { id: 'make-shifts', label: 'Make Shifts', icon: UserPlus },
+    { id: 'all-shifts', label: 'All Shifts', icon: Settings }
+  ];
 
   const memberTabs = [
     { id: 'my-shifts', label: 'My Shifts', icon: Calendar },
@@ -133,7 +138,7 @@ const ShiftPlanningPage = () => {
   ];
 
   const tabs = isAdmin 
-    ? [...baseTabs, adminTab, ...memberTabs]
+    ? [...baseTabs, ...adminTabs, ...memberTabs]
     : [...baseTabs, ...memberTabs];
   return (
     <Layout>
@@ -174,6 +179,10 @@ const ShiftPlanningPage = () => {
 
           {activeTab === 'make-shifts' && isAdmin && (
             <MakeShifts onShiftCreated={refreshData} />
+          )}
+
+          {activeTab === 'all-shifts' && isAdmin && (
+            <AllShiftsManagement onRefresh={refreshData} />
           )}
           
           {activeTab === 'my-shifts' && (
@@ -266,26 +275,7 @@ const ShiftPlanningPage = () => {
           )}
           
           {activeTab === 'my-availability' && (
-            <div className="space-y-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-xl font-semibold mb-4">My Availability</h2>
-                <div className="grid grid-cols-7 gap-2 mb-4">
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-                    <div key={day} className="text-center">
-                      <div className="font-medium text-sm mb-2">{day}</div>
-                      <div className="space-y-1">
-                        <button className="w-full p-2 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200">
-                          Available
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                  Update Availability
-                </button>
-              </div>
-            </div>
+            <AvailabilityCalendar onRefresh={refreshData} />
           )}
           
           {activeTab === 'my-reports' && (
