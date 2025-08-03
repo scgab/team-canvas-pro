@@ -53,13 +53,13 @@ serve(async (req) => {
         user_id: user.id,
         stripe_customer_id: null,
         subscribed: false,
-        subscription_tier: "free",
+        subscription_tier: "starter",
         subscription_end: null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'email' });
       return new Response(JSON.stringify({ 
         subscribed: false, 
-        subscription_tier: "free",
+        subscription_tier: "starter",
         subscription_end: null 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -76,7 +76,7 @@ serve(async (req) => {
       limit: 1,
     });
     const hasActiveSub = subscriptions.data.length > 0;
-    let subscriptionTier = "free";
+    let subscriptionTier = "starter";
     let subscriptionEnd = null;
 
     if (hasActiveSub) {
@@ -89,13 +89,9 @@ serve(async (req) => {
       const price = await stripe.prices.retrieve(priceId);
       const amount = price.unit_amount || 0;
       
-      if (amount >= 7900) {
-        subscriptionTier = "pro";
-      } else if (amount >= 4900) {
-        subscriptionTier = "standard";  
-      } else if (amount >= 2900) {
-        subscriptionTier = "basic";
-      } else if (amount >= 15000) {
+      if (amount <= 3000) {
+        subscriptionTier = "professional";
+      } else {
         subscriptionTier = "enterprise";
       }
       
