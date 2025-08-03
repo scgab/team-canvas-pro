@@ -14,6 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserColors } from "@/components/UserColorContext";
 import { useToast } from "@/hooks/use-toast";
+import { TeamAuthService } from "@/services/teamAuth";
+import { useTeamMember } from "@/hooks/useTeamMember";
 import { 
   Users, 
   MessageSquare, 
@@ -25,8 +27,17 @@ import {
   MapPin,
   Award,
   FolderOpen,
-  Megaphone
+  Megaphone,
+  MoreVertical,
+  UserMinus,
+  Shield
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface TeamMember {
   id: string;
@@ -40,6 +51,7 @@ interface TeamMember {
 const Team = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isAdmin } = useTeamMember();
   const { getColorByEmail } = useUserColors();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("messaging");
@@ -55,32 +67,34 @@ const Team = () => {
   }, []);
 
   const fetchTeamMembers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('team_members')
-        .select('*')
-        .eq('status', 'active')
-        .order('name');
+    if (!user?.email) {
+      setLoading(false);
+      return;
+    }
 
-      if (error) {
-        console.error('Error fetching team members:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load team members",
-          variant: "destructive"
-        });
+    try {
+      // Get user's team first
+      const teamData = await TeamAuthService.getUserTeam(user.email);
+      if (!teamData) {
+        setTeamMembers([]);
+        setLoading(false);
         return;
       }
 
+      // Get team members using the team service
+      const members = await TeamAuthService.getTeamMembers(teamData.team.id);
+      
       // Transform the data to match our interface
-      const transformedMembers: TeamMember[] = (data || []).map(member => ({
-        id: member.id,
-        name: member.name,
-        email: member.email,
-        role: member.role === 'admin' ? 'Admin' : 'Member',
-        full_name: member.full_name,
-        competence_level: member.competence_level
-      }));
+      const transformedMembers: TeamMember[] = members
+        .filter(member => member.status === 'active')
+        .map(member => ({
+          id: member.id,
+          name: member.full_name || member.email,
+          email: member.email,
+          role: member.role === 'admin' ? 'Admin' : 'Member',
+          full_name: member.full_name,
+          competence_level: member.competence_level
+        }));
 
       setTeamMembers(transformedMembers);
     } catch (error) {
@@ -94,6 +108,11 @@ const Team = () => {
       setLoading(false);
     }
   };
+
+  // Refresh team members when user changes
+  useEffect(() => {
+    fetchTeamMembers();
+  }, [user]);
 
   // Check if messaging tab should be active from URL params
   useEffect(() => {
@@ -115,10 +134,54 @@ const Team = () => {
   };
 
   const handleMemberAdded = () => {
+    // Refresh the team members list
+    fetchTeamMembers();
     toast({
-      title: "Team Member Added",
-      description: "The new team member has been added successfully."
+      title: "Team Member Invited",
+      description: "The invitation has been sent successfully."
     });
+  };
+
+  const handleRemoveMember = async (memberId: string, memberEmail: string) => {
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Only team admins can remove members.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (memberEmail === user?.email) {
+      toast({
+        title: "Cannot Remove Self",
+        description: "You cannot remove yourself from the team.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(`Are you sure you want to remove ${memberEmail} from the team?`);
+    if (!confirmed) return;
+
+    try {
+      await TeamAuthService.removeTeamMember(memberId);
+      
+      // Refresh the team members list
+      fetchTeamMembers();
+      
+      toast({
+        title: "Member Removed",
+        description: `${memberEmail} has been removed from the team.`
+      });
+    } catch (error: any) {
+      console.error('Error removing member:', error);
+      toast({
+        title: "Removal Failed",
+        description: error.message || "Failed to remove team member.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleGenerateReport = () => {
@@ -153,10 +216,12 @@ const Team = () => {
               <Calendar className="w-4 h-4 mr-2" />
               Schedule Meeting
             </Button>
-            <Button onClick={handleAddMember}>
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add Member
-            </Button>
+            {isAdmin && (
+              <Button onClick={handleAddMember}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add Member
+              </Button>
+            )}
             <Button variant="outline" onClick={handleGenerateReport}>
               <FileText className="w-4 h-4 mr-2" />
               Generate Report
@@ -189,22 +254,49 @@ const Team = () => {
               return (
                 <Card key={member.id} className="bg-gradient-card shadow-custom-card">
                   <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-12 h-12">
-                        <AvatarFallback 
-                          className="text-white"
-                          style={{ backgroundColor: memberColor.primary }}
-                        >
-                          {member.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="font-medium text-foreground">{member.name}</h3>
-                        <p className="text-sm text-muted-foreground">{member.role}</p>
-                        <Badge className="bg-success text-success-foreground text-xs mt-1">
-                          Active
-                        </Badge>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-12 h-12">
+                          <AvatarFallback 
+                            className="text-white"
+                            style={{ backgroundColor: memberColor.primary }}
+                          >
+                            {member.name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium text-foreground">{member.name}</h3>
+                            {member.role === 'Admin' && (
+                              <Shield className="w-4 h-4 text-yellow-500" />
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{member.role}</p>
+                          <Badge className="bg-success text-success-foreground text-xs mt-1">
+                            Active
+                          </Badge>
+                        </div>
                       </div>
+                      
+                      {/* Admin Controls */}
+                      {isAdmin && member.email !== user?.email && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleRemoveMember(member.id, member.email)}
+                              className="text-destructive"
+                            >
+                              <UserMinus className="w-4 h-4 mr-2" />
+                              Remove from Team
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">

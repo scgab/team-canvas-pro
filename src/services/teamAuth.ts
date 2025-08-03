@@ -188,7 +188,22 @@ export class TeamAuthService {
 
       if (memberError) throw memberError;
 
-      // TODO: Send invitation email
+      // Send invitation email
+      try {
+        await supabase.functions.invoke('send-team-invite', {
+          body: {
+            email: email,
+            teamName: 'Your Team', // We could fetch this from the team data
+            inviterName: invitedBy,
+            invitationToken: invitationToken
+          }
+        });
+        console.log(`Invitation email sent to ${email}`);
+      } catch (emailError) {
+        console.error('Failed to send invitation email:', emailError);
+        // Don't throw here - member is already added, email failure shouldn't rollback
+      }
+      
       console.log(`Invitation sent to ${email} with token ${invitationToken}`);
     } catch (error) {
       console.error('Error inviting team member:', error);

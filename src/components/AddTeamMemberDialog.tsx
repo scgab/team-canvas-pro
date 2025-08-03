@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { TeamAuthService } from "@/services/teamAuth";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AddTeamMemberDialogProps {
   open: boolean;
@@ -14,131 +16,138 @@ interface AddTeamMemberDialogProps {
 
 export function AddTeamMemberDialog({ open, onOpenChange, onMemberAdded }: AddTeamMemberDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
     email: "",
-    role: "member",
-    department: "",
-    skills: "",
-    phone: ""
+    role: "member"
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.email.trim()) {
+    if (!formData.email.trim()) {
       toast({
         title: "Error",
-        description: "Name and email are required.",
+        description: "Email is required.",
         variant: "destructive"
       });
       return;
     }
 
-    // In a real app, this would save to a database
-    toast({
-      title: "Team Member Added",
-      description: `${formData.name} has been added to the team.`
-    });
+    if (!user?.email) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to invite team members.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      role: "member",
-      department: "",
-      skills: "",
-      phone: ""
-    });
+    setLoading(true);
+    try {
+      // Get current user's team
+      const teamData = await TeamAuthService.getUserTeam(user.email);
+      if (!teamData) {
+        throw new Error("No team found for current user");
+      }
 
-    onMemberAdded();
-    onOpenChange(false);
+      // Check if current user is admin
+      const teamMembers = await TeamAuthService.getTeamMembers(teamData.team.id);
+      const userMember = teamMembers.find(m => m.email === user.email);
+      
+      if (userMember?.role !== 'admin') {
+        throw new Error("Only team admins can invite new members");
+      }
+
+      // Send invitation
+      await TeamAuthService.inviteTeamMember(
+        formData.email.trim(), 
+        teamData.team.id, 
+        user.email
+      );
+
+      toast({
+        title: "Invitation Sent!",
+        description: `Invitation email sent to ${formData.email}`
+      });
+
+      // Reset form
+      setFormData({
+        email: "",
+        role: "member"
+      });
+
+      onMemberAdded();
+      onOpenChange(false);
+
+    } catch (error: any) {
+      console.error('Error inviting team member:', error);
+      toast({
+        title: "Invitation Failed",
+        description: error.message || "Failed to send invitation",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Team Member</DialogTitle>
+          <DialogTitle>Invite Team Member</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="name">Full Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter full name"
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="email">Email *</Label>
+            <Label htmlFor="email">Email Address *</Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="Enter email address"
+              placeholder="Enter email address to invite"
               required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="role">Role</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="viewer">Viewer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="department">Department</Label>
-              <Input
-                id="department"
-                value={formData.department}
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                placeholder="e.g., Engineering"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="phone">Phone Number</Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="Enter phone number"
+              disabled={loading}
             />
           </div>
 
           <div>
-            <Label htmlFor="skills">Skills</Label>
-            <Input
-              id="skills"
-              value={formData.skills}
-              onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-              placeholder="e.g., React, Node.js, Design"
-            />
+            <Label htmlFor="role">Initial Role</Label>
+            <Select 
+              value={formData.role} 
+              onValueChange={(value) => setFormData({ ...formData, role: value })}
+              disabled={loading}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="bg-muted/50 p-3 rounded-md">
+            <p className="text-sm text-muted-foreground">
+              An invitation email will be sent to this address. The person can join your team by clicking the link in the email.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
-            <Button type="submit">
-              Add Member
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Sending Invitation...' : 'Send Invitation'}
             </Button>
           </div>
         </form>
