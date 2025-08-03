@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,7 @@ interface NotificationPanelProps {
 }
 
 export function NotificationPanel({ open, onOpenChange, currentUser }: NotificationPanelProps) {
+  const navigate = useNavigate();
   const { getColorByEmail } = useUserColors();
   const [notifications, setNotifications] = usePersistedState<Notification[]>('notifications', [
     {
@@ -110,6 +112,41 @@ export function NotificationPanel({ open, onOpenChange, currentUser }: Notificat
     return timestamp.toLocaleDateString();
   };
 
+  const handleNotificationClick = (notification: Notification) => {
+    markAsRead(notification.id);
+    
+    // Close the notification panel
+    onOpenChange(false);
+    
+    // Navigate based on notification type
+    switch (notification.type) {
+      case 'message':
+        navigate('/team?tab=messaging');
+        break;
+      case 'project':
+        navigate('/projects');
+        break;
+      case 'task':
+        navigate('/board');
+        break;
+      case 'calendar':
+        navigate('/meetings');
+        break;
+      case 'team':
+        navigate('/team');
+        break;
+      case 'file':
+        navigate('/team?tab=files');
+        break;
+      default:
+        // If actionUrl is provided, use it
+        if (notification.actionUrl) {
+          navigate(notification.actionUrl);
+        }
+        break;
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -178,12 +215,7 @@ export function NotificationPanel({ open, onOpenChange, currentUser }: Notificat
                         className={`p-3 hover:bg-muted/50 transition-colors cursor-pointer border-b ${
                           !notification.read ? 'bg-primary/5' : ''
                         }`}
-                        onClick={() => {
-                          markAsRead(notification.id);
-                          if (notification.actionUrl) {
-                            // Navigate to action URL
-                          }
-                        }}
+                        onClick={() => handleNotificationClick(notification)}
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0">
