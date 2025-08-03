@@ -37,7 +37,11 @@ interface AvailableShiftForm {
   description: string;
 }
 
-export const MakeShifts = () => {
+interface MakeShiftsProps {
+  onShiftCreated?: () => void;
+}
+
+export const MakeShifts = ({ onShiftCreated }: MakeShiftsProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -147,6 +151,9 @@ export const MakeShifts = () => {
         notes: ''
       });
 
+      // Refresh parent data
+      onShiftCreated?.();
+
     } catch (error: any) {
       console.error('Error creating shift:', error);
       toast({
@@ -227,6 +234,9 @@ export const MakeShifts = () => {
         description: ''
       });
       setAvailableShiftDialogOpen(false);
+      
+      // Refresh parent data
+      onShiftCreated?.();
     } catch (error: any) {
       console.error('Error creating available shift:', error);
       toast({

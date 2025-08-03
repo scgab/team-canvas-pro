@@ -1,13 +1,99 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart3, Calendar, Clock, CheckCircle, FileText, UserPlus } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { ShiftsOverview } from '@/components/ShiftsOverview';
 import { MakeShifts } from '@/components/MakeShifts';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { TeamAuthService } from '@/services/teamAuth';
+import { useToast } from '@/hooks/use-toast';
 
 const ShiftPlanningPage = () => {
   const [activeTab, setActiveTab] = useState('shifts-overview');
   const { isAdmin } = useTeamMember();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [shifts, setShifts] = useState([]);
+  const [availableShifts, setAvailableShifts] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamId, setTeamId] = useState<string | null>(null);
+
+  // Fetch team data and shifts
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.email) return;
+
+      try {
+        // Get team data
+        const teamData = await TeamAuthService.getUserTeam(user.email);
+        if (teamData?.team?.id) {
+          setTeamId(teamData.team.id);
+          
+          // Fetch team members
+          const members = await TeamAuthService.getTeamMembers(teamData.team.id);
+          setTeamMembers(members.filter(m => m.status === 'active'));
+
+          // Fetch shifts
+          const { data: shiftsData, error: shiftsError } = await supabase
+            .from('shifts')
+            .select('*')
+            .eq('team_id', teamData.team.id)
+            .order('date', { ascending: true });
+
+          if (!shiftsError && shiftsData) {
+            setShifts(shiftsData);
+          }
+
+          // Fetch available shifts
+          const { data: availableShiftsData, error: availableError } = await supabase
+            .from('available_shifts')
+            .select('*')
+            .eq('team_id', teamData.team.id)
+            .order('date', { ascending: true });
+
+          if (!availableError && availableShiftsData) {
+            setAvailableShifts(availableShiftsData);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, [user?.email]);
+
+  // Function to refresh data (useful after creating new shifts)
+  const refreshData = async () => {
+    if (!teamId) return;
+    
+    try {
+      // Fetch shifts
+      const { data: shiftsData, error: shiftsError } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('team_id', teamId)
+        .order('date', { ascending: true });
+
+      if (!shiftsError && shiftsData) {
+        setShifts(shiftsData);
+      }
+
+      // Fetch available shifts
+      const { data: availableShiftsData, error: availableError } = await supabase
+        .from('available_shifts')
+        .select('*')
+        .eq('team_id', teamId)
+        .order('date', { ascending: true });
+
+      if (!availableError && availableShiftsData) {
+        setAvailableShifts(availableShiftsData);
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
+  };
 
   // Simple hardcoded user profile - no async loading
   const getCurrentUserProfile = () => {
@@ -78,16 +164,16 @@ const ShiftPlanningPage = () => {
         <div className="min-h-96">
           {activeTab === 'shifts-overview' && (
             <ShiftsOverview 
-              currentUser={{ email: getCurrentUserProfile().email }}
-              teamMembers={[]}
-              shifts={[]}
-              availableShifts={[]}
+              currentUser={{ email: user?.email || getCurrentUserProfile().email }}
+              teamMembers={teamMembers}
+              shifts={shifts}
+              availableShifts={availableShifts}
               onTabChange={setActiveTab}
             />
           )}
 
           {activeTab === 'make-shifts' && isAdmin && (
-            <MakeShifts />
+            <MakeShifts onShiftCreated={refreshData} />
           )}
           
           {activeTab === 'my-shifts' && (
@@ -119,26 +205,61 @@ const ShiftPlanningPage = () => {
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-xl font-semibold mb-4">Available Shifts</h2>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h3 className="font-medium">Weekend Shift</h3>
-                      <p className="text-sm text-gray-500">Saturday • 10:00 AM - 6:00 PM</p>
-                      <p className="text-xs text-gray-400">Competence: Intermediate</p>
+                  {availableShifts.length > 0 ? (
+                    availableShifts
+                      .filter(shift => !shift.claimed_by)
+                      .map((shift) => (
+                        <div key={shift.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div>
+                            <h3 className="font-medium">{shift.shift_type} Shift</h3>
+                            <p className="text-sm text-gray-500">
+                              <strong>{new Date(shift.date).toLocaleDateString()}</strong> • {shift.start_time} - {shift.end_time}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              Competence Required: {shift.competence_required}
+                            </p>
+                            {shift.description && (
+                              <p className="text-xs text-gray-500 mt-1">{shift.description}</p>
+                            )}
+                          </div>
+                          <button 
+                            className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600"
+                            onClick={async () => {
+                              try {
+                                const { error } = await supabase
+                                  .from('available_shifts')
+                                  .update({ claimed_by: user?.email })
+                                  .eq('id', shift.id);
+                                
+                                if (error) throw error;
+                                
+                                // Refresh data
+                                refreshData();
+                                
+                                toast({
+                                  title: "Success",
+                                  description: "Shift claimed successfully!"
+                                });
+                              } catch (error: any) {
+                                toast({
+                                  title: "Error",
+                                  description: error.message || "Failed to claim shift",
+                                  variant: "destructive"
+                                });
+                              }
+                            }}
+                          >
+                            Claim Shift
+                          </button>
+                        </div>
+                      ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-gray-500">No available shifts at the moment</p>
+                      <p className="text-sm text-gray-400">Check back later for new opportunities</p>
                     </div>
-                    <button className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600">
-                      Claim Shift
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h3 className="font-medium">Night Shift</h3>
-                      <p className="text-sm text-gray-500">Friday • 11:00 PM - 7:00 AM</p>
-                      <p className="text-xs text-gray-400">Competence: Advanced</p>
-                    </div>
-                    <button className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600">
-                      Claim Shift
-                    </button>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
