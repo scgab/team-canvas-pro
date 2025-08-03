@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.send-shift-notifications]
 verify_jwt = false
+
+[functions.send-event-notifications]
+verify_jwt = false

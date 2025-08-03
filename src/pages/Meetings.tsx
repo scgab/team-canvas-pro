@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { EventNotificationButton } from '@/components/EventNotificationButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -443,6 +444,23 @@ const Meetings: React.FC = () => {
                 <Play className="w-3 h-3 mr-1" />
                 Start
               </Button>
+              {meeting.attendees && meeting.attendees.length > 0 && (
+                <EventNotificationButton
+                  event={{
+                    id: meeting.id,
+                    title: meeting.title,
+                    description: meeting.description,
+                    date: meeting.date,
+                    time: meeting.time,
+                    end_time: meeting.end_time,
+                    location: meeting.location,
+                    attendees: meeting.attendees,
+                    agenda: meeting.agenda,
+                    type: 'meeting'
+                  }}
+                  variant="button"
+                />
+              )}
             </div>
           )}
           {meeting.meeting_status === 'ongoing' && (

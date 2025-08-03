@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useSharedData } from "@/contexts/SharedDataContext";
 import { CalendarEventEditDialog } from "@/components/CalendarEventEditDialog";
+import { EventNotificationButton } from "@/components/EventNotificationButton";
 import { usePersistedState } from "@/hooks/useDataPersistence";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
