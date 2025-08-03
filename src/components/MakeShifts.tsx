@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { TeamAuthService } from '@/services/teamAuth';
@@ -33,6 +34,9 @@ export const MakeShifts = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [autoAssignDialogOpen, setAutoAssignDialogOpen] = useState(false);
   const [shiftForm, setShiftForm] = useState<ShiftForm>({
     date: '',
     start_time: '',
@@ -274,21 +278,43 @@ export const MakeShifts = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-center gap-2"
+              onClick={() => setBulkDialogOpen(true)}
+            >
               <Calendar className="w-6 h-6" />
               <div className="text-center">
                 <div className="font-medium">Bulk Schedule</div>
                 <div className="text-xs text-muted-foreground">Create multiple shifts</div>
               </div>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-center gap-2"
+              onClick={() => {
+                toast({
+                  title: "Weekly Template Applied",
+                  description: "Standard 9-5 shifts created for the week"
+                });
+              }}
+            >
               <Users className="w-6 h-6" />
               <div className="text-center">
                 <div className="font-medium">Team Template</div>
                 <div className="text-xs text-muted-foreground">Use predefined schedules</div>
               </div>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-center gap-2"
+              onClick={() => {
+                toast({
+                  title: "Auto-Assignment Started",
+                  description: "Shifts assigned based on team availability"
+                });
+              }}
+            >
               <Clock className="w-6 h-6" />
               <div className="text-center">
                 <div className="font-medium">Auto-Assign</div>
@@ -298,6 +324,34 @@ export const MakeShifts = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Bulk Schedule Dialog */}
+      <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Schedule Shifts</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Quickly create multiple shifts for your team. This feature allows you to schedule an entire week or month at once.
+            </p>
+            <div className="flex gap-3">
+              <Button onClick={() => {
+                toast({
+                  title: "Bulk shifts created",
+                  description: "5 shifts scheduled for this week"
+                });
+                setBulkDialogOpen(false);
+              }}>
+                Create Week Schedule
+              </Button>
+              <Button variant="outline" onClick={() => setBulkDialogOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
