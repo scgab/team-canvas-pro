@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { BarChart3, Calendar, Clock, CheckCircle, FileText } from 'lucide-react';
+import { BarChart3, Calendar, Clock, CheckCircle, FileText, UserPlus } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { ShiftsOverview } from '@/components/ShiftsOverview';
+import { MakeShifts } from '@/components/MakeShifts';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 const ShiftPlanningPage = () => {
   const [activeTab, setActiveTab] = useState('shifts-overview');
+  const { isAdmin } = useTeamMember();
 
   // Simple hardcoded user profile - no async loading
   const getCurrentUserProfile = () => {
@@ -30,13 +33,22 @@ const ShiftPlanningPage = () => {
     return profiles[currentUser] || profiles['hna@scandac.com'];
   };
 
-  const tabs = [
-    { id: 'shifts-overview', label: 'Shifts Overview', icon: BarChart3 },
+  const baseTabs = [
+    { id: 'shifts-overview', label: 'Shifts Overview', icon: BarChart3 }
+  ];
+
+  const adminTab = { id: 'make-shifts', label: 'Make Shifts', icon: UserPlus };
+
+  const memberTabs = [
     { id: 'my-shifts', label: 'My Shifts', icon: Calendar },
     { id: 'available-shifts', label: 'Available Shifts', icon: Clock },
     { id: 'my-availability', label: 'My Availability', icon: CheckCircle },
     { id: 'my-reports', label: 'My Reports', icon: FileText }
   ];
+
+  const tabs = isAdmin 
+    ? [...baseTabs, adminTab, ...memberTabs]
+    : [...baseTabs, ...memberTabs];
   return (
     <Layout>
       <div className="p-6">
@@ -72,6 +84,10 @@ const ShiftPlanningPage = () => {
               availableShifts={[]}
               onTabChange={setActiveTab}
             />
+          )}
+
+          {activeTab === 'make-shifts' && isAdmin && (
+            <MakeShifts />
           )}
           
           {activeTab === 'my-shifts' && (
