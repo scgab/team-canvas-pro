@@ -18,6 +18,8 @@ import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import ShiftPlanning from "./pages/ShiftPlanning";
+import Subscription from "./pages/Subscription";
+import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import { AuthGuard } from "./components/AuthGuard";
 
 const queryClient = new QueryClient();
@@ -43,6 +45,8 @@ const App = () => (
           <Route path="/ai-tools" element={<AuthGuard><AITools /></AuthGuard>} />
           <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
           <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
+          <Route path="/subscription" element={<AuthGuard><Subscription /></AuthGuard>} />
+          <Route path="/subscription-success" element={<AuthGuard><SubscriptionSuccess /></AuthGuard>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
