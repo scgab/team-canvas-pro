@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Megaphone, Users, AlertCircle, Info, CheckCircle } from 'lucide-react';
 
 interface Announcement {
@@ -30,6 +31,7 @@ interface AnnouncementModalProps {
 export function AnnouncementModal({ open, onOpenChange, onAnnouncementSent }: AnnouncementModalProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [isSending, setIsSending] = useState(false);
   const [announcement, setAnnouncement] = useState({
     title: '',
     content: '',
@@ -37,7 +39,7 @@ export function AnnouncementModal({ open, onOpenChange, onAnnouncementSent }: An
     recipients: 'all' as const
   });
 
-  const handleSendAnnouncement = () => {
+  const handleSendAnnouncement = async () => {
     if (!announcement.title.trim() || !announcement.content.trim()) {
       toast({
         title: 'Error',
@@ -56,33 +58,64 @@ export function AnnouncementModal({ open, onOpenChange, onAnnouncementSent }: An
       return;
     }
 
-    const newAnnouncement: Announcement = {
-      id: Date.now().toString(),
-      title: announcement.title,
-      content: announcement.content,
-      type: announcement.type,
-      author: user.user_metadata?.full_name || user.email || 'Unknown User',
-      authorEmail: user.email,
-      createdAt: new Date(),
-      recipients: announcement.recipients
-    };
+    setIsSending(true);
 
-    onAnnouncementSent(newAnnouncement);
+    try {
+      const newAnnouncement: Announcement = {
+        id: Date.now().toString(),
+        title: announcement.title,
+        content: announcement.content,
+        type: announcement.type,
+        author: user.user_metadata?.full_name || user.email || 'Unknown User',
+        authorEmail: user.email,
+        createdAt: new Date(),
+        recipients: announcement.recipients
+      };
 
-    // Reset form
-    setAnnouncement({
-      title: '',
-      content: '',
-      type: 'info',
-      recipients: 'all'
-    });
+      // Send email notifications via edge function
+      const { data, error } = await supabase.functions.invoke('send-announcement', {
+        body: {
+          title: announcement.title,
+          content: announcement.content,
+          type: announcement.type,
+          author: newAnnouncement.author,
+          authorEmail: newAnnouncement.authorEmail,
+          recipients: announcement.recipients
+        }
+      });
 
-    onOpenChange(false);
+      if (error) {
+        throw error;
+      }
 
-    toast({
-      title: 'Announcement Sent',
-      description: `Your announcement has been sent to ${announcement.recipients === 'all' ? 'all team members' : announcement.recipients}.`,
-    });
+      onAnnouncementSent(newAnnouncement);
+
+      // Reset form
+      setAnnouncement({
+        title: '',
+        content: '',
+        type: 'info',
+        recipients: 'all'
+      });
+
+      onOpenChange(false);
+
+      const emailCount = data?.emailsSent || 0;
+      toast({
+        title: '📧 Announcement Sent!',
+        description: `Your announcement has been sent to ${emailCount} team member${emailCount !== 1 ? 's' : ''} via email.`,
+        duration: 5000
+      });
+    } catch (error: any) {
+      console.error('Error sending announcement:', error);
+      toast({
+        title: 'Failed to Send Announcement',
+        description: error.message || 'There was an error sending the announcement.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const getTypeIcon = (type: string) => {
@@ -212,9 +245,18 @@ export function AnnouncementModal({ open, onOpenChange, onAnnouncementSent }: An
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSendAnnouncement}>
-              <Megaphone className="w-4 h-4 mr-2" />
-              Send Announcement
+            <Button onClick={handleSendAnnouncement} disabled={isSending}>
+              {isSending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Megaphone className="w-4 h-4 mr-2" />
+                  Send Announcement
+                </>
+              )}
             </Button>
           </div>
         </div>

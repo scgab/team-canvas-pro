@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-admin-invite]
 verify_jwt = false
+
+[functions.send-announcement]
+verify_jwt = false
