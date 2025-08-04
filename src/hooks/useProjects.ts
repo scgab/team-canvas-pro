@@ -32,7 +32,8 @@ export const useProjects = () => {
   const loadProjects = async () => {
     try {
       setLoading(true);
-      const data = await projectsService.getAll();
+      const { TeamDataService } = await import('@/services/teamData');
+      const data = await TeamDataService.getTeamProjects();
       const parsedProjects = data.map((p: any) => ({
         ...p,
         priority: p.priority as 'low' | 'medium' | 'high' | 'urgent',
@@ -66,12 +67,12 @@ export const useProjects = () => {
         color: randomColor,
         team_size: (projectData.team_members?.length || 0) + 1,
         status: 'planning',
-        created_by: 'current-user',
         assigned_members: projectData.team_members || [],
         shared_with: projectData.team_members || []
       };
 
-      const newProject = await projectsService.create(projectPayload);
+      const { TeamDataService } = await import('@/services/teamData');
+      const newProject = await TeamDataService.createProject(projectPayload);
       
       const formattedProject: Project = {
         ...newProject,
@@ -94,7 +95,8 @@ export const useProjects = () => {
 
   const updateProject = async (id: string, updates: Partial<Project>) => {
     try {
-      await projectsService.update(id, updates);
+      const { TeamDataService } = await import('@/services/teamData');
+      await TeamDataService.updateProject(id, updates);
       setProjects(prev => 
         prev.map(project => 
           project.id === id 
@@ -110,7 +112,8 @@ export const useProjects = () => {
 
   const deleteProject = async (id: string) => {
     try {
-      await projectsService.delete(id);
+      const { TeamDataService } = await import('@/services/teamData');
+      await TeamDataService.deleteProject(id);
       setProjects(prev => prev.filter(project => project.id !== id));
     } catch (error) {
       console.error('Error deleting project:', error);
