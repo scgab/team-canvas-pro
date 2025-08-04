@@ -16,7 +16,9 @@ import {
   Check,
   Crown,
   Rocket,
-  Building
+  Building,
+  Menu,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -359,13 +361,14 @@ const BackgroundGraphics = () => {
 };
 
 const PricingSection = () => {
-  const navigate = useNavigate();
+  const [isAnnual, setIsAnnual] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
 
   const plans = [
     {
       id: 'free',
       name: 'Free',
-      price: '€0',
+      price: 0,
       description: 'For individuals looking to keep track of their work',
       members: 'Up to 3 members',
       icon: Check,
@@ -376,12 +379,12 @@ const PricingSection = () => {
         'iOS and Android apps'
       ],
       popular: false,
-      buttonText: 'Free Forever'
+      stripeUrl: null
     },
     {
       id: 'basic',
       name: 'Basic',
-      price: '€29',
+      price: 29,
       description: 'Manage all your team\'s work in one place',
       members: 'Up to 9 members',
       icon: Zap,
@@ -390,17 +393,17 @@ const PricingSection = () => {
         'Unlimited free viewers',
         'Unlimited items',
         '5GB file storage',
-        '500 AI credits per month',
+        '500 AI credits per month per account',
         'Prioritised customer support',
-        'Create dashboard based on 1 board'
+        'Create a dashboard based on 1 board'
       ],
-      popular: true,
-      buttonText: 'Get Started'
+      popular: false,
+      stripeUrl: 'https://buy.stripe.com/test_basic'
     },
     {
       id: 'standard',
       name: 'Standard',
-      price: '€49',
+      price: 49,
       description: 'Collaborate & optimize your work across teams',
       members: 'Up to 18 members',
       icon: Crown,
@@ -409,18 +412,18 @@ const PricingSection = () => {
         'Timeline & Gantt views',
         'Calendar View',
         'Guest access',
-        '500 AI credits per month',
-        'Automations (250 actions/month)',
-        'Integrations (250 actions/month)',
-        'Create dashboard combining 5 boards'
+        '500 AI credits per month per account',
+        'Automations (250 actions per month)',
+        'Integrations (250 actions per month)',
+        'Create a dashboard that combines 5 boards'
       ],
-      popular: false,
-      buttonText: 'Get Started'
+      popular: true,
+      stripeUrl: 'https://buy.stripe.com/test_standard'
     },
     {
       id: 'pro',
       name: 'Pro',
-      price: '€79',
+      price: 79,
       description: 'Streamline complex workflows at scale',
       members: 'Up to 36 members',
       icon: Rocket,
@@ -430,13 +433,13 @@ const PricingSection = () => {
         'Chart View',
         'Time tracking',
         'Formula Column',
-        '500 AI credits per month',
-        'Automations (25K actions/month)',
-        'Integrations (25K actions/month)',
-        'Create dashboard combining 20 boards'
+        '500 AI credits per month per account',
+        'Automations (25K actions per month)',
+        'Integrations (25K actions per month)',
+        'Create a dashboard that combines 20 boards'
       ],
       popular: false,
-      buttonText: 'Get Started'
+      stripeUrl: 'https://buy.stripe.com/test_pro'
     },
     {
       id: 'enterprise',
@@ -451,25 +454,46 @@ const PricingSection = () => {
         'Multi-level permissions',
         'Enterprise-grade security & governance',
         'Advanced reporting & analytics',
-        '500 AI credits per month',
+        '500 AI credits per month per account',
         'Enterprise support',
-        'Create dashboard combining 50 boards'
+        'Create a dashboard that combines 50 boards'
       ],
       popular: false,
-      buttonText: 'Contact Sales'
+      stripeUrl: null
     }
   ];
 
-  const handlePlanSelect = (planId: string) => {
+  const handlePlanSelect = async (planId: string) => {
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+
     if (planId === 'free') {
-      navigate('/auth');
-    } else if (planId === 'enterprise') {
-      // Contact sales - could open a modal or navigate to contact page
-      navigate('/auth');
-    } else {
-      // Navigate to auth page with plan parameter
-      navigate(`/auth?plan=${planId}`);
+      window.location.href = '/auth?mode=signup';
+      return;
     }
+
+    if (planId === 'enterprise') {
+      window.open('mailto:sales@wheewls.com?subject=Enterprise Plan Inquiry', '_blank');
+      return;
+    }
+
+    if (plan.stripeUrl) {
+      setLoading(planId);
+      try {
+        // Simulate loading delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        window.open(plan.stripeUrl, '_blank');
+      } catch (error) {
+        console.error('Error redirecting to Stripe:', error);
+      } finally {
+        setLoading(null);
+      }
+    }
+  };
+
+  const getDisplayPrice = (price: number | string) => {
+    if (typeof price !== 'number') return price;
+    return isAnnual ? Math.floor(price * 0.8) : price;
   };
 
   return (
@@ -479,14 +503,43 @@ const PricingSection = () => {
           <h2 className="text-3xl lg:text-4xl font-bold text-gray-800 mb-4">
             Choose Your Plan
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
             Scale your team productivity with the right plan for your needs
           </p>
+          
+          {/* Annual/Monthly Toggle */}
+          <div className="flex items-center justify-center mb-8">
+            <span className={`mr-3 ${!isAnnual ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
+              Monthly
+            </span>
+            <button
+              onClick={() => setIsAnnual(!isAnnual)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isAnnual ? 'bg-blue-600' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isAnnual ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className={`ml-3 ${isAnnual ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
+              Annual
+            </span>
+            {isAnnual && (
+              <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                Save 20%
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {plans.map((plan) => {
             const Icon = plan.icon;
+            const displayPrice = getDisplayPrice(plan.price);
+            
             return (
               <Card
                 key={plan.name}
@@ -509,39 +562,55 @@ const PricingSection = () => {
                     </div>
                     <h3 className="text-xl font-bold text-gray-800 mb-2">{plan.name}</h3>
                     <div className="text-3xl font-bold text-blue-600 mb-2">
-                      {plan.price}
-                      {plan.price !== 'Custom' && plan.price !== '€0' && (
+                      {typeof displayPrice === 'number' ? `€${displayPrice}` : displayPrice}
+                      {typeof displayPrice === 'number' && (
                         <span className="text-sm font-normal text-gray-500">/month</span>
                       )}
                     </div>
+                    {isAnnual && typeof plan.price === 'number' && (
+                      <div className="text-sm text-gray-500 line-through">€{plan.price}/month</div>
+                    )}
                     <p className="text-gray-600 text-sm mb-2">{plan.description}</p>
                     <p className="text-sm font-semibold text-blue-600">{plan.members}</p>
                   </div>
 
                   <ul className="space-y-2 mb-6">
-                    {plan.features.slice(0, 4).map((feature, index) => (
+                    {plan.features.map((feature, index) => (
                       <li key={index} className="flex items-start gap-2">
                         <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                         <span className="text-sm text-gray-600">{feature}</span>
                       </li>
                     ))}
-                    {plan.features.length > 4 && (
-                      <li className="text-sm text-gray-500 italic">
-                        +{plan.features.length - 4} more features
-                      </li>
-                    )}
                   </ul>
 
                   <Button
                     className={`w-full ${
                       plan.popular
                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : plan.id === 'free'
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
                         : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
                     }`}
                     onClick={() => handlePlanSelect(plan.id)}
+                    disabled={loading === plan.id}
                   >
-                    {plan.buttonText}
+                    {loading === plan.id ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Processing...
+                      </div>
+                    ) : (
+                      plan.id === 'free' ? 'Get Started Free' :
+                      plan.id === 'enterprise' ? 'Contact Sales' :
+                      'Subscribe Now'
+                    )}
                   </Button>
+                  
+                  {plan.id === 'free' && (
+                    <p className="text-center text-xs text-gray-500 mt-2">
+                      No credit card required
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -551,7 +620,10 @@ const PricingSection = () => {
         <div className="text-center mt-8">
           <p className="text-gray-600">
             All plans include our core features. Need a custom solution?{' '}
-            <button className="text-blue-600 hover:text-blue-700 font-semibold">
+            <button 
+              onClick={() => window.open('mailto:sales@wheewls.com?subject=Custom Solution Inquiry', '_blank')}
+              className="text-blue-600 hover:text-blue-700 font-semibold"
+            >
               Contact our sales team
             </button>
           </p>
@@ -561,10 +633,89 @@ const PricingSection = () => {
   );
 };
 
+const Header = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleSignIn = () => {
+    window.location.href = '/auth?mode=login';
+  };
+
+  const handleGetStarted = () => {
+    window.location.href = '/auth?mode=signup';
+  };
+
+  return (
+    <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-b border-white/20 z-50">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">W</span>
+            </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              WHEEWLS
+            </span>
+          </div>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-4">
+            <Button 
+              variant="ghost" 
+              onClick={handleSignIn}
+              className="hover:bg-blue-50"
+            >
+              Sign In
+            </Button>
+            <Button 
+              onClick={handleGetStarted}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg"
+            >
+              Get Started
+            </Button>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden py-4 border-t border-gray-200">
+            <div className="flex flex-col space-y-3">
+              <Button 
+                variant="ghost" 
+                onClick={handleSignIn}
+                className="justify-start"
+              >
+                Sign In
+              </Button>
+              <Button 
+                onClick={handleGetStarted}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+              >
+                Get Started
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+};
+
 const Landing = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative">
-      <div className="container mx-auto px-4 py-8 lg:py-16 relative z-10">
+      {/* Header */}
+      <Header />
+      
+      <div className="container mx-auto px-4 pt-24 pb-8 lg:py-16 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-screen">
           {/* Left Side - Branding and Content */}
           <div className="order-2 lg:order-1 space-y-6 lg:space-y-8 animate-fade-in">
