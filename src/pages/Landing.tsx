@@ -539,7 +539,6 @@ const PricingSection = () => {
                         : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
                     }`}
                     onClick={() => handlePlanSelect(plan.id)}
-                    disabled={plan.name === 'Free'}
                   >
                     {plan.buttonText}
                   </Button>
