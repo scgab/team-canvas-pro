@@ -77,17 +77,14 @@ const AITools = () => {
       try {
         setLoading(true);
         
-         // Load categories and tools in parallel with direct Supabase calls to bypass cache
+         // Load categories and tools using team-scoped services
         const [categoriesData, toolsData] = await Promise.all([
-          supabase.from('ai_tool_categories').select('*').order('name', { ascending: true }),
-          supabase.from('ai_tools').select('*').order('created_at', { ascending: false })
+          TeamDataService.getTeamAIToolCategories(),
+          TeamDataService.getTeamAITools()
         ]);
         
-        if (categoriesData.error) throw categoriesData.error;
-        if (toolsData.error) throw toolsData.error;
-        
-        const categories = categoriesData.data || [];
-        const tools = toolsData.data || [];
+        const categories = categoriesData || [];
+        const tools = toolsData || [];
         
          // ===== DEBUG OUTPUT =====
         console.log('=== AI TOOLS DEBUG ===');

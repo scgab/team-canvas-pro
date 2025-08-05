@@ -5,6 +5,7 @@ import { ShiftsOverview } from '@/components/ShiftsOverview';
 import { MakeShifts } from '@/components/MakeShifts';
 import { AllShiftsManagement } from '@/components/AllShiftsManagement';
 import { AvailabilityCalendar } from '@/components/AvailabilityCalendar';
+import { TeamShiftCalendar } from '@/components/TeamShiftCalendar';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -122,7 +123,8 @@ const ShiftPlanningPage = () => {
   };
 
   const baseTabs = [
-    { id: 'shifts-overview', label: 'Shifts Overview', icon: BarChart3 }
+    { id: 'shifts-overview', label: 'Shifts Overview', icon: BarChart3 },
+    { id: 'team-shifts', label: 'Team Shifts', icon: Calendar }
   ];
 
   const adminTabs = [
@@ -183,6 +185,14 @@ const ShiftPlanningPage = () => {
 
           {activeTab === 'all-shifts' && isAdmin && (
             <AllShiftsManagement onRefresh={refreshData} />
+          )}
+
+          {activeTab === 'team-shifts' && (
+            <TeamShiftCalendar 
+              teamMembers={teamMembers}
+              shifts={shifts}
+              onRefresh={refreshData}
+            />
           )}
           
           {activeTab === 'my-shifts' && (
