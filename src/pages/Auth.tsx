@@ -749,6 +749,9 @@ const ProductsSection = () => {
 };
 
 const PricingSection = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState<string | null>(null);
   const pricingPlans = [
     {
       name: "Starter",
@@ -804,6 +807,67 @@ const PricingSection = () => {
     }
   ];
 
+  const handlePlanSelection = async (planName: string, buttonText: string) => {
+    if (buttonText === "Get Started Free") {
+      // Redirect to signup for free plan
+      window.location.href = '/auth?mode=signup';
+      return;
+    }
+
+    if (buttonText === "Contact Sales") {
+      // Open email for enterprise plan
+      window.open('mailto:sales@wheewls.com?subject=Enterprise Plan Inquiry', '_blank');
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to subscribe to a plan",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(planName);
+
+    try {
+      // Map plan names to API plan IDs
+      const planMapping = {
+        'Professional': 'standard', // Professional plan maps to standard in API
+        'Enterprise': 'enterprise'
+      };
+
+      const planId = planMapping[planName as keyof typeof planMapping];
+      if (!planId) {
+        throw new Error('Invalid plan selected');
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { plan: planId }
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        // Open Stripe checkout in new tab
+        window.open(data.url, '_blank');
+      } else {
+        throw new Error('No checkout URL received');
+      }
+
+    } catch (error: any) {
+      console.error('Error creating checkout:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start checkout process",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <section id="pricing" className="py-20 bg-gray-50">
       <div className="container mx-auto px-4">
@@ -849,12 +913,23 @@ const PricingSection = () => {
                 ))}
               </ul>
 
-              <button className={`w-full py-3 rounded-xl font-semibold transition-all ${
-                plan.popular 
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transform hover:scale-105' 
-                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-              }`}>
-                {plan.buttonText}
+              <button 
+                onClick={() => handlePlanSelection(plan.name, plan.buttonText)}
+                disabled={loading === plan.name}
+                className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                  plan.popular 
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transform hover:scale-105' 
+                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                } ${loading === plan.name ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {loading === plan.name ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  plan.buttonText
+                )}
               </button>
             </div>
           ))}
