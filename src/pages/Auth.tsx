@@ -46,6 +46,16 @@ const LandingHeader = () => {
     setIsMenuOpen(false); // Close mobile menu after clicking
   };
 
+  const scrollToAuth = (mode: 'login' | 'signup') => {
+    // Update URL to reflect the mode
+    const url = new URL(window.location.href);
+    url.searchParams.set('mode', mode);
+    window.history.pushState({}, '', url.toString());
+    
+    // Scroll to auth section
+    scrollToSection('auth-section');
+  };
+
   return (
     <header className="fixed top-0 w-full bg-white/90 backdrop-blur-lg border-b border-gray-200/20 z-50">
       <div className="container mx-auto px-4 py-4">
@@ -87,13 +97,13 @@ const LandingHeader = () => {
           {/* Right - CTA Buttons */}
           <div className="hidden md:flex items-center space-x-4">
             <button 
-              onClick={() => navigate('/auth?mode=login')}
+              onClick={() => scrollToAuth('login')}
               className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
             >
               Sign In
             </button>
             <button 
-              onClick={() => navigate('/auth?mode=signup')}
+              onClick={() => scrollToAuth('signup')}
               className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
             >
               Get Started
@@ -124,13 +134,13 @@ const LandingHeader = () => {
               </button>
               <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200">
                 <button 
-                  onClick={() => navigate('/auth?mode=login')}
+                  onClick={() => scrollToAuth('login')}
                   className="text-left text-gray-700 hover:text-blue-600 font-medium"
                 >
                   Sign In
                 </button>
                 <button 
-                  onClick={() => navigate('/auth?mode=signup')}
+                  onClick={() => scrollToAuth('signup')}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold text-left"
                 >
                   Get Started
@@ -144,7 +154,7 @@ const LandingHeader = () => {
   );
 };
 
-const BrandingSection = ({ navigate }: { navigate: (path: string) => void }) => {
+const BrandingSection = ({ scrollToAuth }: { scrollToAuth: (mode: 'login' | 'signup') => void }) => {
   return (
     <div className="space-y-6">
       {/* Main Headline - Larger and more prominent */}
@@ -166,13 +176,13 @@ const BrandingSection = ({ navigate }: { navigate: (path: string) => void }) => 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 pt-4">
           <button 
-            onClick={() => navigate('/auth?mode=signup')}
+            onClick={() => scrollToAuth('signup')}
             className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all"
           >
             Start Free Trial
           </button>
           <button 
-            onClick={() => navigate('/auth?mode=signup')}
+            onClick={() => scrollToAuth('signup')}
             className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg font-semibold text-lg hover:border-blue-600 hover:text-blue-600 transition-all"
           >
             Watch Demo
@@ -947,6 +957,26 @@ const FAQSection = () => {
 const Auth = () => {
   const navigate = useNavigate();
 
+  const scrollToAuth = (mode: 'login' | 'signup') => {
+    // Update URL to reflect the mode
+    const url = new URL(window.location.href);
+    url.searchParams.set('mode', mode);
+    window.history.pushState({}, '', url.toString());
+    
+    // Scroll to auth section
+    const element = document.getElementById('auth-section');
+    if (element) {
+      const headerOffset = 80;
+      const elementPosition = element.offsetTop;
+      const offsetPosition = elementPosition - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <LandingHeader />
@@ -958,13 +988,13 @@ const Auth = () => {
             
             {/* Left Side - Branding and Content (7 columns) */}
             <div className="lg:col-span-7 space-y-8">
-              <BrandingSection navigate={navigate} />
+              <BrandingSection scrollToAuth={scrollToAuth} />
               <FeatureHighlights />
               <TrustIndicators />
             </div>
             
             {/* Right Side - Authentication (5 columns) - Aligned with headline */}
-            <div className="lg:col-span-5 flex justify-center lg:justify-center">
+            <div id="auth-section" className="lg:col-span-5 flex justify-center lg:justify-center">
               <div className="w-full max-w-md lg:max-w-lg">
                 <AuthenticationCard />
               </div>
