@@ -297,6 +297,7 @@ export const calendarService = {
         time: eventData.time,
         type: eventData.type || 'event',
         attendees: eventData.attendees || [],
+        team_id: eventData.team_id, // Required field
         created_by: eventData.createdBy || eventData.created_by
       }])
       .select()

@@ -211,7 +211,7 @@ export type Database = {
           meeting_notes: string | null
           meeting_status: string | null
           meeting_summary: string | null
-          team_id: string | null
+          team_id: string
           time: string | null
           title: string
           type: string | null
@@ -234,7 +234,7 @@ export type Database = {
           meeting_notes?: string | null
           meeting_status?: string | null
           meeting_summary?: string | null
-          team_id?: string | null
+          team_id: string
           time?: string | null
           title: string
           type?: string | null
@@ -257,7 +257,7 @@ export type Database = {
           meeting_notes?: string | null
           meeting_status?: string | null
           meeting_summary?: string | null
-          team_id?: string | null
+          team_id?: string
           time?: string | null
           title?: string
           type?: string | null

@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
+import { TeamDataService } from '@/services/teamData';
 
 interface Meeting {
   id: string;
@@ -83,6 +84,7 @@ const Meetings: React.FC = () => {
   const [brainstormItems, setBrainstormItems] = useState<string[]>([]);
   const [agreements, setAgreements] = useState<string[]>([]);
   const [actionItems, setActionItems] = useState<string[]>([]);
+  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -91,12 +93,49 @@ const Meetings: React.FC = () => {
     }
   }, [user]);
 
+  // Load existing meeting data when selecting a meeting
+  useEffect(() => {
+    if (selectedMeeting) {
+      setLiveNotes(selectedMeeting.meeting_notes || '');
+      setBrainstormItems(selectedMeeting.brainstorm_items || []);
+      setAgreements(selectedMeeting.agreements || []);
+      setActionItems(selectedMeeting.action_items || []);
+    }
+  }, [selectedMeeting]);
+
+  // Auto-save notes with debounce
+  useEffect(() => {
+    if (selectedMeeting && selectedMeeting.meeting_status === 'ongoing') {
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+      }
+      
+      const timer = setTimeout(() => {
+        updateMeetingData(selectedMeeting.id, { meeting_notes: liveNotes });
+      }, 2000); // Auto-save after 2 seconds of inactivity
+      
+      setAutoSaveTimer(timer);
+      
+      return () => {
+        if (timer) clearTimeout(timer);
+      };
+    }
+  }, [liveNotes, selectedMeeting]);
+
   const fetchMeetings = async () => {
     try {
+      const teamId = await TeamDataService.getCurrentTeamId();
+      if (!teamId) {
+        toast.error('No team found. Please join a team first.');
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
         .eq('type', 'meeting')
+        .eq('team_id', teamId)
         .order('date', { ascending: true });
 
       if (error) {
@@ -144,6 +183,12 @@ const Meetings: React.FC = () => {
     }
 
     try {
+      const teamId = await TeamDataService.getCurrentTeamId();
+      if (!teamId) {
+        toast.error('No team found. Please join a team first.');
+        return;
+      }
+
       console.log('Creating meeting with data:', newMeeting);
       
       const meetingData = {
@@ -151,17 +196,16 @@ const Meetings: React.FC = () => {
         description: newMeeting.description?.trim() || '',
         date: newMeeting.date,
         time: newMeeting.time,
-        end_time: newMeeting.end_time || null, // Include end_time
+        end_time: newMeeting.end_time || null,
         type: 'meeting',
         location: newMeeting.location?.trim() || '',
         attendees: Array.isArray(newMeeting.attendees) ? newMeeting.attendees : [],
         assigned_members: Array.isArray(newMeeting.attendees) ? newMeeting.attendees : [],
         agenda: Array.isArray(newMeeting.agenda) ? newMeeting.agenda.filter(item => item.trim() !== '') : [],
         meeting_status: 'planned',
-        created_by: user.id
+        team_id: teamId,
+        created_by: user.email || user.id
       };
-
-      console.log('Prepared meeting data:', meetingData);
 
       const { data, error } = await supabase
         .from('calendar_events')
@@ -171,8 +215,6 @@ const Meetings: React.FC = () => {
 
       if (error) {
         console.error('Create meeting error:', error);
-        console.error('Error details:', error.details);
-        console.error('Error hint:', error.hint);
         throw error;
       }
 
@@ -760,8 +802,11 @@ const Meetings: React.FC = () => {
                         <Textarea
                           id="live-notes"
                           value={liveNotes}
-                          onChange={(e) => updateNotes(e.target.value)}
-                          placeholder="Take notes during the meeting..."
+                          onChange={(e) => {
+                            setLiveNotes(e.target.value);
+                            updateNotes(e.target.value);
+                          }}
+                          placeholder="Take notes during the meeting... (auto-saves every 2 seconds)"
                           rows={4}
                         />
                       </div>
