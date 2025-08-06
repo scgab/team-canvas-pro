@@ -144,7 +144,7 @@ const LandingHeader = () => {
   );
 };
 
-const BrandingSection = () => {
+const BrandingSection = ({ navigate }: { navigate: (path: string) => void }) => {
   return (
     <div className="space-y-6">
       {/* Main Headline - Larger and more prominent */}
@@ -165,10 +165,16 @@ const BrandingSection = () => {
         
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 pt-4">
-          <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all">
+          <button 
+            onClick={() => navigate('/auth?mode=signup')}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all"
+          >
             Start Free Trial
           </button>
-          <button className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg font-semibold text-lg hover:border-blue-600 hover:text-blue-600 transition-all">
+          <button 
+            onClick={() => navigate('/auth?mode=signup')}
+            className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg font-semibold text-lg hover:border-blue-600 hover:text-blue-600 transition-all"
+          >
             Watch Demo
           </button>
         </div>
@@ -939,6 +945,8 @@ const FAQSection = () => {
 };
 
 const Auth = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <LandingHeader />
@@ -950,7 +958,7 @@ const Auth = () => {
             
             {/* Left Side - Branding and Content (7 columns) */}
             <div className="lg:col-span-7 space-y-8">
-              <BrandingSection />
+              <BrandingSection navigate={navigate} />
               <FeatureHighlights />
               <TrustIndicators />
             </div>
