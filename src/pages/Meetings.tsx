@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { useNavigate } from 'react-router-dom';
-import { Video, Plus, Clock, Users, Calendar, Play, Square, CheckCircle, Edit3, Trash2, FileText, MessageSquare, Target, CheckSquare } from 'lucide-react';
+import { Video, Plus, Clock, Users, Calendar, Play, Square, CheckCircle, Edit3, Trash2, FileText, MessageSquare, Target, CheckSquare, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -436,16 +437,59 @@ const Meetings: React.FC = () => {
     }
   };
 
-  const renderMeetingCard = (meeting: Meeting) => (
-    <Card key={meeting.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedMeeting(meeting)}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-lg">{meeting.title}</CardTitle>
-            <CardDescription className="mt-1">{meeting.description}</CardDescription>
+  const renderMeetingCard = (meeting: Meeting) => {
+    const today = new Date().toISOString().split('T')[0];
+    const isPastMeeting = meeting.meeting_status === 'completed' || meeting.date < today;
+    
+    return (
+      <Card key={meeting.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedMeeting(meeting)}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="text-lg">{meeting.title}</CardTitle>
+              <CardDescription className="mt-1">{meeting.description}</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(meeting.meeting_status)}
+              {isPastMeeting && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditDialog(meeting);
+                      }}
+                    >
+                      <Edit3 className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('Are you sure you want to delete this meeting?')) {
+                          deleteMeeting(meeting.id);
+                        }
+                      }}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
-          {getStatusBadge(meeting.meeting_status)}
-        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
@@ -523,7 +567,8 @@ const Meetings: React.FC = () => {
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   const filteredMeetings = meetings.filter(meeting => {
     const today = new Date().toISOString().split('T')[0];
