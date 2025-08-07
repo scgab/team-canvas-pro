@@ -10,7 +10,9 @@ import {
   FolderOpen,
   Brain,
   Video,
-  Clock
+  Clock,
+  HelpCircle,
+  CreditCard
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -111,9 +113,35 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Settings */}
+        {/* Bottom Navigation */}
         <div className="mt-auto pt-6">
-          <SidebarMenu>
+          <SidebarMenu className="space-y-1">
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild className="p-0">
+                <NavLink 
+                  to="/help-center" 
+                  className={`flex items-center px-3 py-2 rounded-lg transition-all duration-200 ${getNavCls({ isActive: isActive("/help-center") })}`}
+                >
+                  <HelpCircle className="w-5 h-5 min-w-[20px]" />
+                  {open && (
+                    <span className="ml-3 font-medium">Help Center</span>
+                  )}
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild className="p-0">
+                <NavLink 
+                  to="/subscription" 
+                  className={`flex items-center px-3 py-2 rounded-lg transition-all duration-200 ${getNavCls({ isActive: isActive("/subscription") })}`}
+                >
+                  <CreditCard className="w-5 h-5 min-w-[20px]" />
+                  {open && (
+                    <span className="ml-3 font-medium">Subscription</span>
+                  )}
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild className="p-0">
                 <NavLink 

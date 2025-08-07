@@ -20,6 +20,7 @@ import Profile from "./pages/Profile";
 import ShiftPlanning from "./pages/ShiftPlanning";
 import Subscription from "./pages/Subscription";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
+import HelpCenter from "./pages/HelpCenter";
 import { AuthGuard } from "./components/AuthGuard";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/ai-tools" element={<AuthGuard><AITools /></AuthGuard>} />
           <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
           <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
+          <Route path="/help-center" element={<AuthGuard><HelpCenter /></AuthGuard>} />
           <Route path="/subscription" element={<AuthGuard><Subscription /></AuthGuard>} />
           <Route path="/subscription-success" element={<AuthGuard><SubscriptionSuccess /></AuthGuard>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
