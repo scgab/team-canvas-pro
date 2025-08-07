@@ -764,7 +764,7 @@ const ProductsSection = () => {
   );
 };
 
-const PricingSection = () => {
+const PricingSection = ({ scrollToAuth }: { scrollToAuth: (mode: 'login' | 'signup') => void }) => {
   const pricingPlans = [
     {
       name: "Starter",
@@ -865,11 +865,14 @@ const PricingSection = () => {
                 ))}
               </ul>
 
-              <button className={`w-full py-3 rounded-xl font-semibold transition-all ${
-                plan.popular 
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transform hover:scale-105' 
-                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-              }`}>
+              <button 
+                onClick={() => scrollToAuth('signup')}
+                className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                  plan.popular 
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transform hover:scale-105' 
+                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                }`}
+              >
                 {plan.buttonText}
               </button>
             </div>
@@ -1008,7 +1011,7 @@ const Auth = () => {
       <ProductsSection />
       
       {/* Pricing Section */}
-      <PricingSection />
+      <PricingSection scrollToAuth={scrollToAuth} />
       
       {/* FAQ Section */}
       <FAQSection />
