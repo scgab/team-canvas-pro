@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { projectsService } from '@/services/database';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface Project {
   id: string;
@@ -23,11 +24,15 @@ export const useProjects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
 
-  // Load projects from Supabase
+  // Load projects from Supabase once auth is ready
   useEffect(() => {
-    loadProjects();
-  }, []);
+    if (authLoading) return;
+    if (user) {
+      loadProjects();
+    }
+  }, [authLoading, user]);
 
   const loadProjects = async () => {
     try {

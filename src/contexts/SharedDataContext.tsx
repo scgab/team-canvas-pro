@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { projectsService, tasksService, messagesService, calendarService } from '@/services/database';
 import { TeamDataService } from '@/services/teamData';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface Project {
   id: string;
@@ -102,13 +103,22 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [messages, setMessages] = useState<Message[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
 
   // Load data from Supabase on mount and set up real-time subscriptions
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    let tasksChannel: any;
+    let notesChannel: any;
+
     const loadData = async () => {
       try {
         setLoading(true);
-        
         // Load all data from Supabase in parallel using team-based services
         const [projectsData, tasksData, notesData, messagesData, eventsData] = await Promise.all([
           TeamDataService.getTeamProjects(),
@@ -205,7 +215,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     loadData();
 
     // Set up real-time subscriptions
-    const tasksChannel = supabase
+    tasksChannel = supabase
       .channel('tasks-changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'tasks' },
@@ -249,7 +259,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       )
       .subscribe();
 
-    const notesChannel = supabase
+    notesChannel = supabase
       .channel('notes-changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'project_notes' },
@@ -284,10 +294,10 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     // Cleanup subscriptions
     return () => {
-      supabase.removeChannel(tasksChannel);
-      supabase.removeChannel(notesChannel);
+      if (tasksChannel) supabase.removeChannel(tasksChannel);
+      if (notesChannel) supabase.removeChannel(notesChannel);
     };
-  }, []);
+  }, [user, authLoading]);
 
   const createProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'createdBy'>) => {
     try {
