@@ -192,6 +192,7 @@ const ShiftPlanningPage = () => {
               teamMembers={teamMembers}
               shifts={shifts}
               onRefresh={refreshData}
+              teamId={teamId}
             />
           )}
           

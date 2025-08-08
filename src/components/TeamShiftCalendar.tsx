@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useUserColors } from '@/components/UserColorContext';
-
+import { ShiftEditDialog } from '@/components/ShiftEditDialog';
 interface Shift {
   id: string;
   date: string;
@@ -30,15 +30,21 @@ interface TeamShiftCalendarProps {
   teamMembers: TeamMember[];
   shifts: Shift[];
   onRefresh: () => void;
+  teamId?: string | null;
 }
 
 export const TeamShiftCalendar: React.FC<TeamShiftCalendarProps> = ({
   teamMembers,
   shifts,
-  onRefresh
+  onRefresh,
+  teamId,
 }) => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const { getColorByEmail } = useUserColors();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
 
   // Get start of week (Monday)
   const getWeekStart = (date: Date) => {
@@ -203,9 +209,15 @@ export const TeamShiftCalendar: React.FC<TeamShiftCalendarProps> = ({
                       return (
                         <div
                           key={dateIndex}
-                          className={`p-1 border rounded min-h-[60px] ${
+                          className={`p-1 border rounded min-h-[60px] cursor-pointer transition-colors hover:bg-muted/30 ${
                             isToday(date) ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
                           }`}
+                          onClick={() => {
+                            setSelectedMember(member);
+                            setSelectedDate(date);
+                            setSelectedShift(dayShifts[0] || null);
+                            setDialogOpen(true);
+                          }}
                         >
                           {dayShifts.map(shift => (
                             <div
@@ -295,6 +307,18 @@ export const TeamShiftCalendar: React.FC<TeamShiftCalendarProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      {selectedMember && selectedDate && (
+        <ShiftEditDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          teamId={teamId}
+          date={selectedDate}
+          member={selectedMember}
+          shift={selectedShift}
+          onSuccess={onRefresh}
+        />
+      )}
     </div>
   );
 };
