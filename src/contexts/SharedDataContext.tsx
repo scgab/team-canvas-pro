@@ -115,6 +115,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     let tasksChannel: any;
     let notesChannel: any;
+    let calendarEventsChannel: any;
 
     const loadData = async () => {
       try {
@@ -295,6 +296,46 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           }
         )
         .subscribe();
+
+      calendarEventsChannel = supabase
+        .channel('calendar-events-changes')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'calendar_events', filter: `team_id=eq.${teamId}` },
+          (payload) => {
+            console.log('Calendar event change received:', payload);
+            if (payload.eventType === 'INSERT') {
+              const newEvent = {
+                id: payload.new.id,
+                title: payload.new.title,
+                date: payload.new.date,
+                time: payload.new.time || '',
+                description: payload.new.description || '',
+                type: payload.new.type,
+                createdBy: payload.new.created_by,
+                createdAt: payload.new.created_at,
+                location: payload.new.location || '',
+                assigned_members: payload.new.assigned_members || [],
+                attendees: payload.new.attendees || []
+              };
+              setEvents(prev => [newEvent, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+              setEvents(prev => prev.map(ev => ev.id === payload.new.id ? {
+                ...ev,
+                title: payload.new.title,
+                date: payload.new.date,
+                time: payload.new.time || '',
+                description: payload.new.description || '',
+                type: payload.new.type,
+                location: payload.new.location || '',
+                assigned_members: payload.new.assigned_members || [],
+                attendees: payload.new.attendees || []
+              } : ev));
+            } else if (payload.eventType === 'DELETE') {
+              setEvents(prev => prev.filter(ev => ev.id !== payload.old.id));
+            }
+          }
+        )
+        .subscribe();
     };
 
     setupRealtime();
@@ -303,6 +344,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => {
       if (tasksChannel) supabase.removeChannel(tasksChannel);
       if (notesChannel) supabase.removeChannel(notesChannel);
+      if (calendarEventsChannel) supabase.removeChannel(calendarEventsChannel);
     };
   }, [user, authLoading]);
 

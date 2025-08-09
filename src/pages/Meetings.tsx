@@ -154,7 +154,10 @@ const Meetings: React.FC = () => {
     }
   };
 
-  const setupRealtimeSubscription = () => {
+  const setupRealtimeSubscription = async () => {
+    const teamId = await TeamDataService.getCurrentTeamId();
+    if (!teamId) return;
+
     const channel = supabase
       .channel('calendar-events-changes')
       .on(
@@ -163,7 +166,7 @@ const Meetings: React.FC = () => {
           event: '*',
           schema: 'public',
           table: 'calendar_events',
-          filter: 'type=eq.meeting'
+          filter: `team_id=eq.${teamId},type=eq.meeting`
         },
         (payload) => {
           console.log('Calendar event update:', payload);

@@ -57,7 +57,7 @@ interface PublicHoliday {
 
 const Calendar = () => {
   const { toast } = useToast();
-  const { projects } = useSharedData();
+  const { projects, events: teamEvents, updateCalendarEvent, deleteCalendarEvent } = useSharedData();
   const { user } = useAuth();
   const [events, setEvents] = usePersistedState<any[]>('calendar-events', []);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -356,7 +356,7 @@ const Calendar = () => {
   const days = getDaysInMonth(currentDate);
   const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  // Get events for a specific date (including project deadlines)
+  // Get events for a specific date (including project deadlines and team meetings)
   const getEventsForDate = (date: Date) => {
     // Use local date string to avoid timezone issues
     const year = date.getFullYear();
@@ -364,11 +364,31 @@ const Calendar = () => {
     const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     
+    // Local (persisted) events
     const userEvents = events.filter(event => event.date === dateStr).map(event => ({
       ...event,
       date: new Date(event.date + 'T00:00:00'), // Add time to avoid timezone offset
       color: "#3B82F6"
     }));
+
+    // Team (Supabase) calendar events, including meetings
+    const teamDayEvents = (teamEvents || [])
+      .filter(e => e.date === dateStr)
+      .map(e => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        date: new Date(e.date + 'T00:00:00'),
+        time: (e as any).time || (e as any).start_time || '',
+        duration: (e as any).end_time && ((e as any).time || (e as any).start_time)
+          ? `${(e as any).time || (e as any).start_time}-${(e as any).end_time}`
+          : '',
+        type: e.type || 'meeting',
+        attendees: e.attendees || [],
+        location: e.location || '',
+        color: "#3B82F6",
+        isSupabaseEvent: true
+      }));
 
     // Add project deadlines as events
     const projectDeadlines = projects
@@ -388,7 +408,7 @@ const Calendar = () => {
         projectId: project.id
       }));
 
-    return [...userEvents, ...projectDeadlines];
+    return [...teamDayEvents, ...userEvents, ...projectDeadlines];
   };
 
   // Get holidays for a specific date
@@ -414,6 +434,27 @@ const Calendar = () => {
       return eventDate >= today && eventDate <= in30Days;
     });
 
+    const upcomingTeamEvents = (teamEvents || [])
+      .filter(e => {
+        const d = new Date(e.date);
+        return d >= today && d <= in30Days;
+      })
+      .map(e => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        date: new Date(e.date),
+        time: (e as any).time || (e as any).start_time || '',
+        duration: (e as any).end_time && ((e as any).time || (e as any).start_time)
+          ? `${(e as any).time || (e as any).start_time}-${(e as any).end_time}`
+          : '',
+        type: e.type || 'meeting',
+        attendees: e.attendees || [],
+        location: e.location || '',
+        color: "#3B82F6",
+        isSupabaseEvent: true
+      }));
+
     const upcomingProjectDeadlines = projects
       .filter(project => project.deadline && new Date(project.deadline) >= today && new Date(project.deadline) <= in30Days)
       .map(project => ({
@@ -431,7 +472,7 @@ const Calendar = () => {
         projectId: project.id
       }));
 
-    return [...upcomingUserEvents, ...upcomingProjectDeadlines]
+    return [...upcomingTeamEvents, ...upcomingUserEvents, ...upcomingProjectDeadlines]
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 
@@ -635,12 +676,15 @@ const Calendar = () => {
           event={editingEvent}
           onSubmit={async (eventData) => {
             try {
-              // Update event in local state
-              setEvents(prev => prev.map(event => 
-                event.id === editingEvent.id 
-                  ? { ...event, ...eventData }
-                  : event
-              ));
+              if (editingEvent?.isSupabaseEvent) {
+                await updateCalendarEvent(editingEvent.id, eventData);
+              } else {
+                setEvents(prev => prev.map(event => 
+                  event.id === editingEvent.id 
+                    ? { ...event, ...eventData }
+                    : event
+                ));
+              }
               setEditingEvent(null);
               toast({
                 title: "Event Updated",
@@ -656,8 +700,12 @@ const Calendar = () => {
           }}
           onDelete={async () => {
             try {
-              // Remove event from local state
-              setEvents(prev => prev.filter(event => event.id !== editingEvent.id));
+              if (editingEvent?.isSupabaseEvent) {
+                await deleteCalendarEvent(editingEvent.id);
+              } else {
+                // Remove event from local state
+                setEvents(prev => prev.filter(event => event.id !== editingEvent.id));
+              }
               setEditingEvent(null);
               toast({
                 title: "Event Deleted",
