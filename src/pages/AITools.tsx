@@ -149,137 +149,126 @@ const AITools = () => {
     console.log('Show favorites:', showFavoritesOnly);
   }, [categories, aiTools, searchTerm, showFavoritesOnly]);
 
-  // Set up real-time subscriptions
+  // Set up real-time subscriptions restricted to current team
   useEffect(() => {
-    const toolsChannel = supabase
-      .channel('ai_tools_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'ai_tools' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newTool = payload.new as any;
-            const tool: AITool = {
-              id: newTool.id,
-              name: newTool.name,
-              link: newTool.link,
-              note: newTool.note,
-              category: newTool.category,
-              addedBy: newTool.added_by,
-              addedAt: newTool.created_at,
-              tags: newTool.tags || [],
-              rating: newTool.rating,
-              isFavorite: newTool.is_favorite
-            };
-            
-            setAiTools(prev => ({
-              ...prev,
-              [newTool.category]: [...(prev[newTool.category] || []), tool]
-            }));
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedTool = payload.new as any;
-            setAiTools(prev => {
-              const newTools = { ...prev };
-              Object.keys(newTools).forEach(category => {
-                newTools[category] = newTools[category].map(tool =>
-                  tool.id === updatedTool.id ? {
-                    ...tool,
-                    name: updatedTool.name,
-                    link: updatedTool.link,
-                    note: updatedTool.note,
-                    category: updatedTool.category,
-                    tags: updatedTool.tags || [],
-                    rating: updatedTool.rating,
-                    isFavorite: updatedTool.is_favorite
-                  } : tool
-                ).filter(tool => tool.category === category);
-              });
-              
-              // Move tool to new category if changed
-              if (updatedTool.category) {
+    let toolsChannel: any;
+    let categoriesChannel: any;
+
+    const setup = async () => {
+      const teamId = await TeamDataService.getCurrentTeamId();
+      if (!teamId) return;
+
+      toolsChannel = supabase
+        .channel('ai_tools_changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'ai_tools', filter: `team_id=eq.${teamId}` },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              const newTool = payload.new as any;
+              const tool: AITool = {
+                id: newTool.id,
+                name: newTool.name,
+                link: newTool.link,
+                note: newTool.note,
+                category: newTool.category,
+                addedBy: newTool.added_by,
+                addedAt: newTool.created_at,
+                tags: newTool.tags || [],
+                rating: newTool.rating,
+                isFavorite: newTool.is_favorite
+              };
+              setAiTools(prev => ({
+                ...prev,
+                [newTool.category]: [...(prev[newTool.category] || []), tool]
+              }));
+            } else if (payload.eventType === 'UPDATE') {
+              const updatedTool = payload.new as any;
+              setAiTools(prev => {
+                const newTools = { ...prev } as Record<string, AITool[]>;
+                Object.keys(newTools).forEach(category => {
+                  newTools[category] = newTools[category]
+                    .map(tool => tool.id === updatedTool.id ? {
+                      ...tool,
+                      name: updatedTool.name,
+                      link: updatedTool.link,
+                      note: updatedTool.note,
+                      category: updatedTool.category,
+                      tags: updatedTool.tags || [],
+                      rating: updatedTool.rating,
+                      isFavorite: updatedTool.is_favorite
+                    } : tool)
+                    .filter(tool => tool.category === category);
+                });
+                // Move tool to new category if changed
                 const tool = Object.values(newTools).flat().find(t => t.id === updatedTool.id);
                 if (tool && tool.category !== updatedTool.category) {
-                  // Remove from old category
                   Object.keys(newTools).forEach(category => {
                     newTools[category] = newTools[category].filter(t => t.id !== updatedTool.id);
                   });
-                  
-                  // Add to new category
-                  if (!newTools[updatedTool.category]) {
-                    newTools[updatedTool.category] = [];
-                  }
-                  newTools[updatedTool.category].push({
-                    ...tool,
-                    category: updatedTool.category
-                  });
+                  if (!newTools[updatedTool.category]) newTools[updatedTool.category] = [];
+                  newTools[updatedTool.category].push({ ...tool, category: updatedTool.category });
                 }
-              }
-              
-              return newTools;
-            });
-          } else if (payload.eventType === 'DELETE') {
-            const deletedTool = payload.old as any;
-            setAiTools(prev => {
-              const newTools = { ...prev };
-              Object.keys(newTools).forEach(category => {
-                newTools[category] = newTools[category].filter(tool => tool.id !== deletedTool.id);
+                return newTools;
               });
-              return newTools;
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    const categoriesChannel = supabase
-      .channel('ai_tool_categories_changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'ai_tool_categories' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newCategory = payload.new as Category;
-            setCategories(prev => [...prev, newCategory]);
-            setAiTools(prev => ({ ...prev, [newCategory.name]: [] }));
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedCategory = payload.new as Category;
-            const oldCategory = payload.old as Category;
-            
-            setCategories(prev => prev.map(cat => 
-              cat.id === updatedCategory.id ? updatedCategory : cat
-            ));
-            
-            // Update category name in tools if changed
-            if (oldCategory.name !== updatedCategory.name) {
+            } else if (payload.eventType === 'DELETE') {
+              const deletedTool = payload.old as any;
               setAiTools(prev => {
-                const newTools = { ...prev };
-                
-                // Move tools to new category name
-                if (newTools[oldCategory.name]) {
-                  newTools[updatedCategory.name] = newTools[oldCategory.name].map(tool => ({
-                    ...tool,
-                    category: updatedCategory.name
-                  }));
-                  delete newTools[oldCategory.name];
-                }
-                
+                const newTools = { ...prev } as Record<string, AITool[]>;
+                Object.keys(newTools).forEach(category => {
+                  newTools[category] = newTools[category].filter(tool => tool.id !== deletedTool.id);
+                });
                 return newTools;
               });
             }
-          } else if (payload.eventType === 'DELETE') {
-            const deletedCategory = payload.old as Category;
-            setCategories(prev => prev.filter(cat => cat.id !== deletedCategory.id));
-            setAiTools(prev => {
-              const newTools = { ...prev };
-              delete newTools[deletedCategory.name];
-              return newTools;
-            });
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+
+      categoriesChannel = supabase
+        .channel('ai_tool_categories_changes')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'ai_tool_categories', filter: `team_id=eq.${teamId}` },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              const newCategory = payload.new as Category;
+              setCategories(prev => [...prev, newCategory]);
+              setAiTools(prev => ({ ...prev, [newCategory.name]: [] }));
+            } else if (payload.eventType === 'UPDATE') {
+              const updatedCategory = payload.new as Category;
+              const oldCategory = payload.old as Category;
+              setCategories(prev => prev.map(cat => cat.id === updatedCategory.id ? updatedCategory : cat));
+              if (oldCategory.name !== updatedCategory.name) {
+                setAiTools(prev => {
+                  const newTools = { ...prev } as Record<string, AITool[]>;
+                  if (newTools[oldCategory.name]) {
+                    newTools[updatedCategory.name] = newTools[oldCategory.name].map(tool => ({
+                      ...tool,
+                      category: updatedCategory.name
+                    }));
+                    delete newTools[oldCategory.name];
+                  }
+                  return newTools;
+                });
+              }
+            } else if (payload.eventType === 'DELETE') {
+              const deletedCategory = payload.old as Category;
+              setCategories(prev => prev.filter(cat => cat.id !== deletedCategory.id));
+              setAiTools(prev => {
+                const newTools = { ...prev } as Record<string, AITool[]>;
+                delete newTools[deletedCategory.name];
+                return newTools;
+              });
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setup();
 
     return () => {
-      supabase.removeChannel(toolsChannel);
-      supabase.removeChannel(categoriesChannel);
+      if (toolsChannel) supabase.removeChannel(toolsChannel);
+      if (categoriesChannel) supabase.removeChannel(categoriesChannel);
     };
   }, []);
 

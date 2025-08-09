@@ -214,35 +214,20 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     loadData();
 
-    // Set up real-time subscriptions
-    tasksChannel = supabase
-      .channel('tasks-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'tasks' },
-        (payload) => {
-          console.log('Task change received:', payload);
-          if (payload.eventType === 'INSERT') {
-            const newTask: Task = {
-              id: payload.new.id,
-              title: payload.new.title,
-              description: payload.new.description || '',
-              priority: payload.new.priority,
-              status: payload.new.status === 'todo' ? 'todo' : 
-                      payload.new.status === 'in_progress' ? 'inProgress' : 
-                      payload.new.status === 'review' ? 'review' : 'done',
-              assignee: payload.new.assignee || '',
-              project_id: payload.new.project_id,
-              start_date: payload.new.start_date ? new Date(payload.new.start_date) : null,
-              due_date: payload.new.due_date ? new Date(payload.new.due_date) : null,
-              duration: payload.new.duration || 1,
-              createdBy: payload.new.created_by,
-              createdAt: payload.new.created_at
-            };
-            setTasks(prev => [newTask, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            setTasks(prev => prev.map(task => 
-              task.id === payload.new.id ? {
-                ...task,
+    // Set up real-time subscriptions scoped to current team
+    const setupRealtime = async () => {
+      const teamId = await TeamDataService.getCurrentTeamId();
+      if (!teamId) return;
+
+      tasksChannel = supabase
+        .channel('tasks-changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'tasks', filter: `team_id=eq.${teamId}` },
+          (payload) => {
+            console.log('Task change received:', payload);
+            if (payload.eventType === 'INSERT') {
+              const newTask: Task = {
+                id: payload.new.id,
                 title: payload.new.title,
                 description: payload.new.description || '',
                 priority: payload.new.priority,
@@ -250,47 +235,69 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         payload.new.status === 'in_progress' ? 'inProgress' : 
                         payload.new.status === 'review' ? 'review' : 'done',
                 assignee: payload.new.assignee || '',
-              } : task
-            ));
-          } else if (payload.eventType === 'DELETE') {
-            setTasks(prev => prev.filter(task => task.id !== payload.old.id));
+                project_id: payload.new.project_id,
+                start_date: payload.new.start_date ? new Date(payload.new.start_date) : null,
+                due_date: payload.new.due_date ? new Date(payload.new.due_date) : null,
+                duration: payload.new.duration || 1,
+                createdBy: payload.new.created_by,
+                createdAt: payload.new.created_at
+              };
+              setTasks(prev => [newTask, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+              setTasks(prev => prev.map(task => 
+                task.id === payload.new.id ? {
+                  ...task,
+                  title: payload.new.title,
+                  description: payload.new.description || '',
+                  priority: payload.new.priority,
+                  status: payload.new.status === 'todo' ? 'todo' : 
+                          payload.new.status === 'in_progress' ? 'inProgress' : 
+                          payload.new.status === 'review' ? 'review' : 'done',
+                  assignee: payload.new.assignee || '',
+                } : task
+              ));
+            } else if (payload.eventType === 'DELETE') {
+              setTasks(prev => prev.filter(task => task.id !== payload.old.id));
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
-    notesChannel = supabase
-      .channel('notes-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'project_notes' },
-        (payload) => {
-          console.log('Note change received:', payload);
-          if (payload.eventType === 'INSERT') {
-            const newNote: ProjectNote = {
-              id: payload.new.id,
-              title: payload.new.title,
-              content: payload.new.content,
-              project_id: payload.new.project_id,
-              created_by: payload.new.created_by,
-              created_at: payload.new.created_at,
-              updated_at: payload.new.updated_at
-            };
-            setNotes(prev => [newNote, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            setNotes(prev => prev.map(note => 
-              note.id === payload.new.id ? {
-                ...note,
+      notesChannel = supabase
+        .channel('notes-changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'project_notes', filter: `team_id=eq.${teamId}` },
+          (payload) => {
+            console.log('Note change received:', payload);
+            if (payload.eventType === 'INSERT') {
+              const newNote: ProjectNote = {
+                id: payload.new.id,
                 title: payload.new.title,
                 content: payload.new.content,
+                project_id: payload.new.project_id,
+                created_by: payload.new.created_by,
+                created_at: payload.new.created_at,
                 updated_at: payload.new.updated_at
-              } : note
-            ));
-          } else if (payload.eventType === 'DELETE') {
-            setNotes(prev => prev.filter(note => note.id !== payload.old.id));
+              };
+              setNotes(prev => [newNote, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+              setNotes(prev => prev.map(note => 
+                note.id === payload.new.id ? {
+                  ...note,
+                  title: payload.new.title,
+                  content: payload.new.content,
+                  updated_at: payload.new.updated_at
+                } : note
+              ));
+            } else if (payload.eventType === 'DELETE') {
+              setNotes(prev => prev.filter(note => note.id !== payload.old.id));
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    };
+
+    setupRealtime();
 
     // Cleanup subscriptions
     return () => {
@@ -479,7 +486,7 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
 
-      const newEvent = await calendarService.create({
+      const newEvent = await TeamDataService.createCalendarEvent({
         title: eventData.title,
         description: eventData.description,
         date: eventData.date,
