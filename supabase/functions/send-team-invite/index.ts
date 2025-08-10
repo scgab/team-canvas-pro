@@ -14,6 +14,7 @@ interface TeamInviteRequest {
   teamName: string;
   inviterName: string;
   invitationToken?: string;
+  acceptUrl?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -23,7 +24,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, teamName, inviterName, invitationToken }: TeamInviteRequest = await req.json();
+    const { email, teamName, inviterName, invitationToken, acceptUrl }: TeamInviteRequest = await req.json();
 
     console.log(`Sending team invitation to: ${email} for team: ${teamName}`);
 
@@ -68,7 +69,7 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
 
           <div style="text-align: center; margin-bottom: 25px;">
-            <a href="#" style="background: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+            <a href="${acceptUrl || '#'}" style="background: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
               Accept Invitation & Join Team
             </a>
           </div>

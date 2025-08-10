@@ -153,7 +153,12 @@ export class TeamAuthService {
   }
 
   // Invite team member
-  static async inviteTeamMember(email: string, teamId: string, invitedBy: string): Promise<void> {
+  static async inviteTeamMember(
+    email: string,
+    teamId: string,
+    invitedBy: string,
+    role: 'admin' | 'member' = 'member'
+  ): Promise<void> {
     try {
       // Generate invitation token
       const invitationToken = Math.random().toString(36).substr(2, 32);
@@ -173,14 +178,14 @@ export class TeamAuthService {
 
       if (invitationError) throw invitationError;
 
-      // Add to team members as pending
+      // Add to team members as pending with selected role
       const { error: memberError } = await supabase
         .from('team_members')
         .insert([{
           team_id: teamId,
           email: email,
           name: email, // Use email as name for now
-          role: 'member',
+          role: role,
           status: 'pending',
           invited_by: invitedBy,
           competence_level: 'beginner'
@@ -188,14 +193,26 @@ export class TeamAuthService {
 
       if (memberError) throw memberError;
 
+      // Fetch team name for the email
+      const { data: team, error: teamFetchError } = await supabase
+        .from('teams')
+        .select('team_name')
+        .eq('id', teamId)
+        .single();
+      if (teamFetchError) console.warn('Could not fetch team name:', teamFetchError);
+
+      // Compose accept URL to pass to edge function (absolute URL is required in emails)
+      const acceptUrl = `${window.location.origin}/auth?invite_token=${encodeURIComponent(invitationToken)}&email=${encodeURIComponent(email)}`;
+
       // Send invitation email
       try {
         await supabase.functions.invoke('send-team-invite', {
           body: {
-            email: email,
-            teamName: 'Your Team', // We could fetch this from the team data
+            email,
+            teamName: team?.team_name || 'Your Team',
             inviterName: invitedBy,
-            invitationToken: invitationToken
+            invitationToken,
+            acceptUrl,
           }
         });
         console.log(`Invitation email sent to ${email}`);

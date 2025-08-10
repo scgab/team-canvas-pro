@@ -313,6 +313,8 @@ const AuthenticationCard = () => {
   const [teamName, setTeamName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [inviteProcessed, setInviteProcessed] = useState(false);
+  const [acceptingInvite, setAcceptingInvite] = useState(false);
   
   const { user, signInWithCredentials, signUp } = useAuth();
   const { toast } = useToast();
@@ -356,18 +358,37 @@ const AuthenticationCard = () => {
     }
   }, [searchParams]);
 
-  // Redirect if already authenticated or handle plan selection
-  useEffect(() => {
-    if (user) {
-      const plan = searchParams.get('plan');
+// Redirect if already authenticated or handle plan selection and invitation acceptance
+useEffect(() => {
+  if (user) {
+    const plan = searchParams.get('plan');
+    const inviteToken = searchParams.get('invite_token');
+
+    const proceed = async () => {
+      if (inviteToken && !inviteProcessed && !acceptingInvite) {
+        try {
+          setAcceptingInvite(true);
+          await TeamAuthService.acceptInvitation(inviteToken, user.email!);
+          toast({ title: 'Invitation accepted', description: 'You have joined the team successfully.' });
+        } catch (err: any) {
+          console.error('Accept invitation error:', err);
+          toast({ title: 'Invitation error', description: err.message || 'Failed to accept invitation', variant: 'destructive' });
+        } finally {
+          setInviteProcessed(true);
+          setAcceptingInvite(false);
+        }
+      }
+
       if (plan && plan !== 'free') {
-        // User is authenticated and wants to subscribe to a paid plan
         navigate(`/subscription?plan=${plan}`);
       } else {
         navigate('/');
       }
-    }
-  }, [user, navigate, searchParams]);
+    };
+
+    void proceed();
+  }
+}, [user, navigate, searchParams, inviteProcessed, acceptingInvite, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -381,19 +402,22 @@ const AuthenticationCard = () => {
       return;
     }
 
-    // For signup, check if we need team setup
-    if (!isLogin && !isTeamSetup) {
-      if (!teamName.trim()) {
-        toast({
-          title: "Error",
-          description: "Please enter a team name",
-          variant: "destructive"
-        });
-        return;
-      }
-      setIsTeamSetup(true);
+// For signup, check if we need team setup (skip if coming from an invitation)
+if (!isLogin && !isTeamSetup) {
+  const hasInvite = !!searchParams.get('invite_token');
+  if (!hasInvite) {
+    if (!teamName.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a team name',
+        variant: 'destructive',
+      });
       return;
     }
+    setIsTeamSetup(true);
+    return;
+  }
+}
 
     if (!isLogin && password.length < 6) {
       toast({

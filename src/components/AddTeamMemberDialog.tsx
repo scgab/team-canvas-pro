@@ -60,11 +60,12 @@ export function AddTeamMemberDialog({ open, onOpenChange, onMemberAdded }: AddTe
         throw new Error("Only team admins can invite new members");
       }
 
-      // Send invitation
+      // Send invitation with selected role
       await TeamAuthService.inviteTeamMember(
         formData.email.trim(), 
         teamData.team.id, 
-        user.email
+        user.email,
+        formData.role as 'admin' | 'member'
       );
 
       toast({
