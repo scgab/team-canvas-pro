@@ -18,9 +18,11 @@ import {
   Calendar,
   BarChart
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const HelpCenter = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   const categories = [
     {
@@ -177,6 +179,12 @@ const HelpCenter = () => {
               className="pl-10 py-3"
             />
           </div>
+          <div className="mt-4 flex justify-center">
+            <Button size="lg" onClick={() => navigate('/getting-started')} aria-label="Open Getting Started guide">
+              <Book className="w-4 h-4 mr-2" />
+              Getting Started Guide
+            </Button>
+          </div>
         </div>
 
         {/* Quick Actions */}
@@ -206,7 +214,11 @@ const HelpCenter = () => {
           <h2 className="text-2xl font-semibold mb-6">Browse by Category</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCategories.map((category, index) => (
-              <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => { if (category.title === 'Getting Started') navigate('/getting-started'); }}
+                role={category.title === 'Getting Started' ? 'button' : undefined}
+                aria-label={category.title === 'Getting Started' ? 'Open Getting Started guide' : undefined}
+              >
                 <CardHeader>
                   <div className="flex items-start space-x-4">
                     <div className={`w-10 h-10 ${category.color} rounded-lg flex items-center justify-center`}>
@@ -259,7 +271,7 @@ const HelpCenter = () => {
         </div>
 
         {/* Contact Section */}
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-0">
+        <Card id="contact" className="bg-gradient-to-r from-blue-50 to-purple-50 border-0">
           <CardContent className="p-8 text-center">
             <h3 className="text-2xl font-semibold mb-4">Still need help?</h3>
             <p className="text-muted-foreground mb-6">
