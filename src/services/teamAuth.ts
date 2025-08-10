@@ -16,6 +16,7 @@ export interface TeamMember {
   id: string;
   team_id: string;
   email: string;
+  name?: string;
   full_name?: string;
   role: 'admin' | 'member';
   status: 'pending' | 'active' | 'inactive';
@@ -271,17 +272,43 @@ export class TeamAuthService {
     }
   }
 
-  // Get team members
+  // Get team members (names synced with user_profiles)
   static async getTeamMembers(teamId: string): Promise<TeamMember[]> {
     try {
-      const { data, error } = await supabase
+      // Fetch members
+      const { data: members, error: membersError } = await supabase
         .from('team_members')
         .select('*')
         .eq('team_id', teamId)
         .order('joined_at', { ascending: false });
 
-      if (error) throw error;
-      return (data || []) as TeamMember[];
+      if (membersError) throw membersError;
+
+      const teamMembers = (members || []) as TeamMember[];
+      if (teamMembers.length === 0) return [];
+
+      // Fetch profiles for this team to sync names
+      const { data: profiles, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('email, full_name')
+        .eq('team_id', teamId);
+
+      if (profilesError) {
+        console.warn('Could not fetch user profiles for name sync:', profilesError);
+        return teamMembers;
+      }
+
+      const nameByEmail = new Map<string, string>();
+      (profiles || []).forEach((p: any) => {
+        if (p.email && p.full_name) nameByEmail.set(p.email, p.full_name);
+      });
+
+      // Merge names from profiles, prefer profile full_name
+      return teamMembers.map((m) => ({
+        ...m,
+        full_name: nameByEmail.get(m.email) || m.full_name || m.name,
+        name: nameByEmail.get(m.email) || m.full_name || m.name,
+      }));
     } catch (error) {
       console.error('Error getting team members:', error);
       return [];
