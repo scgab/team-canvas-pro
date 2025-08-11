@@ -21,6 +21,8 @@ import {
   FileText
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { TeamDataService } from "@/services/teamData";
+import { TeamAuthService } from "@/services/teamAuth";
 
 export function Dashboard() {
   const { projects, loading, createProject, getProjectStats } = useProjects();
@@ -35,30 +37,52 @@ export function Dashboard() {
     }
   }, [user, registerUser]);
   
-  // Modal states
-  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
-  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [showAllProjects, setShowAllProjects] = useState(false);
+// Modal states
+const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
+const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+const [showAllProjects, setShowAllProjects] = useState(false);
+const [tasksCompleted, setTasksCompleted] = useState(0);
+const [teamMembersCount, setTeamMembersCount] = useState(0);
 
-  const stats = getProjectStats();
-  
-  // Get user info for welcome message
-  const userInfo = user ? getUserInfo(user.id) : null;
-  const isReturning = user ? isReturningUser(user.id) : false;
+const stats = getProjectStats();
+
+useEffect(() => {
+  const loadCounts = async () => {
+    try {
+      const teamId = await TeamAuthService.getCurrentTeamId();
+      if (!teamId) return;
+      const [tasks, members] = await Promise.all([
+        TeamDataService.getTeamTasks(),
+        TeamAuthService.getTeamMembers(teamId)
+      ]);
+      const completed = (tasks || []).filter((t: any) => t.status === 'done').length;
+      const activeMembers = (members || []).filter((m: any) => m.status === 'active').length;
+      setTasksCompleted(completed);
+      setTeamMembersCount(activeMembers);
+    } catch (e) {
+      console.error('Failed to load dashboard counts', e);
+    }
+  };
+  loadCounts();
+}, [user]);
+
+// Get user info for welcome message
+const userInfo = user ? getUserInfo(user.id) : null;
+const isReturning = user ? isReturningUser(user.id) : false;
 
   const handleProjectCreated = () => {
     console.log("Project created, dashboard will refresh automatically");
   };
   
-  const projectStats = [
-    { name: "Active Projects", value: stats.total, icon: FolderOpen, color: "text-primary" },
-    { name: "Tasks Completed", value: stats.completed, icon: CheckCircle, color: "text-success" },
-    { name: "Team Members", value: projects.reduce((sum, p) => sum + p.team_size, 0), icon: Users, color: "text-warning" },
-    { name: "Overdue Projects", value: stats.overdue, icon: Clock, color: "text-destructive" },
-  ];
+const projectStats = [
+  { name: "Active Projects", value: stats.active, icon: FolderOpen, color: "text-primary" },
+  { name: "Tasks Completed", value: tasksCompleted, icon: CheckCircle, color: "text-success" },
+  { name: "Team Members", value: teamMembersCount, icon: Users, color: "text-warning" },
+  { name: "Overdue Projects", value: stats.overdue, icon: Clock, color: "text-destructive" },
+];
 
   return (
     <Layout>
