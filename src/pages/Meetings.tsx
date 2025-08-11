@@ -223,6 +223,31 @@ const Meetings: React.FC = () => {
       }
 
       console.log('Meeting created successfully:', data);
+      
+      // Trigger N8N webhook
+      try {
+        await fetch('https://wheewls.app.n8n.cloud/webhook/wheewls/meeting-created', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'no-cors',
+          body: JSON.stringify({
+            meetingId: data.id,
+            title: data.title,
+            date: data.date,
+            time: data.time,
+            attendees: data.attendees,
+            createdBy: data.created_by,
+            timestamp: new Date().toISOString()
+          }),
+        });
+        console.log('N8N webhook triggered successfully');
+      } catch (webhookError) {
+        console.error('Failed to trigger N8N webhook:', webhookError);
+        // Don't show error to user as meeting was created successfully
+      }
+
       toast.success('Meeting created successfully');
       setShowCreateDialog(false);
       setNewMeeting({

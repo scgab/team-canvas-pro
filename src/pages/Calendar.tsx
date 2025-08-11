@@ -278,6 +278,29 @@ const Calendar = () => {
                 variant: "destructive"
               });
             } else {
+              // Trigger N8N webhook for meeting creation
+              try {
+                await fetch('https://wheewls.app.n8n.cloud/webhook/wheewls/meeting-created', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  mode: 'no-cors',
+                  body: JSON.stringify({
+                    title: meetingData.title,
+                    date: meetingData.date,
+                    time: meetingData.time,
+                    attendees: meetingData.attendees,
+                    createdBy: meetingData.created_by,
+                    source: 'calendar',
+                    timestamp: new Date().toISOString()
+                  }),
+                });
+                console.log('N8N webhook triggered for calendar meeting');
+              } catch (webhookError) {
+                console.error('Failed to trigger N8N webhook:', webhookError);
+              }
+              
               toast({
                 title: "Success",
                 description: "Event created and synced to meetings!",
