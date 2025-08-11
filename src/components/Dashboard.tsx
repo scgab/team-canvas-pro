@@ -20,11 +20,13 @@ import {
   Users,
   FileText
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export function Dashboard() {
   const { projects, loading, createProject, getProjectStats } = useProjects();
   const { user } = useAuth();
   const { isReturningUser, getUserInfo, registerUser } = useUserManagement();
+  const navigate = useNavigate();
   
   // Register user in management system when they access dashboard
   useEffect(() => {
@@ -39,6 +41,7 @@ export function Dashboard() {
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [showAllProjects, setShowAllProjects] = useState(false);
 
   const stats = getProjectStats();
   
@@ -93,7 +96,11 @@ export function Dashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {projectStats.map((stat, index) => (
-          <Card key={index} className="bg-gradient-card shadow-custom-card hover:shadow-custom-md transition-shadow">
+          <Card
+            key={index}
+            className={`bg-gradient-card shadow-custom-card hover:shadow-custom-md transition-shadow ${stat.name === "Active Projects" ? "cursor-pointer" : ""}`}
+            onClick={stat.name === "Active Projects" ? () => navigate("/projects") : undefined}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -132,8 +139,15 @@ export function Dashboard() {
             ) : (
               <div className="space-y-3">
                 <h3 className="text-lg font-medium text-foreground mb-4">Recent Projects</h3>
-                {projects.slice(0, 3).map((project) => (
-                  <div key={project.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors">
+                {(showAllProjects ? projects : projects.slice(0, 3)).map((project) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { navigate(`/projects/${project.id}`); } }}
+                  >
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color }} />
                     <div className="flex-1">
                       <h4 className="font-medium text-sm">{project.title}</h4>
@@ -142,8 +156,19 @@ export function Dashboard() {
                     <Progress value={project.progress} className="w-16 h-2" />
                   </div>
                 ))}
-                {projects.length > 3 && (
-                  <p className="text-sm text-muted-foreground text-center">+{projects.length - 3} more projects</p>
+                {projects.length > 3 && !showAllProjects && (
+                  <div className="text-center">
+                    <Button variant="link" size="sm" onClick={() => setShowAllProjects(true)}>
+                      +{projects.length - 3} more projects
+                    </Button>
+                  </div>
+                )}
+                {projects.length > 3 && showAllProjects && (
+                  <div className="text-center">
+                    <Button variant="link" size="sm" onClick={() => setShowAllProjects(false)}>
+                      Show less
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
@@ -177,7 +202,7 @@ export function Dashboard() {
               variant="outline" 
               className="w-full justify-start hover:bg-muted/50 transition-colors" 
               size="lg"
-              onClick={() => setIsTeamModalOpen(true)}
+              onClick={() => navigate("/team")}
             >
               <Users className="w-5 h-5 mr-3" />
               Add Team Member
