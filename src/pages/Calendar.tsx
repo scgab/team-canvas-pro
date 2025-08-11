@@ -301,10 +301,52 @@ const Calendar = () => {
                 console.error('Failed to trigger N8N webhook:', webhookError);
               }
               
-              toast({
-                title: "Success",
-                description: "Event created and synced to meetings!",
-              });
+              // Automatically send email notifications to attendees
+              if (meetingData.attendees && meetingData.attendees.length > 0) {
+                try {
+                  const { error: notificationError } = await supabase.functions.invoke('send-event-notifications', {
+                    body: {
+                      eventTitle: meetingData.title,
+                      eventDescription: meetingData.description,
+                      eventDate: meetingData.date,
+                      eventTime: meetingData.time,
+                      endTime: meetingData.end_time,
+                      location: meetingData.location,
+                      attendees: meetingData.attendees,
+                      agenda: meetingData.agenda,
+                      type: 'meeting',
+                      senderEmail: user.email,
+                      senderName: user.user_metadata?.full_name || user.email
+                    }
+                  });
+                  
+                  if (notificationError) {
+                    console.error('Error sending email notifications:', notificationError);
+                    toast({
+                      title: "Partial Success",
+                      description: "Event created but failed to send email notifications",
+                      variant: "destructive"
+                    });
+                  } else {
+                    toast({
+                      title: "Success",
+                      description: `Event created and notifications sent to ${meetingData.attendees.length} attendees!`,
+                    });
+                  }
+                } catch (emailError) {
+                  console.error('Failed to send email notifications:', emailError);
+                  toast({
+                    title: "Partial Success",
+                    description: "Event created but failed to send email notifications",
+                    variant: "destructive"
+                  });
+                }
+              } else {
+                toast({
+                  title: "Success",
+                  description: "Event created and synced to meetings!",
+                });
+              }
             }
           }
         } catch (error) {
