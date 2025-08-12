@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.send-event-notifications]
 verify_jwt = false
+
+[functions.forward-n8n-meeting]
+verify_jwt = false
