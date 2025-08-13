@@ -173,7 +173,7 @@ const HelpCenter = () => {
         navigate('/getting-started');
         break;
       case 'Project Management':
-        navigate('/projects');
+        navigate('/help/project-management');
         break;
       case 'Team Collaboration':
         navigate('/team');

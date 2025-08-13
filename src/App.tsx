@@ -21,6 +21,7 @@ import ShiftPlanning from "./pages/ShiftPlanning";
 import Subscription from "./pages/Subscription";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import HelpCenter from "./pages/HelpCenter";
+import ProjectManagementHelp from "./pages/ProjectManagementHelp";
 import GettingStarted from "./pages/GettingStarted";
 import { AuthGuard } from "./components/AuthGuard";
 
@@ -48,6 +49,7 @@ const App = () => (
           <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
           <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
           <Route path="/help-center" element={<AuthGuard><HelpCenter /></AuthGuard>} />
+          <Route path="/help/project-management" element={<AuthGuard><ProjectManagementHelp /></AuthGuard>} />
           <Route path="/getting-started" element={<AuthGuard><GettingStarted /></AuthGuard>} />
           <Route path="/subscription" element={<AuthGuard><Subscription /></AuthGuard>} />
           <Route path="/subscription-success" element={<AuthGuard><SubscriptionSuccess /></AuthGuard>} />
