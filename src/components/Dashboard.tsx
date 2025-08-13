@@ -78,10 +78,10 @@ const isReturning = user ? isReturningUser(user.id) : false;
   };
   
 const projectStats = [
-  { name: "Active Projects", value: stats.active, icon: FolderOpen, color: "text-primary" },
+  { name: "Total Projects", value: stats.total, icon: FolderOpen, color: "text-primary", clickable: true, route: "/projects" },
   { name: "Tasks Completed", value: tasksCompleted, icon: CheckCircle, color: "text-success" },
-  { name: "Team Members", value: teamMembersCount, icon: Users, color: "text-warning" },
-  { name: "Overdue Projects", value: stats.overdue, icon: Clock, color: "text-destructive" },
+  { name: "Team Members", value: teamMembersCount, icon: Users, color: "text-warning", clickable: true, route: "/team" },
+  { name: "Overdue Projects", value: stats.overdue, icon: Clock, color: "text-destructive", clickable: true, route: "/projects" },
 ];
 
   return (
@@ -122,8 +122,8 @@ const projectStats = [
         {projectStats.map((stat, index) => (
           <Card
             key={index}
-            className={`bg-gradient-card shadow-custom-card hover:shadow-custom-md transition-shadow ${stat.name === "Active Projects" ? "cursor-pointer" : ""}`}
-            onClick={stat.name === "Active Projects" ? () => navigate("/projects") : undefined}
+            className={`bg-gradient-card shadow-custom-card hover:shadow-custom-md transition-shadow ${stat.clickable ? "cursor-pointer" : ""}`}
+            onClick={stat.clickable ? () => navigate(stat.route) : undefined}
           >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
