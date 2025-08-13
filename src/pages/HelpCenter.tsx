@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
+import { TaskCreateModal } from "@/components/QuickActionModals";
 import { 
   Search, 
   Book, 
@@ -16,13 +18,21 @@ import {
   Users,
   Settings,
   Calendar,
-  BarChart
+  BarChart,
+  Plus,
+  CheckCircle,
+  FolderOpen,
+  ArrowRight
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const HelpCenter = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const categories = [
     {
@@ -157,6 +167,56 @@ const HelpCenter = () => {
     )
   );
 
+  const handleCategoryClick = (category: any) => {
+    switch (category.title) {
+      case 'Getting Started':
+        navigate('/getting-started');
+        break;
+      case 'Project Management':
+        navigate('/projects');
+        break;
+      case 'Team Collaboration':
+        navigate('/team');
+        break;
+      case 'Calendar & Scheduling':
+        navigate('/calendar');
+        break;
+      case 'Analytics & Reports':
+        navigate('/analytics');
+        break;
+      case 'Account & Settings':
+        navigate('/settings');
+        break;
+      default:
+        toast({
+          title: "Coming Soon",
+          description: `${category.title} help articles are being prepared.`
+        });
+    }
+  };
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'create-project':
+        setIsProjectDialogOpen(true);
+        break;
+      case 'create-task':
+        setIsTaskModalOpen(true);
+        break;
+      case 'view-projects':
+        navigate('/projects');
+        break;
+      case 'view-board':
+        navigate('/board');
+        break;
+      default:
+        toast({
+          title: "Feature Available",
+          description: "This feature is ready to use in the main application."
+        });
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -209,16 +269,62 @@ const HelpCenter = () => {
           ))}
         </div>
 
+        {/* Project Management Quick Actions */}
+        <div>
+          <h2 className="text-2xl font-semibold mb-6">Try Project Management Features</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleQuickAction('create-project')}>
+              <CardContent className="p-4 text-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <Plus className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="font-semibold mb-2">Create Project</h3>
+                <p className="text-sm text-muted-foreground">Start a new project instantly</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleQuickAction('create-task')}>
+              <CardContent className="p-4 text-center">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="font-semibold mb-2">Create Task</h3>
+                <p className="text-sm text-muted-foreground">Add a new task quickly</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleQuickAction('view-projects')}>
+              <CardContent className="p-4 text-center">
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <FolderOpen className="w-6 h-6 text-purple-600" />
+                </div>
+                <h3 className="font-semibold mb-2">View Projects</h3>
+                <p className="text-sm text-muted-foreground">Browse all your projects</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleQuickAction('view-board')}>
+              <CardContent className="p-4 text-center">
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <BarChart className="w-6 h-6 text-orange-600" />
+                </div>
+                <h3 className="font-semibold mb-2">Kanban Board</h3>
+                <p className="text-sm text-muted-foreground">Manage tasks visually</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
         {/* Help Categories */}
         <div>
           <h2 className="text-2xl font-semibold mb-6">Browse by Category</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCategories.map((category, index) => (
               <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => { if (category.title === 'Getting Started') navigate('/getting-started'); }}
-                role={category.title === 'Getting Started' ? 'button' : undefined}
-                aria-label={category.title === 'Getting Started' ? 'Open Getting Started guide' : undefined}
-              >
+                onClick={() => handleCategoryClick(category)}>
+                <div className="absolute top-4 right-4">
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                </div>
                 <CardHeader>
                   <div className="flex items-start space-x-4">
                     <div className={`w-10 h-10 ${category.color} rounded-lg flex items-center justify-center`}>
@@ -289,6 +395,22 @@ const HelpCenter = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Project Management Modals */}
+        <ProjectCreateDialog 
+          open={isProjectDialogOpen} 
+          onOpenChange={setIsProjectDialogOpen}
+          onProjectCreated={() => {
+            toast({
+              title: "Success!",
+              description: "Your project has been created successfully."
+            });
+          }}
+        />
+        <TaskCreateModal 
+          open={isTaskModalOpen} 
+          onOpenChange={setIsTaskModalOpen}
+        />
       </div>
     </Layout>
   );
