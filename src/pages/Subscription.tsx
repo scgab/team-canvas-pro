@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Layout } from '@/components/Layout';
 import { SubscriptionPlans } from '@/components/SubscriptionPlans';
 import { useSubscription } from '@/hooks/useSubscription';
 
@@ -16,9 +17,9 @@ const Subscription = () => {
   }, [searchParams, createCheckout]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <Layout>
       <SubscriptionPlans />
-    </div>
+    </Layout>
   );
 };
 
