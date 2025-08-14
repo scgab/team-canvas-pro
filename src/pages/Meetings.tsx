@@ -247,39 +247,7 @@ const Meetings: React.FC = () => {
         console.error('Failed to trigger N8N webhook:', webhookError);
       }
 
-      // Automatically send email notifications to attendees
-      if (data.attendees && data.attendees.length > 0) {
-        try {
-          const { error: notificationError } = await supabase.functions.invoke('send-event-notifications', {
-            body: {
-              eventId: data.id,
-              eventTitle: data.title,
-              eventDescription: data.description,
-              eventDate: data.date,
-              eventTime: data.time,
-              endTime: data.end_time,
-              location: data.location,
-              attendees: data.attendees,
-              agenda: data.agenda,
-              type: 'meeting',
-              senderEmail: user.email,
-              senderName: user.user_metadata?.full_name || user.email
-            }
-          });
-          
-          if (notificationError) {
-            console.error('Error sending email notifications:', notificationError);
-            toast.error('Meeting created but failed to send email notifications');
-          } else {
-            toast.success(`Meeting created and notifications sent to ${data.attendees.length} attendees`);
-          }
-        } catch (emailError) {
-          console.error('Failed to send email notifications:', emailError);
-          toast.error('Meeting created but failed to send email notifications');
-        }
-      } else {
-        toast.success('Meeting created successfully');
-      }
+      toast.success('Meeting created and sent to N8N webhook!');
 
       setShowCreateDialog(false);
       setNewMeeting({
