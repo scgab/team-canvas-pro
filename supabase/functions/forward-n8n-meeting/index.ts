@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 // Public N8N webhook URL for meeting created events
-const N8N_WEBHOOK_URL = "https://wheewls.app.n8n.cloud/webhook-test/webhook-test/a8ad0817-3fd7-4465-a7f4-4cccc7d0a40c";
+const N8N_WEBHOOK_URL = "https://wheewls.app.n8n.cloud/webhook/webhook-test/a8ad0817-3fd7-4465-a7f4-4cccc7d0a40c";
 
 interface MeetingCreatedPayload {
   meetingId?: string;

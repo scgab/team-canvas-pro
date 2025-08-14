@@ -170,7 +170,7 @@ const EventWebhookTest = () => {
         <div className="mt-6 p-4 bg-muted rounded-lg">
           <h4 className="font-medium mb-2">Webhook URL:</h4>
           <code className="text-sm text-muted-foreground break-all">
-            https://wheewls.app.n8n.cloud/webhook-test/webhook-test/a8ad0817-3fd7-4465-a7f4-4cccc7d0a40c
+            https://wheewls.app.n8n.cloud/webhook/webhook-test/a8ad0817-3fd7-4465-a7f4-4cccc7d0a40c
           </code>
         </div>
       </CardContent>
