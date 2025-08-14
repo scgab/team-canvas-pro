@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
 import { TaskCreateModal } from "@/components/QuickActionModals";
 import EventWebhookTest from "@/components/EventWebhookTest";
+import N8NWebhookTest from "@/components/N8NWebhookTest";
 import { 
   Search, 
   Book, 
