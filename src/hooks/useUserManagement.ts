@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 // Removed dependency on old userDatabase
 
@@ -28,13 +28,13 @@ export const useUserManagement = () => {
   }, []);
 
   // Save registered users to localStorage
-  const saveUsers = (users: RegisteredUser[]) => {
+  const saveUsers = useCallback((users: RegisteredUser[]) => {
     localStorage.setItem('registeredUsers', JSON.stringify(users));
     setRegisteredUsers(users);
-  };
+  }, []);
 
   // Register new user or update existing (adapted for our auth system)
-  const registerUser = (user: any) => {
+  const registerUser = useCallback((user: any) => {
     const now = new Date().toISOString();
     const existingUserIndex = registeredUsers.findIndex(u => u.id === user.id);
     
@@ -77,7 +77,7 @@ export const useUserManagement = () => {
       console.log('Name:', newUser.full_name);
       console.log('Login time:', newUser.last_login);
     }
-  };
+  }, [registeredUsers, saveUsers, toast]);
 
   // Get user registration info
   const getUserInfo = (userId: string): RegisteredUser | null => {
