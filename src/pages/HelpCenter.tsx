@@ -7,6 +7,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button";
 import { ProjectCreateDialog } from "@/components/ProjectCreateDialog";
 import { TaskCreateModal } from "@/components/QuickActionModals";
+import EventWebhookTest from "@/components/EventWebhookTest";
 import { 
   Search, 
   Book, 
@@ -22,7 +23,8 @@ import {
   Plus,
   CheckCircle,
   FolderOpen,
-  ArrowRight
+  ArrowRight,
+  Zap
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -313,6 +315,15 @@ const HelpCenter = () => {
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* N8N Webhook Test */}
+        <div>
+          <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
+            <Zap className="w-6 h-6 text-yellow-500" />
+            N8N Webhook Test
+          </h2>
+          <EventWebhookTest />
         </div>
 
         {/* Help Categories */}
