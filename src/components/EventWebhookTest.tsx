@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarIcon, Clock, MapPin, Users } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const EventWebhookTest = () => {
   const [loading, setLoading] = useState(false);
@@ -23,8 +24,6 @@ const EventWebhookTest = () => {
     e.preventDefault();
     setLoading(true);
 
-    const webhookUrl = "https://wheewls.app.n8n.cloud/webhook-test/webhook-test/a8ad0817-3fd7-4465-a7f4-4cccc7d0a40c";
-    
     const payload = {
       meetingId: `test-${Date.now()}`,
       title: eventData.title,
@@ -40,23 +39,26 @@ const EventWebhookTest = () => {
     };
 
     try {
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
+      console.log('Sending payload to edge function:', payload);
+      
+      const { data, error } = await supabase.functions.invoke('forward-n8n-meeting', {
+        body: payload
       });
 
-      console.log('Webhook response status:', response.status);
-      console.log('Payload sent:', payload);
+      if (error) {
+        console.error('Edge function error:', error);
+        toast.error(`Failed to send event: ${error.message}`);
+        return;
+      }
 
-      if (response.ok) {
-        const responseText = await response.text();
-        toast.success("Event sent to n8n webhook successfully!");
-        console.log('Webhook response:', responseText);
+      console.log('Edge function response:', data);
+
+      if (data?.ok) {
+        toast.success("Event sent to N8N webhook successfully!");
+        console.log('N8N webhook response:', data.responseText);
       } else {
-        toast.error(`Webhook responded with status: ${response.status}`);
+        toast.error(`N8N webhook responded with status: ${data?.status || 'unknown'}`);
+        console.log('N8N error response:', data);
       }
     } catch (error) {
       console.error('Webhook error:', error);
