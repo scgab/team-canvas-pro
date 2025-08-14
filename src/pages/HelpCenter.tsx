@@ -323,7 +323,8 @@ const HelpCenter = () => {
             <Zap className="w-6 h-6 text-yellow-500" />
             N8N Webhook Test
           </h2>
-          <EventWebhookTest />
+        <EventWebhookTest />
+        <N8NWebhookTest />
         </div>
 
         {/* Help Categories */}
