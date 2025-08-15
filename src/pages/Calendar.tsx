@@ -280,11 +280,29 @@ const Calendar = () => {
             } else {
               // Trigger N8N webhook via Supabase Edge Function (server-side)
               try {
+                // Calculate duration in minutes
+                const startTime = new Date(`2000-01-01T${meetingData.time}:00`);
+                const endTime = new Date(`2000-01-01T${meetingData.end_time}:00`);
+                const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+                
+                // Create ISO date strings
+                const startISO = new Date(`${meetingData.date}T${meetingData.time}:00`).toISOString();
+                const endISO = new Date(`${meetingData.date}T${meetingData.end_time}:00`).toISOString();
+                
                 const { data: webhookResult, error: webhookError } = await supabase.functions.invoke('forward-n8n-meeting', {
                   body: {
+                    sessionId: user.id || "demo-1",
+                    timezone: "Europe/Stockholm",
+                    chatInput: `Create a meeting called '${meetingData.title}' on ${meetingData.date} at ${meetingData.time} for ${durationMinutes} minutes`,
+                    eventTitle: meetingData.title,
+                    eventDescription: meetingData.description,
+                    start_date: startISO,
+                    end_date: endISO,
+                    // Legacy fields for backward compatibility
                     title: meetingData.title,
                     date: meetingData.date,
                     time: meetingData.time,
+                    duration: durationMinutes.toString(),
                     attendees: meetingData.attendees,
                     createdBy: meetingData.created_by,
                     source: 'calendar',

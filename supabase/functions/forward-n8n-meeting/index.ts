@@ -5,8 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Public N8N webhook URL for meeting created events
-const N8N_WEBHOOK_URL = "https://wheewls.app.n8n.cloud/webhook/webhook-test/a8ad0817-3fd7-4465-a7f4-4cccc7d0a40c";
+// N8N webhook URL for meeting created events
+const N8N_WEBHOOK_URL = "https://wheewls.app.n8n.cloud/webhook/3f08b9d5-65c1-4bce-8fe2-887c073fe974";
 
 interface MeetingCreatedPayload {
   sessionId?: string;
