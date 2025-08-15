@@ -88,8 +88,8 @@ interface SharedDataContextType {
   updateNote: (noteId: string, updates: Partial<ProjectNote>) => Promise<void>;
   deleteNote: (noteId: string) => Promise<void>;
   sendMessage: (senderId: string, receiverId: string, content: string) => Promise<void>;
-  createEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<void>;
-  createCalendarEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<void>;
+  createEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<CalendarEvent>;
+  createCalendarEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<CalendarEvent>;
   updateCalendarEvent: (id: string, eventData: Partial<CalendarEvent>) => Promise<void>;
   deleteCalendarEvent: (id: string) => Promise<void>;
 }
