@@ -89,8 +89,8 @@ const CalendarPage = () => {
   };
 
   const handleCreateMeeting = async (e: React.FormEvent) => {
+    console.log('🚀 Form submission started - handleCreateMeeting called');
     e.preventDefault();
-    console.log('📅 Form submitted - handleCreateMeeting called');
     
     if (!user) {
       console.log('❌ No user found');
@@ -101,28 +101,45 @@ const CalendarPage = () => {
     console.log('👤 User found:', user.email);
     console.log('📝 Meeting form data:', newMeeting);
 
+    // Validate required fields
+    if (!newMeeting.title.trim()) {
+      console.log('❌ Title is required');
+      toast.error('Title is required');
+      return;
+    }
+
+    if (!newMeeting.date) {
+      console.log('❌ Date is required');
+      toast.error('Date is required');
+      return;
+    }
+
+    if (!newMeeting.time) {
+      console.log('❌ Time is required');
+      toast.error('Time is required');
+      return;
+    }
+
     try {
       const meetingData = {
-        title: newMeeting.title,
-        description: newMeeting.description,
+        title: newMeeting.title.trim(),
+        description: newMeeting.description.trim(),
         date: newMeeting.date,
         time: newMeeting.time,
-        end_time: newMeeting.end_time,
-        type: newMeeting.type,
-        location: newMeeting.location,
-        attendees: newMeeting.attendees,
-        assigned_members: newMeeting.attendees,
+        end_time: newMeeting.end_time || newMeeting.time,
+        type: newMeeting.type || 'meeting',
+        location: newMeeting.location.trim(),
+        attendees: newMeeting.attendees.filter(email => email.trim()),
+        assigned_members: newMeeting.attendees.filter(email => email.trim()),
         created_by: user.email || 'unknown'
       };
 
       console.log('🚀 About to call createCalendarEvent with:', meetingData);
 
-      // Create the meeting/event
+      // Create the meeting/event (this will automatically trigger the webhook)
       const result = await createCalendarEvent(meetingData);
       console.log('✅ Meeting created successfully:', result);
-
-      // The webhook is now triggered automatically in createCalendarEvent
-      // No need for separate webhook call here
+      console.log('📧 Webhook should have been triggered automatically by createCalendarEvent');
 
       setNewMeeting({
         title: '',
@@ -135,10 +152,10 @@ const CalendarPage = () => {
         attendees: []
       });
       setIsDialogOpen(false);
-      toast.success('Meeting created successfully');
+      toast.success('Meeting created and emails sent!');
     } catch (error) {
       console.error('💥 Error creating meeting:', error);
-      toast.error('Failed to create meeting');
+      toast.error('Failed to create meeting: ' + (error as Error).message);
     }
   };
 
