@@ -348,6 +348,39 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [user, authLoading]);
 
+  // Helper function to trigger webhook for meeting creation
+  const triggerMeetingWebhook = async (eventData: CalendarEvent) => {
+    try {
+      // Calculate start and end ISO dates
+      const startDateTime = new Date(`${eventData.date}T${eventData.time}:00`);
+      const endDateTime = new Date(startDateTime.getTime() + 30 * 60000); // Default 30 minutes if no end time
+      
+      const webhookPayload = {
+        sessionId: user?.id || "demo-1",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Stockholm",
+        eventTitle: eventData.title,
+        eventDescription: eventData.description || "",
+        start_date: startDateTime.toISOString(),
+        end_date: endDateTime.toISOString(),
+        userEmail: "myh@scandac.com"
+      };
+
+      console.log('Triggering N8N webhook for meeting:', webhookPayload);
+
+      const { data: webhookResult, error: webhookError } = await supabase.functions.invoke('forward-n8n-meeting', {
+        body: webhookPayload
+      });
+
+      if (webhookError) {
+        console.error('Webhook error:', webhookError);
+      } else {
+        console.log('Webhook response:', webhookResult);
+      }
+    } catch (error) {
+      console.error('Error triggering meeting webhook:', error);
+    }
+  };
+
   const createProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'createdBy'>) => {
     try {
       const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
@@ -555,6 +588,11 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       };
 
       setEvents(prev => [...prev, transformedEvent]);
+
+      // Trigger N8N webhook immediately after creating the event
+      await triggerMeetingWebhook(transformedEvent);
+
+      return transformedEvent;
     } catch (error) {
       console.error('Error creating event:', error);
       throw error;
