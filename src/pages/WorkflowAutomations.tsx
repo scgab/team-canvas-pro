@@ -33,7 +33,7 @@ import {
   Copy
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 interface WorkflowAction {
   id: string;
   type: 'email' | 'notification' | 'summary' | 'task_create' | 'webhook';
@@ -81,6 +81,16 @@ const WorkflowAutomations = () => {
   const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("workflows");
   const { toast } = useToast();
+
+  // Edit/Delete/Test state
+  const [editWorkflow, setEditWorkflow] = useState<Workflow | null>(null);
+  const [deleteWorkflowRef, setDeleteWorkflowRef] = useState<Workflow | null>(null);
+  const [editAgent, setEditAgent] = useState<AIAgent | null>(null);
+  const [deleteAgentRef, setDeleteAgentRef] = useState<AIAgent | null>(null);
+  const [testAgentRef, setTestAgentRef] = useState<AIAgent | null>(null);
+  const [testPrompt, setTestPrompt] = useState("");
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
 
   // Sample data
   useEffect(() => {
@@ -254,6 +264,74 @@ const WorkflowAutomations = () => {
     });
   };
 
+  // Save edited workflow
+  const saveEditedWorkflow = (formData: any) => {
+    if (!editWorkflow) return;
+    setWorkflows(prev => prev.map(w =>
+      w.id === editWorkflow.id
+        ? {
+            ...w,
+            name: formData.name,
+            description: formData.description,
+            trigger: {
+              ...w.trigger,
+              type: formData.triggerType || w.trigger.type,
+              name: formData.triggerName || w.trigger.name,
+            },
+          }
+        : w
+    ));
+    setEditWorkflow(null);
+    toast({ title: "Workflow Updated", description: "Changes saved successfully." });
+  };
+
+  // Delete workflow
+  const confirmDeleteWorkflow = () => {
+    if (!deleteWorkflowRef) return;
+    setWorkflows(prev => prev.filter(w => w.id !== deleteWorkflowRef.id));
+    setDeleteWorkflowRef(null);
+    toast({ title: "Workflow Deleted", description: "Workflow removed successfully." });
+  };
+
+  // Save edited agent
+  const saveEditedAgent = (formData: any) => {
+    if (!editAgent) return;
+    setAIAgents(prev => prev.map(a =>
+      a.id === editAgent.id
+        ? {
+            ...a,
+            name: formData.name,
+            description: formData.description,
+            role: formData.role,
+            instructions: formData.instructions,
+            model: formData.model,
+          }
+        : a
+    ));
+    setEditAgent(null);
+    toast({ title: "Agent Updated", description: "Agent settings saved." });
+  };
+
+  // Delete agent
+  const confirmDeleteAgent = () => {
+    if (!deleteAgentRef) return;
+    setAIAgents(prev => prev.filter(a => a.id !== deleteAgentRef.id));
+    setDeleteAgentRef(null);
+    toast({ title: "Agent Deleted", description: "AI Agent removed successfully." });
+  };
+
+  // Test agent (simulated)
+  const runTestAgent = async () => {
+    if (!testAgentRef) return;
+    setTesting(true);
+    setTestResult(null);
+    await new Promise(r => setTimeout(r, 600));
+    const snippet = testPrompt.trim() || "No prompt provided";
+    const result = `Agent "${testAgentRef.name}" response:\n\nSummary:\n- ${snippet.slice(0, 140)}${snippet.length > 140 ? '...' : ''}\n\nNext steps:\n- Notify team about outcomes\n- Create action items\n- Schedule follow-up`;
+    setTestResult(result);
+    setTesting(false);
+  };
+
   return (
     <Layout>
       <div className="container mx-auto px-6 py-8">
@@ -344,24 +422,24 @@ const WorkflowAutomations = () => {
                           </span>
                         )}
                       </div>
-                      <div className="flex space-x-2 pt-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="w-4 h-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => duplicateWorkflow(workflow)}
-                        >
-                          <Copy className="w-4 h-4 mr-1" />
-                          Duplicate
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Delete
-                        </Button>
-                      </div>
+                        <div className="flex space-x-2 pt-2">
+                          <Button variant="outline" size="sm" onClick={() => setEditWorkflow(workflow)}>
+                            <Edit className="w-4 h-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => duplicateWorkflow(workflow)}
+                          >
+                            <Copy className="w-4 h-4 mr-1" />
+                            Duplicate
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setDeleteWorkflowRef(workflow)}>
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -433,15 +511,15 @@ const WorkflowAutomations = () => {
                         )}
                       </div>
                       <div className="flex space-x-2 pt-2">
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => setEditAgent(agent)}>
                           <Edit className="w-4 h-4 mr-1" />
                           Configure
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => { setTestAgentRef(agent); setTestPrompt(""); setTestResult(null); }}>
                           <Play className="w-4 h-4 mr-1" />
                           Test Agent
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => setDeleteAgentRef(agent)}>
                           <Trash2 className="w-4 h-4 mr-1" />
                           Delete
                         </Button>
@@ -504,6 +582,85 @@ const WorkflowAutomations = () => {
               </div>
             </div>
           </TabsContent>
+          {/* Edit / Delete / Test Modals */}
+          {editWorkflow && (
+            <Dialog open={!!editWorkflow} onOpenChange={(o) => { if (!o) setEditWorkflow(null); }}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Edit Workflow</DialogTitle>
+                </DialogHeader>
+                <WorkflowEditForm initial={editWorkflow} onSave={saveEditedWorkflow} />
+              </DialogContent>
+            </Dialog>
+          )}
+
+          <ConfirmDialog
+            open={!!deleteWorkflowRef}
+            onOpenChange={(o) => { if (!o) setDeleteWorkflowRef(null); }}
+            title="Delete workflow?"
+            description={`This will permanently delete "${deleteWorkflowRef?.name}".`}
+            confirmText="Delete"
+            variant="destructive"
+            onConfirm={confirmDeleteWorkflow}
+          />
+
+          {editAgent && (
+            <Dialog open={!!editAgent} onOpenChange={(o) => { if (!o) setEditAgent(null); }}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Configure AI Agent</DialogTitle>
+                </DialogHeader>
+                <AgentEditForm initial={editAgent} onSave={saveEditedAgent} />
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {testAgentRef && (
+            <Dialog open={!!testAgentRef} onOpenChange={(o) => { if (!o) { setTestAgentRef(null); setTestResult(null); setTesting(false); } }}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Test {testAgentRef?.name}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="testPrompt">Prompt</Label>
+                    <Textarea
+                      id="testPrompt"
+                      value={testPrompt}
+                      onChange={(e) => setTestPrompt(e.target.value)}
+                      placeholder="Describe what you want the agent to do..."
+                      rows={4}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button className="bg-primary text-primary-foreground" disabled={testing} onClick={runTestAgent}>
+                      {testing ? 'Testing...' : 'Run Test'}
+                    </Button>
+                  </div>
+                  {testResult && (
+                    <Card className="bg-card border border-border">
+                      <CardHeader>
+                        <CardTitle className="text-sm">Result</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <pre className="whitespace-pre-wrap text-sm text-muted-foreground">{testResult}</pre>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          <ConfirmDialog
+            open={!!deleteAgentRef}
+            onOpenChange={(o) => { if (!o) setDeleteAgentRef(null); }}
+            title="Delete AI agent?"
+            description={`This will permanently delete "${deleteAgentRef?.name}".`}
+            confirmText="Delete"
+            variant="destructive"
+            onConfirm={confirmDeleteAgent}
+          />
         </Tabs>
       </div>
     </Layout>
@@ -653,6 +810,108 @@ const CreateAgentForm = ({ onCreate }: { onCreate: (data: any) => void }) => {
       <Button type="submit" className="w-full bg-primary hover:bg-primary-dark text-primary-foreground">
         Create AI Agent
       </Button>
+    </form>
+  );
+};
+
+const WorkflowEditForm = ({ initial, onSave }: { initial: Workflow; onSave: (data: any) => void }) => {
+  const [formData, setFormData] = useState({
+    name: initial.name,
+    description: initial.description,
+    triggerType: initial.trigger.type,
+    triggerName: initial.trigger.name,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="name-edit">Workflow Name</Label>
+        <Input id="name-edit" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="description-edit">Description</Label>
+        <Textarea id="description-edit" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label>Trigger Event</Label>
+        <Select 
+          value={formData.triggerType}
+          onValueChange={(value) => setFormData({
+            ...formData,
+            triggerType: value as WorkflowTrigger['type'],
+            triggerName: value === 'meeting_created' ? 'When meeting is created' :
+                          value === 'task_completed' ? 'When task is completed' :
+                          value === 'project_updated' ? 'When project is updated' :
+                          'When scheduled time occurs',
+          })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="meeting_created">Meeting Created</SelectItem>
+            <SelectItem value="task_completed">Task Completed</SelectItem>
+            <SelectItem value="project_updated">Project Updated</SelectItem>
+            <SelectItem value="time_scheduled">Scheduled Time</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <Button type="submit" className="w-full bg-primary hover:bg-primary-dark text-primary-foreground">Save Changes</Button>
+    </form>
+  );
+};
+
+const AgentEditForm = ({ initial, onSave }: { initial: AIAgent; onSave: (data: any) => void }) => {
+  const [formData, setFormData] = useState({
+    name: initial.name,
+    description: initial.description,
+    role: initial.role,
+    instructions: initial.instructions,
+    model: initial.model,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="agentName-edit">Agent Name</Label>
+        <Input id="agentName-edit" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="agentDescription-edit">Description</Label>
+        <Textarea id="agentDescription-edit" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="role-edit">Agent Role</Label>
+        <Input id="role-edit" value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="instructions-edit">Instructions</Label>
+        <Textarea id="instructions-edit" rows={4} value={formData.instructions} onChange={(e) => setFormData({ ...formData, instructions: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="model-edit">AI Model</Label>
+        <Select value={formData.model} onValueChange={(value) => setFormData({ ...formData, model: value })}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="gpt-4">GPT-4</SelectItem>
+            <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+            <SelectItem value="claude-3">Claude 3</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <Button type="submit" className="w-full bg-primary hover:bg-primary-dark text-primary-foreground">Save Changes</Button>
     </form>
   );
 };
