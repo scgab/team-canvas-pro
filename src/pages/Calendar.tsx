@@ -595,8 +595,6 @@ const Calendar = () => {
                         onSelect={(date) => {
                           if (date) {
                             setNewEvent(prev => ({ ...prev, date }));
-                            // Auto-close the dialog after date selection
-                            setTimeout(() => setIsAddEventOpen(false), 100);
                           }
                         }}
                         initialFocus
@@ -706,33 +704,48 @@ const Calendar = () => {
                 await updateCalendarEvent(editingEvent.id, eventData);
                 
                 // Check if meeting was just completed and trigger workflow
-                if (editingEvent.type === 'meeting' && 
-                    previousStatus !== 'completed' && 
-                    newStatus === 'completed' &&
-                    user) {
+                const previousStatus = editingEvent?.meeting_status;
+                const newStatus = eventData.meeting_status;
+                if (editingEvent.type === 'meeting' && previousStatus !== 'completed' && newStatus === 'completed') {
                   try {
-                    // Get user's team_id
-                    const { data: teamMember } = await supabase
-                      .from('team_members')
-                      .select('team_id')
-                      .eq('email', user.email)
-                      .limit(1)
-                      .maybeSingle();
-                    
-                    if (teamMember?.team_id) {
+                    let teamId: string | null = null;
+
+                    // Try to get team_id from membership
+                    if (user?.email) {
+                      const { data: teamMember } = await supabase
+                        .from('team_members')
+                        .select('team_id')
+                        .eq('email', user.email)
+                        .limit(1)
+                        .maybeSingle();
+                      teamId = teamMember?.team_id || null;
+                    }
+
+                    // Fallback: fetch event to get team_id
+                    if (!teamId) {
+                      const { data: eventRow } = await supabase
+                        .from('calendar_events')
+                        .select('team_id')
+                        .eq('id', editingEvent.id)
+                        .maybeSingle();
+                      teamId = (eventRow as any)?.team_id || null;
+                    }
+
+                    if (teamId) {
                       console.log('Meeting completed, triggering workflow...');
                       await WorkflowTriggerService.triggerMeetingCompleted(
                         { ...editingEvent, ...eventData },
-                        teamMember.team_id
+                        teamId
                       );
                       toast({
                         title: "Workflow Triggered",
                         description: "Meeting completion workflow has been started.",
                       });
+                    } else {
+                      console.warn('Could not determine team_id for workflow trigger');
                     }
                   } catch (workflowError) {
                     console.error('Error triggering workflow:', workflowError);
-                    // Don't block the main update if workflow fails
                   }
                 }
               } else {
