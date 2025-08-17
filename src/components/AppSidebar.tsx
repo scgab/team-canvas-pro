@@ -12,7 +12,8 @@ import {
   Video,
   Clock,
   HelpCircle,
-  CreditCard
+  CreditCard,
+  Zap
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -39,6 +40,7 @@ const mainNavItems = [
   { title: "Team", url: "/team", icon: Users },
   { title: "Gantt Chart", url: "/analytics", icon: BarChart3 },
   { title: "AI Tools", url: "/ai-tools", icon: Brain },
+  { title: "Workflow Automations & AI Agents", url: "/workflow-automations", icon: Zap },
 ];
 
 export function AppSidebar() {

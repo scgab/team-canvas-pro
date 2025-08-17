@@ -12,6 +12,7 @@ import Calendar from "./pages/Calendar";
 import Team from "./pages/Team";
 import Analytics from "./pages/Analytics";
 import AITools from "./pages/AITools";
+import WorkflowAutomations from "./pages/WorkflowAutomations";
 import Meetings from "./pages/Meetings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/team" element={<AuthGuard><Team /></AuthGuard>} />
           <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
           <Route path="/ai-tools" element={<AuthGuard><AITools /></AuthGuard>} />
+          <Route path="/workflow-automations" element={<AuthGuard><WorkflowAutomations /></AuthGuard>} />
           <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
           <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
           <Route path="/help-center" element={<AuthGuard><HelpCenter /></AuthGuard>} />
