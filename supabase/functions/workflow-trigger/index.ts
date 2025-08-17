@@ -43,7 +43,7 @@ serve(async (req) => {
 async function handleMeetingCompletedTrigger(meetingRecord: any, teamId: string) {
   console.log('Handling meeting completed trigger for meeting:', meetingRecord.id);
   
-  // Check for active workflows with meeting completion triggers
+  // Get active workflows with meeting completion triggers
   const activeWorkflows = getActiveWorkflowsForTrigger('meeting_completed', teamId);
   
   for (const workflow of activeWorkflows) {
@@ -51,8 +51,8 @@ async function handleMeetingCompletedTrigger(meetingRecord: any, teamId: string)
     
     // Check if workflow conditions are met
     if (evaluateWorkflowConditions(workflow, meetingRecord)) {
-      console.log('Workflow conditions met, executing actions');
-      await executeWorkflowActions(workflow, meetingRecord, teamId);
+      console.log('Workflow conditions met, executing workflow via workflow-execute service');
+      await executeWorkflow(workflow, meetingRecord, teamId);
     }
   }
 }
@@ -110,130 +110,42 @@ function evaluateWorkflowConditions(workflow: any, meetingRecord: any): boolean 
   return true;
 }
 
-async function executeWorkflowActions(workflow: any, meetingRecord: any, teamId: string) {
-  for (const action of workflow.actions) {
-    try {
-      console.log('Executing action:', action.type);
-      
-      switch (action.type) {
-        case 'generate_summary':
-          await executeGenerateSummaryAction(meetingRecord, teamId);
-          break;
-        case 'send_email':
-          await executeSendEmailAction(action.config, meetingRecord, teamId);
-          break;
-        default:
-          console.log('Unknown action type:', action.type);
-      }
-    } catch (error) {
-      console.error(`Error executing action ${action.type}:`, error);
-      // Continue with next action even if one fails
-    }
-  }
-}
-
-async function executeGenerateSummaryAction(meetingRecord: any, teamId: string) {
-  console.log('Generating AI summary for meeting:', meetingRecord.id);
-  
+async function executeWorkflow(workflow: any, meetingRecord: any, teamId: string) {
   try {
-    // Call our generate-meeting-summary function
-    const summaryResponse = await supabase.functions.invoke('generate-meeting-summary', {
-      body: {
-        meetingData: {
-          title: meetingRecord.title,
-          date: meetingRecord.date,
-          attendees: meetingRecord.attendees?.join(', '),
-          notes: meetingRecord.meeting_notes,
-          actionItems: meetingRecord.action_items?.join(', ')
-        }
-      }
+    console.log('Executing workflow via workflow-execute service:', workflow.name);
+    
+    // Prepare workflow execution payload
+    const executionPayload = {
+      workflowId: workflow.id.toString(),
+      workflowName: workflow.name,
+      actions: workflow.actions.map((action: any) => ({
+        type: action.type,
+        config: action.config || {}
+      })),
+      context: {
+        ...meetingRecord,
+        isCalendarEvent: true // Flag to indicate this came from calendar events
+      },
+      teamId: teamId
+    };
+
+    // Call the workflow execution service
+    const { data, error } = await supabase.functions.invoke('workflow-execute', {
+      body: executionPayload
     });
-    
-    if (summaryResponse.error) {
-      throw new Error(`Summary generation failed: ${summaryResponse.error.message}`);
+
+    if (error) {
+      console.error('Workflow execution service error:', error);
+      throw error;
     }
-    
-    const summary = summaryResponse.data?.summary;
-    
-    if (summary) {
-      // Update the meeting record with the generated summary
-      const { error } = await supabase
-        .from('calendar_events')
-        .update({ meeting_summary: summary })
-        .eq('id', meetingRecord.id);
-        
-      if (error) {
-        console.error('Error updating meeting with summary:', error);
-      } else {
-        console.log('Meeting summary updated successfully');
-      }
-    }
-    
-    return summary;
+
+    console.log('Workflow executed successfully:', data);
+    return data;
   } catch (error) {
-    console.error('Error in generate summary action:', error);
+    console.error('Error executing workflow:', error);
     throw error;
   }
 }
 
-async function executeSendEmailAction(config: any, meetingRecord: any, teamId: string) {
-  console.log('Sending email for meeting:', meetingRecord.id);
-  
-  try {
-    // Get attendee emails
-    const attendeeEmails = meetingRecord.attendees || [];
-    
-    if (attendeeEmails.length === 0) {
-      console.log('No attendees to send email to');
-      return;
-    }
-    
-    // Prepare email subject
-    const subject = config.subject.replace('{meeting_title}', meetingRecord.title || 'Untitled Meeting');
-    
-    // Get meeting summary (should be available from previous action)
-    const { data: updatedMeeting } = await supabase
-      .from('calendar_events')
-      .select('meeting_summary')
-      .eq('id', meetingRecord.id)
-      .single();
-    
-    const summary = updatedMeeting?.meeting_summary || 'Summary not available';
-    
-    // Send email to each attendee
-    for (const email of attendeeEmails) {
-      console.log('Sending summary email to:', email);
-      
-      await supabase.functions.invoke('send-announcement', {
-        body: {
-          recipientEmail: email,
-          subject: subject,
-          content: `
-            <h2>Meeting Summary</h2>
-            <p><strong>Meeting:</strong> ${meetingRecord.title}</p>
-            <p><strong>Date:</strong> ${meetingRecord.date}</p>
-            <p><strong>Time:</strong> ${meetingRecord.time}</p>
-            
-            <h3>Summary</h3>
-            ${summary}
-            
-            ${meetingRecord.action_items && meetingRecord.action_items.length > 0 ? `
-              <h3>Action Items</h3>
-              <ul>
-                ${meetingRecord.action_items.map((item: string) => `<li>${item}</li>`).join('')}
-              </ul>
-            ` : ''}
-            
-            <p>This summary was automatically generated by our workflow system.</p>
-          `,
-          teamId: teamId
-        }
-      });
-    }
-    
-    console.log(`Successfully sent summary emails to ${attendeeEmails.length} attendees`);
-  } catch (error) {
-    console.error('Error in send email action:', error);
-    throw error;
-  }
-}
+// Remove the old action execution functions since we now use workflow-execute service
+// This keeps the trigger function focused on just triggering workflows

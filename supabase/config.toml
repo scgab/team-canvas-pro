@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.workflow-trigger]
 verify_jwt = false
+
+[functions.workflow-execute]
+verify_jwt = false
