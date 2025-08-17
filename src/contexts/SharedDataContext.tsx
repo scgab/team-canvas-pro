@@ -88,8 +88,8 @@ interface SharedDataContextType {
   updateNote: (noteId: string, updates: Partial<ProjectNote>) => Promise<void>;
   deleteNote: (noteId: string) => Promise<void>;
   sendMessage: (senderId: string, receiverId: string, content: string) => Promise<void>;
-  createEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<CalendarEvent>;
-  createCalendarEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<CalendarEvent>;
+  createEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<void>;
+  createCalendarEvent: (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => Promise<void>;
   updateCalendarEvent: (id: string, eventData: Partial<CalendarEvent>) => Promise<void>;
   deleteCalendarEvent: (id: string) => Promise<void>;
 }
@@ -348,41 +348,6 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [user, authLoading]);
 
-  // Helper function to trigger webhook for meeting creation
-  const triggerMeetingWebhook = async (eventData: CalendarEvent) => {
-    console.log('🔗 triggerMeetingWebhook called for:', eventData.title);
-    
-    try {
-      // Calculate start and end ISO dates
-      const startDateTime = new Date(`${eventData.date}T${eventData.time}:00`);
-      const endDateTime = new Date(startDateTime.getTime() + 30 * 60000); // Default 30 minutes if no end time
-      
-      const webhookPayload = {
-        sessionId: user?.id || "demo-1",
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Stockholm",
-        eventTitle: eventData.title,
-        eventDescription: eventData.description || "",
-        start_date: startDateTime.toISOString(),
-        end_date: endDateTime.toISOString(),
-        userEmail: "myh@scandac.com"
-      };
-
-      console.log('📤 Webhook payload:', webhookPayload);
-
-      const { data: webhookResult, error: webhookError } = await supabase.functions.invoke('forward-n8n-meeting', {
-        body: webhookPayload
-      });
-
-      if (webhookError) {
-        console.error('❌ Webhook error:', webhookError);
-      } else {
-        console.log('✅ Webhook response:', webhookResult);
-      }
-    } catch (error) {
-      console.error('💥 Error triggering meeting webhook:', error);
-    }
-  };
-
   const createProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'createdBy'>) => {
     try {
       const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
@@ -560,12 +525,9 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const createEvent = async (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'createdAt'>) => {
-    console.log('🚀 createEvent called with data:', eventData);
-    
     try {
       const currentUserEmail = (window as any).currentUserEmail || 'hna@scandac.com';
 
-      console.log('📝 Creating calendar event in database...');
       const newEvent = await TeamDataService.createCalendarEvent({
         title: eventData.title,
         description: eventData.description,
@@ -577,8 +539,6 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         attendees: eventData.attendees,
         created_by: currentUserEmail
       });
-
-      console.log('✅ Event created in database:', newEvent);
 
       const transformedEvent = {
         id: newEvent.id,
@@ -595,14 +555,8 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       };
 
       setEvents(prev => [...prev, transformedEvent]);
-
-      console.log('🎯 About to trigger webhook for meeting:', transformedEvent.title);
-      // Trigger N8N webhook immediately after creating the event
-      await triggerMeetingWebhook(transformedEvent);
-
-      return transformedEvent;
     } catch (error) {
-      console.error('❌ Error creating event:', error);
+      console.error('Error creating event:', error);
       throw error;
     }
   };

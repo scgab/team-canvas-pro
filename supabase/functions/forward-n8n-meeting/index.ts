@@ -5,29 +5,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// N8N webhook URL for meeting created events
-const N8N_WEBHOOK_URL = "https://wheewls.app.n8n.cloud/webhook/3f08b9d5-65c1-4bce-8fe2-887c073fe974";
+// Public N8N webhook URL for meeting created events
+const N8N_WEBHOOK_URL = "https://wheewls.app.n8n.cloud/webhook/webhook-test/a8ad0817-3fd7-4465-a7f4-4cccc7d0a40c";
 
 interface MeetingCreatedPayload {
-  sessionId?: string;
-  chatInput?: string;
-  timezone?: string;
-  userEmail?: string;
-  eventTitle?: string;
-  eventDescription?: string;
-  start_date?: string;
-  end_date?: string;
-  // Legacy fields for backward compatibility
   meetingId?: string;
-  title?: string;
-  date?: string;
+  title: string;
+  date: string;
   time?: string;
   end_time?: string | null;
   attendees?: string[];
   createdBy?: string;
   location?: string;
   agenda?: string[];
-  source?: string;
+  source?: string; // e.g., 'meetings' | 'calendar'
   timestamp?: string;
 }
 
@@ -47,25 +38,11 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const payload = (await req.json()) as MeetingCreatedPayload;
 
-    // Enhance payload with default values and proper structure
-    const enhancedPayload = {
-      sessionId: payload.sessionId || "demo-1",
-      chatInput: payload.chatInput || `Create a meeting on ${payload.date || payload.start_date} at ${payload.time} for 30 minutes`,
-      timezone: payload.timezone || "Europe/Stockholm",
-      userEmail: payload.userEmail || payload.createdBy || "user@example.com",
-      eventTitle: payload.eventTitle || payload.title || "Untitled Event",
-      eventDescription: payload.eventDescription || payload.agenda?.join(", ") || "",
-      start_date: payload.start_date,
-      end_date: payload.end_date,
-      // Include original payload for compatibility
-      ...payload
-    };
-
     // Forward to N8N webhook from server-side to avoid browser CORS issues
     const forwardResp = await fetch(N8N_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(enhancedPayload),
+      body: JSON.stringify(payload),
     });
 
     const text = await forwardResp.text();
