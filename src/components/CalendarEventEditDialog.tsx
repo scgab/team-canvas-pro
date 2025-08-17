@@ -78,17 +78,23 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
       
       // Handle both Date objects and string dates
       let dateStr = '';
+      const toLocalYMD = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const da = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${da}`;
+      };
       if (event.date instanceof Date) {
-        dateStr = event.date.toISOString().split('T')[0];
+        dateStr = toLocalYMD(event.date);
       } else if (typeof event.date === 'string') {
-        dateStr = event.date;
+        dateStr = event.date; // already yyyy-mm-dd
       } else if (event.date && typeof event.date === 'object' && 'value' in event.date && event.date.value) {
         // Handle complex date objects
         const dateValue = event.date.value;
         if (dateValue.iso) {
-          dateStr = new Date(dateValue.iso).toISOString().split('T')[0];
+          dateStr = toLocalYMD(new Date(dateValue.iso));
         } else if (dateValue.value) {
-          dateStr = new Date(dateValue.value).toISOString().split('T')[0];
+          dateStr = toLocalYMD(new Date(dateValue.value));
         }
       }
       
