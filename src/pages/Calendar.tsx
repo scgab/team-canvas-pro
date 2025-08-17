@@ -17,6 +17,7 @@ import { useSharedData } from "@/contexts/SharedDataContext";
 import { CalendarEventEditDialog } from "@/components/CalendarEventEditDialog";
 import { EventNotificationButton } from "@/components/EventNotificationButton";
 import { usePersistedState } from "@/hooks/useDataPersistence";
+import { WorkflowTriggerService } from "@/services/workflowTrigger";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
@@ -698,8 +699,42 @@ const Calendar = () => {
           event={editingEvent}
           onSubmit={async (eventData) => {
             try {
+              const previousStatus = editingEvent?.meeting_status;
+              const newStatus = eventData.meeting_status;
+              
               if (editingEvent?.isSupabaseEvent) {
                 await updateCalendarEvent(editingEvent.id, eventData);
+                
+                // Check if meeting was just completed and trigger workflow
+                if (editingEvent.type === 'meeting' && 
+                    previousStatus !== 'completed' && 
+                    newStatus === 'completed' &&
+                    user) {
+                  try {
+                    // Get user's team_id
+                    const { data: teamMember } = await supabase
+                      .from('team_members')
+                      .select('team_id')
+                      .eq('email', user.email)
+                      .limit(1)
+                      .maybeSingle();
+                    
+                    if (teamMember?.team_id) {
+                      console.log('Meeting completed, triggering workflow...');
+                      await WorkflowTriggerService.triggerMeetingCompleted(
+                        { ...editingEvent, ...eventData },
+                        teamMember.team_id
+                      );
+                      toast({
+                        title: "Workflow Triggered",
+                        description: "Meeting completion workflow has been started.",
+                      });
+                    }
+                  } catch (workflowError) {
+                    console.error('Error triggering workflow:', workflowError);
+                    // Don't block the main update if workflow fails
+                  }
+                }
               } else {
                 setEvents(prev => prev.map(event => 
                   event.id === editingEvent.id 

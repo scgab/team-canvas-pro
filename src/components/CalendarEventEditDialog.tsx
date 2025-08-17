@@ -22,6 +22,9 @@ interface CalendarEvent {
   assigned_members?: string[];
   attendees?: string[];
   priority?: string;
+  meeting_status?: string;
+  meeting_notes?: string;
+  action_items?: string[];
 }
 
 interface Props {
@@ -51,6 +54,9 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
     location: string;
     priority: string;
     assigned_members: string[];
+    meeting_status: string;
+    meeting_notes: string;
+    action_items: string[];
   }>({
     title: '',
     description: '',
@@ -60,7 +66,10 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
     type: 'meeting',
     location: '',
     priority: 'medium',
-    assigned_members: []
+    assigned_members: [],
+    meeting_status: 'planned',
+    meeting_notes: '',
+    action_items: []
   });
 
   useEffect(() => {
@@ -92,7 +101,10 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
         type: event.type || 'meeting',
         location: event.location || '',
         priority: event.priority || 'medium',
-        assigned_members: event.assigned_members || []
+        assigned_members: event.assigned_members || [],
+        meeting_status: event.meeting_status || 'planned',
+        meeting_notes: event.meeting_notes || '',
+        action_items: event.action_items || []
       });
     }
   }, [event]);
@@ -124,7 +136,10 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
         location: formData.location,
         priority: formData.priority,
         assigned_members: formData.assigned_members,
-        attendees: formData.assigned_members // Keep attendees in sync with assigned members
+        attendees: formData.assigned_members, // Keep attendees in sync with assigned members
+        meeting_status: formData.meeting_status,
+        meeting_notes: formData.meeting_notes,
+        action_items: formData.action_items
       });
 
       onClose();
@@ -298,6 +313,51 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
               ))}
             </div>
           </div>
+
+          {/* Meeting-specific fields */}
+          {formData.type === 'meeting' && (
+            <>
+              <div>
+                <Label htmlFor="meeting-status">Meeting Status</Label>
+                <Select value={formData.meeting_status} onValueChange={(value: string) => setFormData(prev => ({ ...prev, meeting_status: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="planned">Planned</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="meeting-notes">Meeting Notes</Label>
+                <Textarea
+                  id="meeting-notes"
+                  value={formData.meeting_notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, meeting_notes: e.target.value }))}
+                  placeholder="Meeting notes and discussion points"
+                  rows={4}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="action-items">Action Items (one per line)</Label>
+                <Textarea
+                  id="action-items"
+                  value={formData.action_items.join('\n')}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    action_items: e.target.value.split('\n').filter(item => item.trim()) 
+                  }))}
+                  placeholder="Enter action items, one per line"
+                  rows={3}
+                />
+              </div>
+            </>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

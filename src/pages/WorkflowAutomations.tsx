@@ -43,7 +43,7 @@ interface WorkflowAction {
 
 interface WorkflowTrigger {
   id: string;
-  type: 'meeting_created' | 'task_completed' | 'project_updated' | 'time_scheduled';
+  type: 'meeting_created' | 'meeting_completed' | 'task_completed' | 'project_updated' | 'time_scheduled';
   name: string;
   config: any;
 }
@@ -98,11 +98,11 @@ const WorkflowAutomations = () => {
       {
         id: "1",
         name: "Meeting Summary & Email",
-        description: "Automatically generate meeting summaries and email them to attendees",
+        description: "Automatically generate AI summaries when meetings are completed and email them to attendees",
         trigger: {
           id: "t1",
-          type: "meeting_created",
-          name: "When meeting is created",
+          type: "meeting_completed",
+          name: "When meeting is completed",
           config: { eventType: "all" }
         },
         actions: [
@@ -110,7 +110,7 @@ const WorkflowAutomations = () => {
             id: "a1",
             type: "summary",
             name: "Generate AI Summary",
-            config: { model: "gpt-4", includeKeyPoints: true }
+            config: { model: "claude-3-5-sonnet", includeKeyPoints: true, includeActionItems: true }
           },
           {
             id: "a2", 
@@ -120,7 +120,7 @@ const WorkflowAutomations = () => {
           }
         ],
         isActive: true,
-        lastRun: "2024-01-15T10:30:00Z",
+        lastRun: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
         runs: 23,
         createdAt: "2024-01-10T09:00:00Z"
       },
@@ -712,6 +712,7 @@ const CreateWorkflowForm = ({ onCreate }: { onCreate: (data: any) => void }) => 
             ...formData, 
             triggerType: value,
             triggerName: value === "meeting_created" ? "When meeting is created" :
+                          value === "meeting_completed" ? "When meeting is completed" :
                           value === "task_completed" ? "When task is completed" :
                           value === "project_updated" ? "When project is updated" : 
                           "When scheduled time occurs"
@@ -722,6 +723,7 @@ const CreateWorkflowForm = ({ onCreate }: { onCreate: (data: any) => void }) => 
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="meeting_created">Meeting Created</SelectItem>
+            <SelectItem value="meeting_completed">Meeting Completed</SelectItem>
             <SelectItem value="task_completed">Task Completed</SelectItem>
             <SelectItem value="project_updated">Project Updated</SelectItem>
             <SelectItem value="time_scheduled">Scheduled Time</SelectItem>
@@ -845,6 +847,7 @@ const WorkflowEditForm = ({ initial, onSave }: { initial: Workflow; onSave: (dat
             ...formData,
             triggerType: value as WorkflowTrigger['type'],
             triggerName: value === 'meeting_created' ? 'When meeting is created' :
+                          value === 'meeting_completed' ? 'When meeting is completed' :
                           value === 'task_completed' ? 'When task is completed' :
                           value === 'project_updated' ? 'When project is updated' :
                           'When scheduled time occurs',
@@ -855,6 +858,7 @@ const WorkflowEditForm = ({ initial, onSave }: { initial: Workflow; onSave: (dat
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="meeting_created">Meeting Created</SelectItem>
+            <SelectItem value="meeting_completed">Meeting Completed</SelectItem>
             <SelectItem value="task_completed">Task Completed</SelectItem>
             <SelectItem value="project_updated">Project Updated</SelectItem>
             <SelectItem value="time_scheduled">Scheduled Time</SelectItem>
