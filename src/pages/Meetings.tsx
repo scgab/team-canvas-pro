@@ -88,11 +88,19 @@ const Meetings: React.FC = () => {
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (user) {
-      fetchMeetings();
-      setupRealtimeSubscription();
-    }
-  }, [user]);
+    let unsubscribe: (() => void) | undefined;
+
+    (async () => {
+      if (user) {
+        await fetchMeetings();
+        unsubscribe = await setupRealtimeSubscription();
+      }
+    })();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user?.id]);
 
   // Load existing meeting data when selecting a meeting
   useEffect(() => {
@@ -630,7 +638,7 @@ const Meetings: React.FC = () => {
 
   return (
     <Layout>
-      <div className="pt-6 space-y-6">
+      <div className="px-6 pt-8 md:pt-10 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
         <div>
