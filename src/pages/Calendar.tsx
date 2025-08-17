@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, Users, Plus, Send } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, Users, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +12,7 @@ import { useSharedData } from '@/contexts/SharedDataContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { Calendar as UiCalendar } from '@/components/ui/calendar';
 
 interface Meeting {
   title: string;
@@ -39,6 +40,7 @@ const CalendarPage = () => {
   const [clientTimeZone, setClientTimeZone] = useState('');
   const { user } = useAuth();
   const { events, createCalendarEvent } = useSharedData();
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   useEffect(() => {
     setClientTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -239,6 +241,14 @@ const CalendarPage = () => {
           </Dialog>
         </CardHeader>
         <CardContent>
+          <div className="mb-6">
+            <UiCalendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              className="rounded-md border"
+            />
+          </div>
           <div className="grid gap-4">
             {events.map(event => (
               <Card key={event.id}>
@@ -248,7 +258,7 @@ const CalendarPage = () => {
                 <CardContent>
                   <div className="grid gap-2">
                     <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4" />
+                      <CalendarIcon className="h-4 w-4" />
                       <span>{formatDate(event.date)}</span>
                     </div>
                     <div className="flex items-center space-x-2">
