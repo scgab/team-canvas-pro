@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
@@ -130,8 +130,8 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
         title: formData.title,
         description: formData.description,
         date: formData.date,
-        start_time: formData.start_time,
-        end_time: formData.end_time,
+        time: formData.start_time || undefined,
+        end_time: formData.end_time || undefined,
         type: formData.type,
         location: formData.location,
         priority: formData.priority,
@@ -185,7 +185,7 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Edit Event</DialogTitle>
@@ -198,6 +198,7 @@ export function CalendarEventEditDialog({ open, onOpenChange, onClose, event, on
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
+          <DialogDescription>Edit calendar event details</DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">

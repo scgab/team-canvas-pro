@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -552,9 +552,10 @@ const Calendar = () => {
                   Create Event
                 </Button>
               </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Event</DialogTitle>
+                <DialogDescription>Fill in the details and assign attendees</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -663,6 +664,30 @@ const Calendar = () => {
                   />
                 </div>
                 
+                {/* Assign attendees */}
+                <div>
+                  <Label>Assign to Team Members</Label>
+                  <div className="space-y-2 mt-2">
+                    {teamMembers.map(member => (
+                      <div key={member.email} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`create-${member.email}`}
+                          checked={newEvent.attendees.includes(member.email)}
+                          onCheckedChange={(checked) =>
+                            setNewEvent(prev => ({
+                              ...prev,
+                              attendees: checked ? [...prev.attendees, member.email] : prev.attendees.filter(e => e !== member.email)
+                            }))
+                          }
+                        />
+                        <Label htmlFor={`create-${member.email}`} className="text-sm font-normal">
+                          {member.name} ({member.email})
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
                 {/* Meeting Sync Checkbox */}
                 <div className="flex items-center space-x-2">
                   <Checkbox 
@@ -701,7 +726,21 @@ const Calendar = () => {
               const newStatus = eventData.meeting_status;
               
               if (editingEvent?.isSupabaseEvent) {
-                await updateCalendarEvent(editingEvent.id, eventData);
+                const updates = {
+                  title: eventData.title,
+                  description: eventData.description,
+                  date: eventData.date,
+                  time: eventData.time || eventData.start_time || '',
+                  end_time: eventData.end_time || null,
+                  type: eventData.type,
+                  location: eventData.location,
+                  attendees: eventData.attendees || [],
+                  assigned_members: eventData.assigned_members || [],
+                  meeting_status: eventData.meeting_status,
+                  meeting_notes: eventData.meeting_notes,
+                  action_items: eventData.action_items,
+                };
+                await updateCalendarEvent(editingEvent.id, updates);
                 
                 // Check if meeting was just completed and trigger workflow
                 const previousStatus = editingEvent?.meeting_status;
