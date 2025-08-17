@@ -110,7 +110,7 @@ const WorkflowAutomations = () => {
             id: "a1",
             type: "summary",
             name: "Generate AI Summary",
-            config: { model: "claude-3-5-sonnet", includeKeyPoints: true, includeActionItems: true }
+            config: { model: "gemini-2.0-flash-exp", includeKeyPoints: true, includeActionItems: true }
           },
           {
             id: "a2", 

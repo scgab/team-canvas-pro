@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY');
+const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,8 +19,8 @@ serve(async (req) => {
     
     console.log('Received meeting data:', meetingData);
 
-    if (!anthropicApiKey) {
-      throw new Error('ANTHROPIC_API_KEY not found');
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY not found');
     }
 
     // Prepare the meeting content for summarization
@@ -34,37 +34,44 @@ Meeting Details:
 - Action Items: ${meetingData.actionItems || 'No action items'}
     `;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const prompt = `Please create a professional meeting summary based on the following meeting information. Include key discussion points, decisions made, and action items. Format it as a clear, concise summary suitable for email distribution.
+
+${meetingContent}`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${anthropicApiKey}`,
         'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 1024,
-        messages: [
+        contents: [
           {
-            role: 'user',
-            content: `Please create a professional meeting summary based on the following meeting information. Include key discussion points, decisions made, and action items. Format it as a clear, concise summary suitable for email distribution.
-
-${meetingContent}`
+            parts: [
+              {
+                text: prompt
+              }
+            ]
           }
-        ]
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        }
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Anthropic API error:', error);
-      throw new Error(`Anthropic API error: ${response.status} - ${error}`);
+      console.error('Gemini API error:', error);
+      throw new Error(`Gemini API error: ${response.status} - ${error}`);
     }
 
     const data = await response.json();
-    console.log('Anthropic response:', data);
+    console.log('Gemini response:', data);
     
-    const summary = data.content[0].text;
+    const summary = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     return new Response(JSON.stringify({ 
       summary,
