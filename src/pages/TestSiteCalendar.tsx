@@ -142,19 +142,24 @@ const TestSiteCalendar = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // Create OAuth URL with a placeholder client ID - the real client ID validation will happen on the backend
-      // In production, you would get the client ID from your environment or from the backend
-      const clientId = "YOUR_GOOGLE_CLIENT_ID"; // This will be handled by the backend
+      // Replace this with your actual Google Client ID from Google Cloud Console
+      const clientId = "YOUR_GOOGLE_CLIENT_ID_HERE"; // TODO: Replace with your actual client ID
       const redirectUri = `${window.location.origin}/test-site-calendar`;
       const scope = "https://www.googleapis.com/auth/calendar.readonly";
       
-      // For now, we'll inform the user that they need to set up OAuth properly
-      toast({
-        title: "Setup Required",
-        description: "To connect Google Calendar, you need to configure OAuth credentials in your Google Cloud Console and update the frontend with your client ID.",
-        variant: "destructive",
-      });
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `scope=${encodeURIComponent(scope)}&` +
+        `response_type=code&` +
+        `access_type=offline&` +
+        `prompt=consent`;
 
+      console.log('Redirecting to Google OAuth:', authUrl);
+      
+      // Redirect to Google OAuth
+      window.location.href = authUrl;
+      
     } catch (error) {
       console.error('Error signing in with Google:', error);
       toast({
