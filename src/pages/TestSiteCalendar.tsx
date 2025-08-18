@@ -69,61 +69,97 @@ const TestSiteCalendar = () => {
     checkGoogleAuth();
   }, []);
 
+  useEffect(() => {
+    // Check for OAuth callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    
+    if (code && !isAuthenticated) {
+      handleOAuthCallback(code);
+    }
+  }, [isAuthenticated]);
+
   const checkGoogleAuth = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Check if user has Google Calendar connected
-        // This would normally check for stored Google credentials
-        const hasGoogleAuth = localStorage.getItem('google_calendar_token');
-        setIsAuthenticated(!!hasGoogleAuth);
-        if (hasGoogleAuth) {
-          setAccessToken(hasGoogleAuth);
-          loadGoogleCalendarEvents();
+        // Try to fetch events to check if user is authenticated
+        const response = await supabase.functions.invoke('google-api', {
+          body: { action: 'getEvents' }
+        });
+
+        if (response.data && !response.data.error) {
+          setIsAuthenticated(true);
+          setGoogleEvents(response.data.events || []);
+        } else {
+          setIsAuthenticated(false);
         }
       }
     } catch (error) {
       console.error('Error checking Google auth:', error);
+      setIsAuthenticated(false);
+    }
+  };
+
+  const handleOAuthCallback = async (code: string) => {
+    setLoading(true);
+    try {
+      const response = await supabase.functions.invoke('google-api', {
+        body: { action: 'exchangeCode', code }
+      });
+
+      if (response.data && !response.data.error) {
+        setIsAuthenticated(true);
+        toast({
+          title: "Success",
+          description: "Google Calendar connected successfully!",
+        });
+        
+        // Clear the URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Load calendar events
+        loadGoogleCalendarEvents();
+      } else {
+        toast({
+          title: "Authentication Error",
+          description: response.data?.error || "Failed to connect Google Calendar",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error handling OAuth callback:', error);
+      toast({
+        title: "Authentication Error",
+        description: "Failed to complete Google Calendar authentication",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // In a real implementation, this would use the Google OAuth flow
-      // For now, we'll simulate the authentication process
-      const clientId = "YOUR_GOOGLE_CLIENT_ID"; // This would come from environment or settings
+      // Create OAuth URL with a placeholder client ID - the real client ID validation will happen on the backend
+      // In production, you would get the client ID from your environment or from the backend
+      const clientId = "YOUR_GOOGLE_CLIENT_ID"; // This will be handled by the backend
       const redirectUri = `${window.location.origin}/test-site-calendar`;
       const scope = "https://www.googleapis.com/auth/calendar.readonly";
       
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${clientId}&` +
-        `redirect_uri=${redirectUri}&` +
-        `scope=${scope}&` +
-        `response_type=token&` +
-        `access_type=offline`;
-
-      // For demo purposes, we'll simulate a successful auth
-      // In production, you'd redirect to Google's OAuth endpoint
+      // For now, we'll inform the user that they need to set up OAuth properly
       toast({
-        title: "Google Calendar Integration",
-        description: "This would redirect to Google OAuth in production. For demo, simulating success.",
+        title: "Setup Required",
+        description: "To connect Google Calendar, you need to configure OAuth credentials in your Google Cloud Console and update the frontend with your client ID.",
+        variant: "destructive",
       });
-      
-      // Simulate successful authentication
-      const mockToken = "mock_google_token_" + Date.now();
-      localStorage.setItem('google_calendar_token', mockToken);
-      setAccessToken(mockToken);
-      setIsAuthenticated(true);
-      
-      // Load mock Google Calendar events
-      loadMockGoogleEvents();
-      
+
     } catch (error) {
       console.error('Error signing in with Google:', error);
       toast({
-        title: "Authentication Error",
-        description: "Failed to authenticate with Google Calendar",
+        title: "Authentication Error", 
+        description: "Failed to initiate Google Calendar authentication",
         variant: "destructive",
       });
     } finally {
@@ -132,13 +168,27 @@ const TestSiteCalendar = () => {
   };
 
   const loadGoogleCalendarEvents = async () => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     
     setLoading(true);
     try {
-      // In production, this would call the Google Calendar API
-      // For now, we'll load mock events
-      loadMockGoogleEvents();
+      const response = await supabase.functions.invoke('google-api', {
+        body: { action: 'getEvents' }
+      });
+
+      if (response.data && !response.data.error) {
+        setGoogleEvents(response.data.events || []);
+        toast({
+          title: "Calendar Synchronized",
+          description: `Loaded ${response.data.events?.length || 0} events from Google Calendar`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: response.data?.error || "Failed to load Google Calendar events",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Error loading Google Calendar events:', error);
       toast({
@@ -149,42 +199,6 @@ const TestSiteCalendar = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadMockGoogleEvents = () => {
-    const mockEvents: GoogleCalendarEvent[] = [
-      {
-        id: "google_1",
-        summary: "Team All-Hands",
-        description: "Monthly all-hands meeting with the entire team",
-        start: { dateTime: `${format(new Date(), 'yyyy-MM-dd')}T10:00:00-08:00` },
-        end: { dateTime: `${format(new Date(), 'yyyy-MM-dd')}T11:00:00-08:00` },
-        location: "Conference Room A",
-        attendees: [
-          { email: "team@company.com", displayName: "Team", responseStatus: "accepted" },
-          { email: "manager@company.com", displayName: "Manager", responseStatus: "accepted" }
-        ],
-        status: "confirmed"
-      },
-      {
-        id: "google_2",
-        summary: "Project Review",
-        description: "Quarterly project review and planning session",
-        start: { dateTime: `${format(new Date(Date.now() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}T14:00:00-08:00` },
-        end: { dateTime: `${format(new Date(Date.now() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}T15:30:00-08:00` },
-        location: "Virtual Meeting",
-        attendees: [
-          { email: "stakeholder@company.com", displayName: "Stakeholder", responseStatus: "tentative" }
-        ],
-        status: "confirmed"
-      }
-    ];
-    setGoogleEvents(mockEvents);
-    
-    toast({
-      title: "Calendar Synchronized",
-      description: `Loaded ${mockEvents.length} events from Google Calendar`,
-    });
   };
 
   const refreshCalendar = () => {
@@ -199,15 +213,26 @@ const TestSiteCalendar = () => {
     }
   };
 
-  const signOut = () => {
-    localStorage.removeItem('google_calendar_token');
-    setAccessToken(null);
-    setIsAuthenticated(false);
-    setGoogleEvents([]);
-    toast({
-      title: "Signed Out",
-      description: "Successfully signed out from Google Calendar",
-    });
+  const signOut = async () => {
+    try {
+      await supabase.functions.invoke('google-api', {
+        body: { action: 'disconnect' }
+      });
+
+      setIsAuthenticated(false);
+      setGoogleEvents([]);
+      toast({
+        title: "Signed Out",
+        description: "Successfully signed out from Google Calendar",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out from Google Calendar",
+        variant: "destructive",
+      });
+    }
   };
 
   const goToPreviousMonth = () => {
