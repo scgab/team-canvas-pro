@@ -142,23 +142,37 @@ const TestSiteCalendar = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // Replace this with your actual Google Client ID from Google Cloud Console
-      const clientId = "YOUR_GOOGLE_CLIENT_ID_HERE"; // TODO: Replace with your actual client ID
-      const redirectUri = `${window.location.origin}/test-site-calendar`;
-      const scope = "https://www.googleapis.com/auth/calendar.readonly";
-      
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${encodeURIComponent(clientId)}&` +
-        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `scope=${encodeURIComponent(scope)}&` +
-        `response_type=code&` +
-        `access_type=offline&` +
-        `prompt=consent`;
+      // Get OAuth URL from backend to ensure proper configuration
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to connect Google Calendar.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
-      console.log('Redirecting to Google OAuth:', authUrl);
+      const response = await supabase.functions.invoke('google-api', {
+        body: { action: 'getAuthUrl' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to get OAuth URL');
+      }
+
+      if (!response.data.success || !response.data.authUrl) {
+        throw new Error('Failed to generate OAuth URL');
+      }
+
+      console.log('Redirecting to Google OAuth:', response.data.authUrl);
       
       // Redirect to Google OAuth
-      window.location.href = authUrl;
+      window.location.href = response.data.authUrl;
       
     } catch (error) {
       console.error('Error signing in with Google:', error);

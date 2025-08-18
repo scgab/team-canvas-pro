@@ -56,6 +56,31 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === 'getAuthUrl') {
+      // Generate OAuth URL from backend to ensure proper configuration
+      const redirectUri = `${req.headers.get('origin')}/test-site-calendar`;
+      const scope = "https://www.googleapis.com/auth/calendar.readonly";
+      
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(googleClientId)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `scope=${encodeURIComponent(scope)}&` +
+        `response_type=code&` +
+        `access_type=offline&` +
+        `prompt=consent`;
+
+      console.log('Generated OAuth URL:', authUrl);
+      console.log('Redirect URI:', redirectUri);
+      
+      return new Response(
+        JSON.stringify({ success: true, authUrl }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     if (action === 'exchangeCode') {
       // Handle OAuth code exchange
       if (!code) {
