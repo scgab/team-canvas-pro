@@ -9,6 +9,7 @@ import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import { ProjectTaskBoard } from "./components/ProjectTaskBoard";
 import Calendar from "./pages/Calendar";
+import TestSiteCalendar from "./pages/TestSiteCalendar";
 import Team from "./pages/Team";
 import Analytics from "./pages/Analytics";
 import AITools from "./pages/AITools";
@@ -42,6 +43,7 @@ const App = () => (
           <Route path="/projects/:projectId/tasks" element={<AuthGuard><ProjectTaskBoard /></AuthGuard>} />
           <Route path="/board" element={<AuthGuard><Board /></AuthGuard>} />
           <Route path="/calendar" element={<AuthGuard><Calendar /></AuthGuard>} />
+          <Route path="/test-site-calendar" element={<AuthGuard><TestSiteCalendar /></AuthGuard>} />
           <Route path="/shift-planning" element={<AuthGuard><ShiftPlanning /></AuthGuard>} />
           <Route path="/meetings" element={<AuthGuard><Meetings /></AuthGuard>} />
           <Route path="/team" element={<AuthGuard><Team /></AuthGuard>} />

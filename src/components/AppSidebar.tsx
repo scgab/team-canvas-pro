@@ -41,6 +41,7 @@ const mainNavItems = [
   { title: "Gantt Chart", url: "/analytics", icon: BarChart3 },
   { title: "AI Tools", url: "/ai-tools", icon: Brain },
   { title: "Workflow Automations & AI Agents", url: "/workflow-automations", icon: Zap },
+  { title: "Test Site Calendar", url: "/test-site-calendar", icon: Calendar },
 ];
 
 export function AppSidebar() {
