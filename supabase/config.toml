@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.send-email-bulk]
 verify_jwt = false
+
+[functions.google-api]
+verify_jwt = false

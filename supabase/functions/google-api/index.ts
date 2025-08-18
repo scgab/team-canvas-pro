@@ -58,7 +58,11 @@ Deno.serve(async (req) => {
 
     if (action === 'getAuthUrl') {
       // Generate OAuth URL from backend to ensure proper configuration
-      const redirectUri = `${req.headers.get('origin')}/test-site-calendar`;
+      const originHeader = req.headers.get('origin') || '';
+      const referer = req.headers.get('referer') || '';
+      const originMatch = referer.match(/^https?:\/\/[^/]+/);
+      const effectiveOrigin = originHeader || (originMatch ? originMatch[0] : '');
+      const redirectUri = `${effectiveOrigin}/test-site-calendar`;
       const scope = "https://www.googleapis.com/auth/calendar.readonly";
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -93,7 +97,11 @@ Deno.serve(async (req) => {
         );
       }
 
-      const redirectUri = `${req.headers.get('origin')}/test-site-calendar`;
+      const originHeader = req.headers.get('origin') || '';
+      const referer = req.headers.get('referer') || '';
+      const originMatch = referer.match(/^https?:\/\/[^/]+/);
+      const effectiveOrigin = originHeader || (originMatch ? originMatch[0] : '');
+      const redirectUri = `${effectiveOrigin}/test-site-calendar`;
       console.log('Exchanging code for tokens with redirect URI:', redirectUri);
 
       // Exchange code for tokens
