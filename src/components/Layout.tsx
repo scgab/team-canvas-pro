@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { NotificationPanel } from "@/components/NotificationPanel";
+import ChatBot from "@/components/ChatBot";
 import { Bell, Search, User, LogOut, MessageSquare, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,6 +165,9 @@ export function Layout({ children }: LayoutProps) {
           onOpenChange={setNotificationPanelOpen}
           currentUser={currentUserName}
         />
+
+        {/* Chat Bot */}
+        <ChatBot />
       </div>
     </SidebarProvider>
   );
