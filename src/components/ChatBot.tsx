@@ -103,13 +103,13 @@ const ChatBot: React.FC = () => {
   return (
     <>
       {/* Floating Chat Button */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-6 right-6 z-[9999]">
         {!isOpen && (
           <Button
             onClick={() => setIsOpen(true)}
             size="lg"
             className={cn(
-              "h-14 w-14 rounded-full shadow-custom-lg",
+              "h-14 w-14 rounded-full shadow-lg",
               "bg-primary hover:bg-primary-dark",
               "text-primary-foreground",
               "transition-all duration-200 hover:scale-105"
@@ -124,7 +124,7 @@ const ChatBot: React.FC = () => {
         {isOpen && (
           <Card className={cn(
             "w-80 h-96 flex flex-col",
-            "shadow-custom-lg border-border bg-card"
+            "shadow-lg border-border bg-card"
           )}>
             {/* Header */}
             <div className={cn(
