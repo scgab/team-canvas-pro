@@ -12,10 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useSharedData } from "@/contexts/SharedDataContext";
 import { CalendarEventEditDialog } from "@/components/CalendarEventEditDialog";
 import { EventNotificationButton } from "@/components/EventNotificationButton";
+import ChatBot from "@/components/ChatBot";
 import { usePersistedState } from "@/hooks/useDataPersistence";
 import { WorkflowTriggerService } from "@/services/workflowTrigger";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +34,8 @@ import {
   MapPin,
   User,
   Target,
-  Briefcase
+  Briefcase,
+  MessageCircle
 } from "lucide-react";
 
 interface CalendarEvent {
@@ -66,6 +69,7 @@ const Calendar = () => {
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [createMeeting, setCreateMeeting] = useState(false);
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -1035,6 +1039,63 @@ const Calendar = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Calendar Chatbot Section */}
+        {user && (
+          <section id="calendar-chatbot" aria-label="Chat Support" className="wheewls-calendar-chatbot-section">
+            <Card className="bg-gradient-card shadow-custom-card">
+              <Collapsible open={isChatbotOpen} onOpenChange={setIsChatbotOpen}>
+                <CollapsibleTrigger asChild>
+                  <CardHeader 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isChatbotOpen}
+                    aria-controls="calendar-chatbot-content"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setIsChatbotOpen(!isChatbotOpen);
+                      }
+                    }}
+                  >
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageCircle className="w-5 h-5" />
+                      💬 Chat with us
+                    </CardTitle>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent id="calendar-chatbot-content" className="wheewls-calendar-chatbot-content">
+                  <CardContent className="pt-0">
+                    <div className="wheewls-calendar-chatbot-container bg-background border rounded-lg p-4">
+                      <div className="space-y-4">
+                        <div className="wheewls-calendar-chatbot-messages bg-muted/10 rounded-lg p-3 h-64 overflow-y-auto">
+                          <div className="space-y-3">
+                            <div className="flex justify-start">
+                              <div className="bg-secondary text-secondary-foreground rounded-lg px-3 py-2 text-sm max-w-[80%]">
+                                Hi! I'm here to help you with any questions about the calendar and platform. How can I assist you today?
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="wheewls-calendar-chatbot-input flex gap-2">
+                          <Input
+                            placeholder="Type your message..."
+                            className="flex-1"
+                            aria-label="Chat message input"
+                          />
+                          <Button size="sm" className="px-3" aria-label="Send message">
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+          </section>
+        )}
 
         {/* Holiday Legend */}
         <Card className="bg-gradient-card shadow-custom-card">

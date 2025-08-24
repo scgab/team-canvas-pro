@@ -142,3 +142,43 @@ All colors MUST be HSL for consistency and theme support.
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Scoped Calendar Chatbot Styles */
+  .wheewls-calendar-chatbot-section {
+    @apply w-full;
+  }
+
+  .wheewls-calendar-chatbot-content {
+    @apply animate-in slide-in-from-top-2 duration-200;
+  }
+
+  .wheewls-calendar-chatbot-container {
+    @apply w-full max-w-none;
+  }
+
+  .wheewls-calendar-chatbot-messages {
+    @apply scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent;
+  }
+
+  .wheewls-calendar-chatbot-input input {
+    @apply focus:ring-primary/20 focus:border-primary;
+  }
+
+  /* Custom scrollbar for webkit browsers */
+  .wheewls-calendar-chatbot-messages::-webkit-scrollbar {
+    @apply w-1;
+  }
+
+  .wheewls-calendar-chatbot-messages::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .wheewls-calendar-chatbot-messages::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full;
+  }
+
+  .wheewls-calendar-chatbot-messages::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+}
