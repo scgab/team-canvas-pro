@@ -158,7 +158,8 @@ All colors MUST be HSL for consistency and theme support.
   }
 
   .wheewls-calendar-chatbot-messages {
-    @apply scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
   }
 
   .wheewls-calendar-chatbot-input input {
@@ -167,18 +168,19 @@ All colors MUST be HSL for consistency and theme support.
 
   /* Custom scrollbar for webkit browsers */
   .wheewls-calendar-chatbot-messages::-webkit-scrollbar {
-    @apply w-1;
+    width: 4px;
   }
 
   .wheewls-calendar-chatbot-messages::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
   }
 
   .wheewls-calendar-chatbot-messages::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/20 rounded-full;
+    background-color: hsl(var(--muted-foreground) / 0.2);
+    border-radius: 9999px;
   }
 
   .wheewls-calendar-chatbot-messages::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/30;
+    background-color: hsl(var(--muted-foreground) / 0.3);
   }
 }
