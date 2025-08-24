@@ -26,6 +26,7 @@ import HelpCenter from "./pages/HelpCenter";
 import ProjectManagementHelp from "./pages/ProjectManagementHelp";
 import GettingStarted from "./pages/GettingStarted";
 import { AuthGuard } from "./components/AuthGuard";
+import ChatBot from "./components/ChatBot";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      <ChatBot />
     </TooltipProvider>
   </QueryClientProvider>
 );
