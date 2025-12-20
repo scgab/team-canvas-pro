@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Calendar, Clock, Copy, RotateCcw } from "lucide-react";
+import { ShiftTypeSelect } from "@/components/ShiftTypeSelect";
 
 interface BulkShiftDialogProps {
   open: boolean;
@@ -210,15 +211,7 @@ export const BulkShiftDialog = ({ open, onOpenChange, teamMembers, onShiftsCreat
 
           <div>
             <Label htmlFor="shift-type">Shift Type</Label>
-            <Select value={shiftType} onValueChange={setShiftType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="regular">Regular</SelectItem>
-                <SelectItem value="overtime">Overtime</SelectItem>
-              </SelectContent>
-            </Select>
+            <ShiftTypeSelect value={shiftType} onValueChange={setShiftType} />
           </div>
 
           <div>

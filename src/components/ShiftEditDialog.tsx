@@ -8,6 +8,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { ShiftTypeSelect } from "@/components/ShiftTypeSelect";
 
 export interface ShiftEditDialogProps {
   open: boolean;
@@ -139,18 +140,7 @@ export const ShiftEditDialog: React.FC<ShiftEditDialogProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Shift type</Label>
-              <Select value={shiftType} onValueChange={setShiftType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="regular">Regular</SelectItem>
-                  <SelectItem value="morning">Morning</SelectItem>
-                  <SelectItem value="evening">Evening</SelectItem>
-                  <SelectItem value="night">Night</SelectItem>
-                  <SelectItem value="overtime">Overtime</SelectItem>
-                </SelectContent>
-              </Select>
+              <ShiftTypeSelect value={shiftType} onValueChange={setShiftType} />
             </div>
             <div>
               <Label>Status</Label>

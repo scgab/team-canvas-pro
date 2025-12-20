@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, Save, Plus, X, Mail, ListChecks } from 'lucide-react';
+import { Calendar, Clock, Users, Save, Plus, X, Mail, ListChecks, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { TeamAuthService } from '@/services/teamAuth';
 import { useAuth } from '@/hooks/useAuth';
+import { ShiftTypeSelect } from '@/components/ShiftTypeSelect';
+import { ShiftTypeManager } from '@/components/ShiftTypeManager';
 
 interface TeamMember {
   id: string;
@@ -364,18 +366,14 @@ export const MakeShifts = ({ onShiftCreated }: MakeShiftsProps) => {
 
             {/* Shift Type */}
             <div className="space-y-2">
-              <Label htmlFor="shift_type">Shift Type</Label>
-              <Select value={shiftForm.shift_type} onValueChange={(value) => handleInputChange('shift_type', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="regular">Regular</SelectItem>
-                  <SelectItem value="overtime">Overtime</SelectItem>
-                  <SelectItem value="emergency">Emergency</SelectItem>
-                  <SelectItem value="training">Training</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="shift_type">Shift Type</Label>
+                <ShiftTypeManager variant="dialog" />
+              </div>
+              <ShiftTypeSelect 
+                value={shiftForm.shift_type} 
+                onValueChange={(value) => handleInputChange('shift_type', value)} 
+              />
             </div>
           </div>
 
@@ -549,17 +547,10 @@ export const MakeShifts = ({ onShiftCreated }: MakeShiftsProps) => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="available_shift_type">Shift Type</Label>
-                <Select value={availableShiftForm.shift_type} onValueChange={(value) => handleAvailableShiftInputChange('shift_type', value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="regular">Regular</SelectItem>
-                    <SelectItem value="overtime">Overtime</SelectItem>
-                    <SelectItem value="emergency">Emergency</SelectItem>
-                    <SelectItem value="training">Training</SelectItem>
-                  </SelectContent>
-                </Select>
+                <ShiftTypeSelect 
+                  value={availableShiftForm.shift_type} 
+                  onValueChange={(value) => handleAvailableShiftInputChange('shift_type', value)} 
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="available_start_time">Start Time *</Label>
