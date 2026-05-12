@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { TeamDataService } from '@/services/teamData';
+import { useRealtimeInvalidate } from '@/hooks/useRealtimeInvalidate';
 
 export interface Project {
   id: string;
