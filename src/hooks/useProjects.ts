@@ -36,6 +36,7 @@ const parseProject = (p: any): Project => ({
 export const useProjects = () => {
   const { user, loading: authLoading } = useAuth();
   const qc = useQueryClient();
+  useRealtimeInvalidate('projects', PROJECTS_KEY, !authLoading && !!user);
 
   const {
     data: projects = [],
