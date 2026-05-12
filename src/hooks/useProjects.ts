@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { projectsService } from '@/services/database';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { TeamDataService } from '@/services/teamData';
 
 export interface Project {
   id: string;
@@ -20,50 +19,55 @@ export interface Project {
   shared_with: string[];
 }
 
+const PROJECTS_KEY = ['projects'] as const;
+
+const parseProject = (p: any): Project => ({
+  ...p,
+  priority: p.priority as Project['priority'],
+  status: p.status as Project['status'],
+  deadline: new Date(p.deadline),
+  created_at: new Date(p.created_at),
+  updated_at: new Date(p.updated_at),
+  assigned_members: p.assigned_members || [],
+  shared_with: p.shared_with || [],
+});
+
 export const useProjects = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth();
+  const qc = useQueryClient();
 
-  // Load projects from Supabase once auth is ready
-  useEffect(() => {
-    if (authLoading) return;
-    if (user) {
-      loadProjects();
-    }
-  }, [authLoading, user]);
-
-  const loadProjects = async () => {
-    try {
-      setLoading(true);
-      const { TeamDataService } = await import('@/services/teamData');
+  const {
+    data: projects = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: PROJECTS_KEY,
+    enabled: !authLoading && !!user,
+    queryFn: async () => {
       const data = await TeamDataService.getTeamProjects();
-      const parsedProjects = data.map((p: any) => ({
-        ...p,
-        priority: p.priority as 'low' | 'medium' | 'high' | 'urgent',
-        status: p.status as 'planning' | 'in-progress' | 'review' | 'completed',
-        deadline: new Date(p.deadline),
-        created_at: new Date(p.created_at),
-        updated_at: new Date(p.updated_at),
-        assigned_members: p.assigned_members || [],
-        shared_with: p.shared_with || []
-      }));
-      setProjects(parsedProjects);
-    } catch (error) {
-      console.error('Error loading projects:', error);
-      setError('Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data.map(parseProject);
+    },
+  });
 
-  const createProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress' | 'color' | 'team_size' | 'created_by' | 'status' | 'assigned_members' | 'shared_with'> & { team_members?: string[] }) => {
-    try {
-      const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
+  const createMutation = useMutation({
+    mutationFn: async (
+      projectData: Omit<
+        Project,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'progress'
+        | 'color'
+        | 'team_size'
+        | 'created_by'
+        | 'status'
+        | 'assigned_members'
+        | 'shared_with'
+      > & { team_members?: string[] }
+    ) => {
+      const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
       const randomColor = colors[Math.floor(Math.random() * colors.length)];
-
-      const projectPayload = {
+      const payload = {
         title: projectData.title,
         description: projectData.description,
         priority: projectData.priority,
@@ -73,114 +77,83 @@ export const useProjects = () => {
         team_size: (projectData.team_members?.length || 0) + 1,
         status: 'planning',
         assigned_members: projectData.team_members || [],
-        shared_with: projectData.team_members || []
+        shared_with: projectData.team_members || [],
       };
+      const created = await TeamDataService.createProject(payload);
+      return parseProject(created);
+    },
+    onSuccess: (newProject) => {
+      qc.setQueryData<Project[]>(PROJECTS_KEY, (prev = []) => [...prev, newProject]);
+    },
+  });
 
-      const { TeamDataService } = await import('@/services/teamData');
-      const newProject = await TeamDataService.createProject(projectPayload);
-      
-      const formattedProject: Project = {
-        ...newProject,
-        priority: newProject.priority as 'low' | 'medium' | 'high' | 'urgent',
-        status: newProject.status as 'planning' | 'in-progress' | 'review' | 'completed',
-        deadline: new Date(newProject.deadline),
-        created_at: new Date(newProject.created_at),
-        updated_at: new Date(newProject.updated_at),
-        assigned_members: newProject.assigned_members || [],
-        shared_with: newProject.shared_with || []
-      };
-
-      setProjects(prev => [...prev, formattedProject]);
-      return formattedProject;
-    } catch (error) {
-      console.error('Error creating project:', error);
-      throw error;
-    }
-  };
-
-  const updateProject = async (id: string, updates: Partial<Project>) => {
-    try {
-      const { TeamDataService } = await import('@/services/teamData');
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Project> }) => {
       await TeamDataService.updateProject(id, updates);
-      setProjects(prev => 
-        prev.map(project => 
-          project.id === id 
-            ? { ...project, ...updates, updated_at: new Date() }
-            : project
-        )
+      return { id, updates };
+    },
+    onSuccess: ({ id, updates }) => {
+      qc.setQueryData<Project[]>(PROJECTS_KEY, (prev = []) =>
+        prev.map((p) => (p.id === id ? { ...p, ...updates, updated_at: new Date() } : p))
       );
-    } catch (error) {
-      console.error('Error updating project:', error);
-      throw error;
-    }
-  };
+    },
+  });
 
-  const deleteProject = async (id: string) => {
-    try {
-      const { TeamDataService } = await import('@/services/teamData');
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
       await TeamDataService.deleteProject(id);
-      setProjects(prev => prev.filter(project => project.id !== id));
-    } catch (error) {
-      console.error('Error deleting project:', error);
-      throw error;
-    }
-  };
+      return id;
+    },
+    onSuccess: (id) => {
+      qc.setQueryData<Project[]>(PROJECTS_KEY, (prev = []) => prev.filter((p) => p.id !== id));
+    },
+  });
 
-  const getProjectById = (id: string) => {
-    return projects.find(project => project.id === id);
-  };
-
-  const getProjectsByStatus = (status: Project['status']) => {
-    return projects.filter(project => project.status === status);
-  };
+  const getProjectById = (id: string) => projects.find((p) => p.id === id);
+  const getProjectsByStatus = (status: Project['status']) =>
+    projects.filter((p) => p.status === status);
 
   const shareProject = async (projectId: string, userIds: string[]) => {
-    setProjects(prev => 
-      prev.map(project => 
-        project.id === projectId 
-          ? { ...project, shared_with: [...new Set([...project.shared_with, ...userIds])], updated_at: new Date() }
-          : project
+    qc.setQueryData<Project[]>(PROJECTS_KEY, (prev = []) =>
+      prev.map((p) =>
+        p.id === projectId
+          ? {
+              ...p,
+              shared_with: [...new Set([...(p.shared_with || []), ...userIds])],
+              updated_at: new Date(),
+            }
+          : p
       )
     );
   };
 
-  const getProjectsForUser = (userId: string) => {
-    try {
-      return projects.filter(project => {
-        // User owns the project or is in shared_with array
-        const isOwner = project.created_by === userId;
-        const isShared = project.shared_with && project.shared_with.includes(userId);
-        return isOwner || isShared;
-      });
-    } catch (error) {
-      console.error('Error filtering projects for user:', error);
-      return [];
-    }
-  };
+  const getProjectsForUser = (userId: string) =>
+    projects.filter(
+      (p) => p.created_by === userId || (p.shared_with && p.shared_with.includes(userId))
+    );
 
-  const getProjectStats = () => {
-    return {
-      total: projects.length,
-      active: projects.filter(p => p.status === 'in-progress').length,
-      completed: projects.filter(p => p.status === 'completed').length,
-      overdue: projects.filter(p => 
-        p.status !== 'completed' && 
-        new Date(p.deadline) < new Date()
-      ).length
-    };
-  };
+  const getProjectStats = () => ({
+    total: projects.length,
+    active: projects.filter((p) => p.status === 'in-progress').length,
+    completed: projects.filter((p) => p.status === 'completed').length,
+    overdue: projects.filter(
+      (p) => p.status !== 'completed' && new Date(p.deadline) < new Date()
+    ).length,
+  });
 
   return {
     projects,
-    loading,
-    error,
-    createProject,
-    updateProject,
-    deleteProject,
+    loading: isLoading,
+    error: error ? 'Failed to load projects' : null,
+    createProject: (data: Parameters<typeof createMutation.mutateAsync>[0]) =>
+      createMutation.mutateAsync(data),
+    updateProject: (id: string, updates: Partial<Project>) =>
+      updateMutation.mutateAsync({ id, updates }),
+    deleteProject: (id: string) => deleteMutation.mutateAsync(id),
     getProjectById,
     getProjectsByStatus,
     getProjectStats,
     shareProject,
-    getProjectsForUser
+    getProjectsForUser,
   };
 };
