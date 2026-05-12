@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { TeamDataService } from '@/services/teamData';
+import { useRealtimeInvalidate } from '@/hooks/useRealtimeInvalidate';
 
 export interface Project {
   id: string;
@@ -35,6 +36,7 @@ const parseProject = (p: any): Project => ({
 export const useProjects = () => {
   const { user, loading: authLoading } = useAuth();
   const qc = useQueryClient();
+  useRealtimeInvalidate('projects', PROJECTS_KEY, !authLoading && !!user);
 
   const {
     data: projects = [],
