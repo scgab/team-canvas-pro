@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { TeamAuthService } from '@/services/teamAuth';
 
-// Default shift types that are always available
 const DEFAULT_SHIFT_TYPES = [
   { value: 'regular', label: 'Regular' },
   { value: 'morning', label: 'Morning' },
@@ -18,153 +18,111 @@ export interface ShiftType {
   isCustom?: boolean;
 }
 
+interface ShiftTypesData {
+  teamId: string | null;
+  customShiftTypes: ShiftType[];
+}
+
+const queryKey = (email?: string | null) => ['shift-types', email ?? 'anon'] as const;
+
 export const useShiftTypes = () => {
   const { user } = useAuth();
-  const [shiftTypes, setShiftTypes] = useState<ShiftType[]>(DEFAULT_SHIFT_TYPES);
-  const [customShiftTypes, setCustomShiftTypes] = useState<ShiftType[]>([]);
-  const [teamId, setTeamId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const qc = useQueryClient();
 
-  // Fetch team and custom shift types
-  useEffect(() => {
-    const fetchTeamData = async () => {
-      if (!user?.email) return;
+  const { data, isLoading } = useQuery<ShiftTypesData>({
+    queryKey: queryKey(user?.email),
+    enabled: !!user?.email,
+    queryFn: async () => {
+      const teamData = await TeamAuthService.getUserTeam(user!.email!);
+      const teamId = teamData?.team?.id ?? null;
+      if (!teamId) return { teamId: null, customShiftTypes: [] };
 
+      const { data: team, error } = await supabase
+        .from('teams')
+        .select('team_settings')
+        .eq('id', teamId)
+        .single();
+
+      if (error) return { teamId, customShiftTypes: [] };
+
+      const settings = (team?.team_settings || {}) as { customShiftTypes?: ShiftType[] };
+      const custom = Array.isArray(settings.customShiftTypes)
+        ? settings.customShiftTypes.map((t) => ({ ...t, isCustom: true }))
+        : [];
+      return { teamId, customShiftTypes: custom };
+    },
+  });
+
+  const teamId = data?.teamId ?? null;
+  const customShiftTypes = data?.customShiftTypes ?? [];
+  const shiftTypes: ShiftType[] = [...DEFAULT_SHIFT_TYPES, ...customShiftTypes];
+
+  const writeCustomTypes = async (next: ShiftType[]) => {
+    if (!teamId) throw new Error('No team');
+    const { data: team, error: fetchError } = await supabase
+      .from('teams')
+      .select('team_settings')
+      .eq('id', teamId)
+      .single();
+    if (fetchError) throw fetchError;
+
+    const currentSettings = (team?.team_settings || {}) as Record<string, unknown>;
+    const updatedSettings = { ...currentSettings, customShiftTypes: next };
+
+    const { error: updateError } = await supabase
+      .from('teams')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update({ team_settings: updatedSettings as any })
+      .eq('id', teamId);
+    if (updateError) throw updateError;
+  };
+
+  const addMutation = useMutation({
+    mutationFn: async (label: string) => {
+      const trimmed = label.trim();
+      if (!trimmed) throw new Error('Empty label');
+      const value = trimmed.toLowerCase().replace(/\s+/g, '_');
+      if (shiftTypes.some((t) => t.value === value)) throw new Error('Duplicate');
+      const next = [...customShiftTypes, { value, label: trimmed, isCustom: true }];
+      await writeCustomTypes(next);
+      return next;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKey(user?.email) }),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (value: string) => {
+      if (DEFAULT_SHIFT_TYPES.some((t) => t.value === value)) throw new Error('Cannot remove default');
+      const next = customShiftTypes.filter((t) => t.value !== value);
+      await writeCustomTypes(next);
+      return next;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKey(user?.email) }),
+  });
+
+  const addShiftType = useCallback(
+    async (label: string): Promise<boolean> => {
       try {
-        const teamData = await TeamAuthService.getUserTeam(user.email);
-        if (teamData?.team?.id) {
-          setTeamId(teamData.team.id);
-
-          // Fetch team settings for custom shift types
-          const { data: team, error } = await supabase
-            .from('teams')
-            .select('team_settings')
-            .eq('id', teamData.team.id)
-            .single();
-
-          if (!error && team?.team_settings) {
-            const settings = team.team_settings as { customShiftTypes?: ShiftType[] };
-            if (settings.customShiftTypes && Array.isArray(settings.customShiftTypes)) {
-              const custom = settings.customShiftTypes.map(t => ({ ...t, isCustom: true }));
-              setCustomShiftTypes(custom);
-              setShiftTypes([...DEFAULT_SHIFT_TYPES, ...custom]);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching shift types:', error);
+        await addMutation.mutateAsync(label);
+        return true;
+      } catch {
+        return false;
       }
-    };
+    },
+    [addMutation]
+  );
 
-    fetchTeamData();
-  }, [user?.email]);
-
-  // Add a new custom shift type
-  const addShiftType = useCallback(async (label: string): Promise<boolean> => {
-    if (!teamId || !label.trim()) return false;
-
-    const value = label.toLowerCase().replace(/\s+/g, '_');
-    
-    // Check if already exists
-    if (shiftTypes.some(t => t.value === value)) {
-      return false;
-    }
-
-    setLoading(true);
-    try {
-      // Get current settings
-      const { data: team, error: fetchError } = await supabase
-        .from('teams')
-        .select('team_settings')
-        .eq('id', teamId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const currentSettings = (team?.team_settings || {}) as Record<string, unknown>;
-      const currentCustomTypes = (currentSettings.customShiftTypes || []) as ShiftType[];
-      
-      const newType = { value, label: label.trim(), isCustom: true };
-      const updatedCustomTypes = [...currentCustomTypes, newType];
-
-      // Update team settings - cast to any to satisfy Json type
-      const updatedSettings = {
-        ...currentSettings,
-        customShiftTypes: updatedCustomTypes
-      };
-
-      const { error: updateError } = await supabase
-        .from('teams')
-        .update({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          team_settings: updatedSettings as any
-        })
-        .eq('id', teamId);
-
-      if (updateError) throw updateError;
-
-      setCustomShiftTypes(updatedCustomTypes);
-      setShiftTypes([...DEFAULT_SHIFT_TYPES, ...updatedCustomTypes]);
-      return true;
-    } catch (error) {
-      console.error('Error adding shift type:', error);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, shiftTypes]);
-
-  // Remove a custom shift type
-  const removeShiftType = useCallback(async (value: string): Promise<boolean> => {
-    if (!teamId) return false;
-
-    // Can't remove default types
-    if (DEFAULT_SHIFT_TYPES.some(t => t.value === value)) {
-      return false;
-    }
-
-    setLoading(true);
-    try {
-      // Get current settings
-      const { data: team, error: fetchError } = await supabase
-        .from('teams')
-        .select('team_settings')
-        .eq('id', teamId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const currentSettings = (team?.team_settings || {}) as Record<string, unknown>;
-      const currentCustomTypes = (currentSettings.customShiftTypes || []) as ShiftType[];
-      
-      const updatedCustomTypes = currentCustomTypes.filter(t => t.value !== value);
-
-      // Update team settings - cast to any to satisfy Json type
-      const updatedSettings = {
-        ...currentSettings,
-        customShiftTypes: updatedCustomTypes
-      };
-
-      const { error: updateError } = await supabase
-        .from('teams')
-        .update({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          team_settings: updatedSettings as any
-        })
-        .eq('id', teamId);
-
-      if (updateError) throw updateError;
-
-      setCustomShiftTypes(updatedCustomTypes);
-      setShiftTypes([...DEFAULT_SHIFT_TYPES, ...updatedCustomTypes]);
-      return true;
-    } catch (error) {
-      console.error('Error removing shift type:', error);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId]);
+  const removeShiftType = useCallback(
+    async (value: string): Promise<boolean> => {
+      try {
+        await removeMutation.mutateAsync(value);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [removeMutation]
+  );
 
   return {
     shiftTypes,
@@ -172,7 +130,7 @@ export const useShiftTypes = () => {
     defaultShiftTypes: DEFAULT_SHIFT_TYPES,
     addShiftType,
     removeShiftType,
-    loading,
-    teamId
+    loading: isLoading || addMutation.isPending || removeMutation.isPending,
+    teamId,
   };
 };
